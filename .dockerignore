@@ -1,0 +1,16 @@
+# Artefactos de build locales: el contenedor restaura y compila desde cero
+**/bin/
+**/obj/
+**/.vs/
+
+# No necesarios en la imagen
+.git/
+.github/
+frontend/node_modules/
+.env
+.env.*
+!.env.example
+README.md
+docs/adr/
+evals/
+corpus/
