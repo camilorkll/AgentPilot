@@ -1,0 +1,468 @@
+openapi: 3.0.3
+info:
+  title: AgentPilot API
+  description: >
+    Copiloto de conocimiento RAG para agentes de Contact Center.
+    Contrato diseñado contract-first (Spec Driven Development): este fichero
+    es la fuente de verdad de la API; el código se implementa contra él.
+  version: 1.0.0
+  contact:
+    name: Camilo Rodríguez
+    url: https://github.com/camilorkll/AgentPilot
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Desarrollo local (Docker Compose)
+  - url: https://agentpilot.example.com/api/v1
+    description: Producción (URL definitiva en el README)
+
+tags:
+  - name: auth
+    description: Autenticación y sesión
+  - name: documents
+    description: Ingesta y gestión de la base de conocimiento
+  - name: chat
+    description: Conversación RAG con streaming
+  - name: feedback
+    description: Valoración de respuestas por los agentes
+  - name: metrics
+    description: Telemetría de uso y coste (LLMOps)
+  - name: health
+    description: Estado del servicio
+
+paths:
+  /auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      summary: Autentica a un usuario y devuelve un JWT
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Autenticación correcta
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /documents:
+    post:
+      tags: [documents]
+      operationId: uploadDocument
+      summary: Sube un documento (PDF o Markdown) a la base de conocimiento
+      description: >
+        La ingesta es asíncrona: la respuesta devuelve el documento en estado
+        `pending`. El pipeline (parseo → chunking → embeddings → indexado)
+        se ejecuta en background; el estado se consulta con GET /documents/{id}.
+        Requiere rol `admin`.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Fichero .pdf o .md (máx. 20 MB)
+                title:
+                  type: string
+                  maxLength: 200
+      responses:
+        "202":
+          description: Documento aceptado, ingesta en curso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "413":
+          description: Fichero demasiado grande
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      tags: [documents]
+      operationId: listDocuments
+      summary: Lista los documentos de la base de conocimiento
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/IngestStatus"
+      responses:
+        "200":
+          description: Listado de documentos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Document"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /documents/{documentId}:
+    get:
+      tags: [documents]
+      operationId: getDocument
+      summary: Consulta un documento y el estado de su ingesta
+      parameters:
+        - $ref: "#/components/parameters/DocumentId"
+      responses:
+        "200":
+          description: Documento
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [documents]
+      operationId: deleteDocument
+      summary: Elimina un documento y sus chunks indexados
+      description: Requiere rol `admin`.
+      parameters:
+        - $ref: "#/components/parameters/DocumentId"
+      responses:
+        "204":
+          description: Eliminado
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /chat/ask:
+    post:
+      tags: [chat]
+      operationId: ask
+      summary: Hace una pregunta y recibe la respuesta RAG en streaming (SSE)
+      description: >
+        Devuelve `text/event-stream`. Eventos emitidos:
+        `token` (delta de texto), `citations` (fragmentos fuente usados,
+        emitido una vez al final), `usage` (tokens y coste de la llamada)
+        y `done`. Si `conversationId` es null se crea una conversación nueva.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AskRequest"
+      responses:
+        "200":
+          description: Stream de eventos SSE
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: >
+                  Eventos `token`, `citations`, `usage`, `done` en formato SSE.
+                  Los payloads JSON de `citations` y `usage` siguen los esquemas
+                  Citation[] y LlmUsage respectivamente.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /conversations/{conversationId}:
+    get:
+      tags: [chat]
+      operationId: getConversation
+      summary: Recupera el historial de una conversación
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Conversación con sus mensajes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /feedback:
+    post:
+      tags: [feedback]
+      operationId: submitFeedback
+      summary: Valora una respuesta del asistente (👍/👎 + comentario opcional)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeedbackRequest"
+      responses:
+        "201":
+          description: Feedback registrado
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /metrics/summary:
+    get:
+      tags: [metrics]
+      operationId: getMetricsSummary
+      summary: Métricas agregadas de uso, calidad y coste
+      description: Requiere rol `admin`.
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          required: false
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Resumen de métricas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetricsSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /health:
+    get:
+      tags: [health]
+      operationId: getHealth
+      summary: Healthcheck (BD y dependencias)
+      security: []
+      responses:
+        "200":
+          description: Servicio operativo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: Healthy }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    DocumentId:
+      name: documentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Petición inválida
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Sin autenticar o token inválido
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: Autenticado pero sin permisos suficientes
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string, maxLength: 100 }
+        password: { type: string, format: password, maxLength: 200 }
+
+    LoginResponse:
+      type: object
+      required: [accessToken, role, expiresAtUtc]
+      properties:
+        accessToken: { type: string }
+        role:
+          type: string
+          enum: [agent, admin]
+        expiresAtUtc: { type: string, format: date-time }
+
+    IngestStatus:
+      type: string
+      enum: [pending, processing, ready, failed]
+
+    Document:
+      type: object
+      required: [id, title, fileName, status, createdAtUtc]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        fileName: { type: string }
+        status:
+          $ref: "#/components/schemas/IngestStatus"
+        chunkCount: { type: integer, nullable: true }
+        embeddingModel:
+          type: string
+          nullable: true
+          description: Modelo con el que se indexó (los queries deben usar el mismo)
+        errorMessage: { type: string, nullable: true }
+        createdAtUtc: { type: string, format: date-time }
+
+    AskRequest:
+      type: object
+      required: [question]
+      properties:
+        question:
+          type: string
+          minLength: 3
+          maxLength: 2000
+        conversationId:
+          type: string
+          format: uuid
+          nullable: true
+
+    Citation:
+      type: object
+      required: [documentId, documentTitle, chunkId, snippet, score]
+      properties:
+        documentId: { type: string, format: uuid }
+        documentTitle: { type: string }
+        chunkId: { type: string, format: uuid }
+        snippet:
+          type: string
+          description: Fragmento del documento fuente usado en la respuesta
+        score:
+          type: number
+          format: double
+          description: Similitud del retrieval (0..1)
+
+    LlmUsage:
+      type: object
+      required: [model, promptTokens, completionTokens, latencyMs]
+      properties:
+        model: { type: string, example: gpt-5 }
+        promptTokens: { type: integer }
+        cachedPromptTokens: { type: integer }
+        completionTokens: { type: integer }
+        estimatedCostUsd: { type: number, format: double }
+        latencyMs: { type: integer }
+
+    Message:
+      type: object
+      required: [id, role, content, createdAtUtc]
+      properties:
+        id: { type: string, format: uuid }
+        role:
+          type: string
+          enum: [user, assistant]
+        content: { type: string }
+        citations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Citation"
+        createdAtUtc: { type: string, format: date-time }
+
+    Conversation:
+      type: object
+      required: [id, messages, createdAtUtc]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string, nullable: true }
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/Message"
+        createdAtUtc: { type: string, format: date-time }
+
+    FeedbackRequest:
+      type: object
+      required: [messageId, rating]
+      properties:
+        messageId: { type: string, format: uuid }
+        rating:
+          type: string
+          enum: [positive, negative]
+        comment:
+          type: string
+          maxLength: 1000
+          nullable: true
+
+    MetricsSummary:
+      type: object
+      properties:
+        totalQuestions: { type: integer }
+        positiveFeedbackRate: { type: number, format: double, nullable: true }
+        avgLatencyMs: { type: number, format: double }
+        p95LatencyMs: { type: number, format: double }
+        totalCostUsd: { type: number, format: double }
+        costByModel:
+          type: object
+          additionalProperties: { type: number, format: double }
+        questionsPerDay:
+          type: array
+          items:
+            type: object
+            properties:
+              date: { type: string, format: date }
+              count: { type: integer }
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, example: validation_error }
+        message: { type: string }
+        details:
+          type: array
+          items: { type: string }
+          nullable: true
+
+security:
+  - bearerAuth: []
