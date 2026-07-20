@@ -1,9 +1,23 @@
+using AgentPilot.Infrastructure;
+using AgentPilot.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddHealthChecks();
+builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
+
+// En desarrollo, aplica las migraciones pendientes al arrancar: al hacer
+// 'docker compose up' las tablas y la extensión pgvector se crean solas.
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AgentPilotDbContext>();
+    db.Database.Migrate();
+}
 
 // Contrato OpenAPI (contract-first): docs/openapi.yaml es la fuente de verdad
 // y se sirve tal cual; Swagger UI lo renderiza.
