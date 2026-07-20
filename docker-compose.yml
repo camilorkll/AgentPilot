@@ -7,7 +7,9 @@ services:
       POSTGRES_USER: agentpilot
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agentpilot_dev}
     ports:
-      - "5432:5432"
+      # Host 5433 -> contenedor 5432. Usamos 5433 en el host para no chocar con
+      # un PostgreSQL nativo que pueda estar ocupando el 5432 de Windows.
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

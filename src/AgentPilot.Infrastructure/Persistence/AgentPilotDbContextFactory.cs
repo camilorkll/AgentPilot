@@ -15,7 +15,7 @@ public class AgentPilotDbContextFactory : IDesignTimeDbContextFactory<AgentPilot
     {
         var connectionString =
             Environment.GetEnvironmentVariable("ConnectionStrings__Default")
-            ?? "Host=localhost;Database=agentpilot;Username=agentpilot;Password=agentpilot_dev";
+            ?? "Host=localhost;Port=5433;Database=agentpilot;Username=agentpilot;Password=agentpilot_dev";
 
         var options = new DbContextOptionsBuilder<AgentPilotDbContext>()
             .UseNpgsql(connectionString, npgsql => npgsql.UseVector())
