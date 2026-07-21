@@ -40,6 +40,9 @@ public static class DependencyInjection
         else
             services.AddSingleton<IEmbeddingService, OpenAiEmbeddingService>();
 
+        // --- Extracción de texto de documentos (PDF / Markdown) ---
+        services.AddSingleton<IDocumentTextExtractor, DocumentTextExtractor>();
+
         return services;
     }
 }

@@ -1,3 +1,4 @@
+using AgentPilot.Application;
 using AgentPilot.Infrastructure;
 using AgentPilot.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddHealthChecks();
+builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
