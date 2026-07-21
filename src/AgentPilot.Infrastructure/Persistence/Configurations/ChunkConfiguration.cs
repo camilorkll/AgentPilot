@@ -13,6 +13,10 @@ public class ChunkConfiguration : IEntityTypeConfiguration<Chunk>
     {
         builder.ToTable("chunks");
         builder.HasKey(c => c.Id);
+        // El Id lo genera el dominio (Guid.NewGuid en el constructor), no la BD.
+        // Sin esto, EF trata los chunks nuevos con Id ya puesto como existentes y
+        // emite UPDATE en vez de INSERT.
+        builder.Property(c => c.Id).ValueGeneratedNever();
 
         builder.Property(c => c.Ordinal).IsRequired();
         builder.Property(c => c.Content).IsRequired();

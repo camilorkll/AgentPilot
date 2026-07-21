@@ -12,6 +12,8 @@ public class DocumentoConfiguration : IEntityTypeConfiguration<Documento>
     {
         builder.ToTable("documents");
         builder.HasKey(d => d.Id);
+        // El Id lo genera el dominio, no la BD (coherencia con Chunk).
+        builder.Property(d => d.Id).ValueGeneratedNever();
 
         builder.Property(d => d.Title).IsRequired().HasMaxLength(300);
         builder.Property(d => d.FileName).IsRequired().HasMaxLength(300);

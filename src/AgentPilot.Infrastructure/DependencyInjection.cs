@@ -1,6 +1,7 @@
 using AgentPilot.Application.Abstractions;
 using AgentPilot.Infrastructure.Ai;
 using AgentPilot.Infrastructure.Configuration;
+using AgentPilot.Infrastructure.Ingestion;
 using AgentPilot.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -42,6 +43,11 @@ public static class DependencyInjection
 
         // --- Extracción de texto de documentos (PDF / Markdown) ---
         services.AddSingleton<IDocumentTextExtractor, DocumentTextExtractor>();
+
+        // --- Ingesta: repositorio, cola en memoria y worker en segundo plano ---
+        services.AddScoped<IDocumentRepository, DocumentRepository>();
+        services.AddSingleton<IIngestionQueue, InMemoryIngestionQueue>();
+        services.AddHostedService<IngestionBackgroundService>();
 
         return services;
     }
