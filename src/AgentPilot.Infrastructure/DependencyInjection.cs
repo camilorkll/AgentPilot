@@ -1,3 +1,6 @@
+using AgentPilot.Application.Abstractions;
+using AgentPilot.Infrastructure.Ai;
+using AgentPilot.Infrastructure.Configuration;
 using AgentPilot.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -15,6 +18,7 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services, IConfiguration configuration)
     {
+        // --- Persistencia ---
         var connectionString = configuration.GetConnectionString("Default")
             ?? throw new InvalidOperationException(
                 "Falta la cadena de conexión 'ConnectionStrings:Default'.");
@@ -22,6 +26,19 @@ public static class DependencyInjection
         services.AddDbContext<AgentPilotDbContext>(options =>
             // UseVector() activa el mapeo del tipo pgvector en Npgsql.
             options.UseNpgsql(connectionString, npgsql => npgsql.UseVector()));
+
+        // --- IA: embeddings ---
+        services.Configure<OpenAiOptions>(configuration.GetSection(OpenAiOptions.SectionName));
+        services.Configure<EmbeddingsOptions>(configuration.GetSection(EmbeddingsOptions.SectionName));
+
+        // El proveedor se elige por configuración (Embeddings:Provider). Ambas
+        // implementaciones cumplen IEmbeddingService; el resto de la app es ajena
+        // a cuál se registró.
+        var provider = configuration[$"{EmbeddingsOptions.SectionName}:Provider"] ?? "openai";
+        if (string.Equals(provider, "ollama", StringComparison.OrdinalIgnoreCase))
+            services.AddHttpClient<IEmbeddingService, OllamaEmbeddingService>();
+        else
+            services.AddSingleton<IEmbeddingService, OpenAiEmbeddingService>();
 
         return services;
     }
