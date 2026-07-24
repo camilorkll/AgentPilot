@@ -52,6 +52,9 @@ public static class DependencyInjection
         // --- Recuperación: búsqueda por similitud ---
         services.AddScoped<IChunkSearchService, ChunkSearchService>();
 
+        // --- IA: chat (generación de respuestas) ---
+        services.AddSingleton<IChatCompletionService, OpenAiChatCompletionService>();
+
         return services;
     }
 }
