@@ -1,4 +1,5 @@
 using AgentPilot.Application.Abstractions;
+using AgentPilot.Application.Auth;
 using AgentPilot.Application.Chat;
 using AgentPilot.Application.Ingestion;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,6 +19,9 @@ public static class DependencyInjection
 
         // Orquestador RAG de preguntas (scoped: usa el repositorio de conversaciones).
         services.AddScoped<IAskQuestionService, AskQuestionService>();
+
+        // Autenticación.
+        services.AddScoped<IAuthService, AuthService>();
 
         return services;
     }

@@ -34,6 +34,7 @@ services:
       OpenAI__ChatModel: ${OPENAI_CHAT_MODEL:-gpt-5-mini}
       Embeddings__Provider: ${EMBEDDINGS_PROVIDER:-openai}
       Embeddings__OllamaBaseUrl: http://ollama:11434
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?Define JWT_SIGNING_KEY en .env}
     ports:
       - "8080:8080"
     healthcheck:

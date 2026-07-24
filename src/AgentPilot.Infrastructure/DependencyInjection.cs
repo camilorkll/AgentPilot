@@ -1,5 +1,7 @@
 using AgentPilot.Application.Abstractions;
+using AgentPilot.Application.Auth;
 using AgentPilot.Infrastructure.Ai;
+using AgentPilot.Infrastructure.Auth;
 using AgentPilot.Infrastructure.Configuration;
 using AgentPilot.Infrastructure.Ingestion;
 using AgentPilot.Infrastructure.Persistence;
@@ -54,6 +56,12 @@ public static class DependencyInjection
 
         // --- Conversaciones ---
         services.AddScoped<IConversationRepository, ConversationRepository>();
+
+        // --- Autenticación (usuarios, hashing, tokens) ---
+        services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
+        services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
 
         // --- IA: chat (generación de respuestas) ---
         services.AddSingleton<IChatCompletionService, OpenAiChatCompletionService>();

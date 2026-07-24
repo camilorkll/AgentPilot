@@ -1,12 +1,14 @@
 using System.Text.Json;
 using AgentPilot.Api.Contracts;
 using AgentPilot.Application.Chat;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AgentPilot.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/chat")]
+[Authorize] // agente o admin
 public class ChatController(IAskQuestionService ask) : ControllerBase
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);

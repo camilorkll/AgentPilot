@@ -1,11 +1,13 @@
 using AgentPilot.Api.Contracts;
 using AgentPilot.Application.Abstractions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AgentPilot.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/conversations")]
+[Authorize] // agente o admin
 public class ConversationsController(IConversationRepository conversations) : ControllerBase
 {
     /// <summary>Recupera el historial de una conversación con sus mensajes y citas.</summary>

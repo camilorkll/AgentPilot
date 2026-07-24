@@ -2,18 +2,21 @@ using AgentPilot.Api.Contracts;
 using AgentPilot.Application.Abstractions;
 using AgentPilot.Application.Ingestion;
 using AgentPilot.Domain.Documents;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AgentPilot.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/documents")]
+[Authorize] // cualquier usuario autenticado; la escritura exige rol admin
 public class DocumentsController(
     IDocumentIngestionService ingestion,
     IDocumentRepository repository) : ControllerBase
 {
     /// <summary>Sube un documento; la ingesta se procesa en segundo plano.</summary>
     [HttpPost]
+    [Authorize(Roles = "admin")]
     public async Task<IActionResult> Upload(
         IFormFile file, [FromForm] string? title, CancellationToken cancellationToken)
     {
@@ -53,6 +56,7 @@ public class DocumentsController(
     }
 
     [HttpDelete("{documentId:guid}")]
+    [Authorize(Roles = "admin")]
     public async Task<IActionResult> Delete(Guid documentId, CancellationToken cancellationToken)
     {
         var document = await repository.GetByIdAsync(documentId, cancellationToken);

@@ -17,10 +17,13 @@ Los agentes de un call center pierden entre 30 y 60 segundos por llamada buscand
 
 ## 🔑 Usuario y contraseña de prueba
 
-| Rol | Usuario | Contraseña |
-|---|---|---|
-| Agente | *(pendiente — Fase 4)* | — |
-| Administrador | *(pendiente — Fase 4)* | — |
+Se crean automáticamente al arrancar. Autentícate en `POST /api/v1/auth/login` y
+usa el token devuelto como `Authorization: Bearer <token>`.
+
+| Rol | Usuario | Contraseña | Puede |
+|---|---|---|---|
+| Administrador | `admin` | `admin1234` | Todo, incluida la gestión de documentos |
+| Agente | `agente` | `agente1234` | Chat RAG y consulta de documentos |
 
 ---
 
@@ -108,7 +111,7 @@ Las reglas de dependencia entre capas se verifican con tests de arquitectura
 - [x] **Proveedor de embeddings conmutable** (OpenAI cloud / Ollama local) por configuración. *(Fase 2 ✓)*
 - [x] **Chat RAG con citas**: pregunta en lenguaje natural → respuesta en streaming (SSE) anclada a los documentos, con citas y telemetría de coste. *(Fase 3 ✓)*
 - [ ] **Búsqueda híbrida**: similitud vectorial + keyword (tsvector). *(línea futura)*
-- [ ] **Autenticación JWT** con roles agente/administrador. *(Fase 4)*
+- [x] **Autenticación JWT** con roles agente/administrador (contraseñas con hash BCrypt). *(Fase 4 ✓)*
 - [ ] **Feedback 👍/👎** por respuesta. *(Fase 4)*
 - [ ] **Dashboard de métricas**: uso, latencia, % feedback positivo y **coste por modelo** (LLMOps). *(Fase 5)*
 - [ ] **Evals**: set dorado de 25–30 preguntas con métricas de precisión de citas. *(Fase 6)*

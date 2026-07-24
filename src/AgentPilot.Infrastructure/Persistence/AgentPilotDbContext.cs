@@ -1,5 +1,6 @@
 using AgentPilot.Domain.Conversations;
 using AgentPilot.Domain.Documents;
+using AgentPilot.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 
 namespace AgentPilot.Infrastructure.Persistence;
@@ -22,6 +23,7 @@ public class AgentPilotDbContext(DbContextOptions<AgentPilotDbContext> options)
     public DbSet<Documento> Documentos => Set<Documento>();
     public DbSet<Chunk> Chunks => Set<Chunk>();
     public DbSet<Conversation> Conversations => Set<Conversation>();
+    public DbSet<User> Users => Set<User>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

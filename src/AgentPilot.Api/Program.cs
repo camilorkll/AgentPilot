@@ -1,7 +1,13 @@
+using System.Text;
 using AgentPilot.Application;
+using AgentPilot.Application.Abstractions;
 using AgentPilot.Infrastructure;
+using AgentPilot.Infrastructure.Auth;
+using AgentPilot.Infrastructure.Configuration;
 using AgentPilot.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,24 +16,50 @@ builder.Services.AddHealthChecks();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
+// --- Autenticación JWT ---
+var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
+var signingKey = string.IsNullOrWhiteSpace(jwt.SigningKey)
+    ? "dev-only-insecure-signing-key-please-override-me!" // fallback de arranque; en prod va por Jwt__SigningKey
+    : jwt.SigningKey;
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.MapInboundClaims = false; // deja los claims tal cual ("role", "sub")
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwt.Issuer,
+            ValidateAudience = true,
+            ValidAudience = jwt.Audience,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey)),
+            RoleClaimType = "role",
+            NameClaimType = "sub",
+        };
+    });
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
-// En desarrollo, aplica las migraciones pendientes al arrancar: al hacer
-// 'docker compose up' las tablas y la extensión pgvector se crean solas.
-// Se reintenta unos segundos porque la BD puede tardar en estar accesible
-// (arranque del contenedor, DNS de la red): así un fallo transitorio no
-// tumba la aplicación.
-if (app.Environment.IsDevelopment())
+// Fuera de los tests: aplica migraciones y siembra los usuarios de prueba al
+// arrancar. Se reintenta unos segundos porque la BD puede tardar en estar
+// accesible (arranque del contenedor, DNS de la red).
+if (!app.Environment.IsEnvironment("Testing"))
 {
     using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<AgentPilotDbContext>();
-    var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var services = scope.ServiceProvider;
+    var startupLogger = services.GetRequiredService<ILogger<Program>>();
 
     for (var attempt = 1; ; attempt++)
     {
         try
         {
-            db.Database.Migrate();
+            await services.GetRequiredService<AgentPilotDbContext>().Database.MigrateAsync();
+            await IdentitySeeder.SeedAsync(
+                services.GetRequiredService<IUserRepository>(),
+                services.GetRequiredService<IPasswordHasher>());
             break;
         }
         catch (Exception ex) when (attempt < 10)
@@ -39,8 +71,7 @@ if (app.Environment.IsDevelopment())
     }
 }
 
-// Contrato OpenAPI (contract-first): docs/openapi.yaml es la fuente de verdad
-// y se sirve tal cual; Swagger UI lo renderiza.
+// Contrato OpenAPI (contract-first): docs/openapi.yaml es la fuente de verdad.
 app.MapGet("/openapi.yaml", () =>
 {
     var path = Path.Combine(AppContext.BaseDirectory, "openapi.yaml");
@@ -52,6 +83,9 @@ app.UseSwaggerUI(options =>
     options.SwaggerEndpoint("/openapi.yaml", "AgentPilot API v1");
     options.RoutePrefix = "swagger";
 });
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapHealthChecks("/api/v1/health");
 app.MapControllers();
