@@ -54,8 +54,9 @@ public static class DependencyInjection
         // --- Recuperación: búsqueda por similitud ---
         services.AddScoped<IChunkSearchService, ChunkSearchService>();
 
-        // --- Conversaciones ---
+        // --- Conversaciones y feedback ---
         services.AddScoped<IConversationRepository, ConversationRepository>();
+        services.AddScoped<IFeedbackRepository, FeedbackRepository>();
 
         // --- Autenticación (usuarios, hashing, tokens) ---
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));

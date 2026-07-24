@@ -1,6 +1,7 @@
 using AgentPilot.Application.Abstractions;
 using AgentPilot.Application.Auth;
 using AgentPilot.Application.Chat;
+using AgentPilot.Application.Feedback;
 using AgentPilot.Application.Ingestion;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -22,6 +23,9 @@ public static class DependencyInjection
 
         // Autenticación.
         services.AddScoped<IAuthService, AuthService>();
+
+        // Feedback.
+        services.AddScoped<IFeedbackService, FeedbackService>();
 
         return services;
     }

@@ -112,7 +112,7 @@ Las reglas de dependencia entre capas se verifican con tests de arquitectura
 - [x] **Chat RAG con citas**: pregunta en lenguaje natural → respuesta en streaming (SSE) anclada a los documentos, con citas y telemetría de coste. *(Fase 3 ✓)*
 - [ ] **Búsqueda híbrida**: similitud vectorial + keyword (tsvector). *(línea futura)*
 - [x] **Autenticación JWT** con roles agente/administrador (contraseñas con hash BCrypt). *(Fase 4 ✓)*
-- [ ] **Feedback 👍/👎** por respuesta. *(Fase 4)*
+- [x] **Feedback 👍/👎** por respuesta, con comentario y autor. *(Fase 4 ✓)*
 - [ ] **Dashboard de métricas**: uso, latencia, % feedback positivo y **coste por modelo** (LLMOps). *(Fase 5)*
 - [ ] **Evals**: set dorado de 25–30 preguntas con métricas de precisión de citas. *(Fase 6)*
 

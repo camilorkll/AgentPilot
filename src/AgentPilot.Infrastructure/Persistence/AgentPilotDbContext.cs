@@ -24,6 +24,7 @@ public class AgentPilotDbContext(DbContextOptions<AgentPilotDbContext> options)
     public DbSet<Chunk> Chunks => Set<Chunk>();
     public DbSet<Conversation> Conversations => Set<Conversation>();
     public DbSet<User> Users => Set<User>();
+    public DbSet<Feedback> Feedback => Set<Feedback>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
