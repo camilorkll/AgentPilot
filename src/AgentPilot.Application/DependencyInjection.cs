@@ -1,4 +1,5 @@
 using AgentPilot.Application.Abstractions;
+using AgentPilot.Application.Chat;
 using AgentPilot.Application.Ingestion;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -14,6 +15,9 @@ public static class DependencyInjection
 
         // Orquestador de ingesta (scoped: usa el repositorio, que usa el DbContext).
         services.AddScoped<IDocumentIngestionService, DocumentIngestionService>();
+
+        // Orquestador RAG de preguntas (scoped: usa el repositorio de conversaciones).
+        services.AddScoped<IAskQuestionService, AskQuestionService>();
 
         return services;
     }
