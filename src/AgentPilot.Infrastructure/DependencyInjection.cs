@@ -49,6 +49,9 @@ public static class DependencyInjection
         services.AddSingleton<IIngestionQueue, InMemoryIngestionQueue>();
         services.AddHostedService<IngestionBackgroundService>();
 
+        // --- Recuperación: búsqueda por similitud ---
+        services.AddScoped<IChunkSearchService, ChunkSearchService>();
+
         return services;
     }
 }

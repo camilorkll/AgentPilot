@@ -103,14 +103,15 @@ Las reglas de dependencia entre capas se verifican con tests de arquitectura
 
 ## ✨ Funcionalidades principales
 
-- [ ] **Chat RAG con citas**: pregunta en lenguaje natural → respuesta en streaming con los fragmentos de documento usados como fuente. *(Fase 3)*
-- [ ] **Ingesta de documentos**: subida de PDF/Markdown → chunking → embeddings → indexado en pgvector, en background. *(Fase 2)*
-- [ ] **Búsqueda híbrida**: similitud vectorial + keyword (tsvector). *(Fase 3)*
+- [x] **Ingesta de documentos**: subida de PDF/Markdown → chunking con solapamiento → embeddings → indexado en pgvector, en segundo plano. *(Fase 2 ✓)*
+- [x] **Búsqueda por similitud**: recuperación de los chunks más relevantes por distancia coseno (pgvector). *(Fase 2 ✓)*
+- [x] **Proveedor de embeddings conmutable** (OpenAI cloud / Ollama local) por configuración. *(Fase 2 ✓)*
+- [ ] **Chat RAG con citas**: pregunta en lenguaje natural → respuesta en streaming con los fragmentos fuente. *(Fase 3)*
+- [ ] **Búsqueda híbrida**: similitud vectorial + keyword (tsvector). *(línea futura)*
 - [ ] **Autenticación JWT** con roles agente/administrador. *(Fase 4)*
 - [ ] **Feedback 👍/👎** por respuesta. *(Fase 4)*
 - [ ] **Dashboard de métricas**: uso, latencia, % feedback positivo y **coste por modelo** (LLMOps). *(Fase 5)*
 - [ ] **Evals**: set dorado de 25–30 preguntas con métricas de precisión de citas. *(Fase 6)*
-- [x] **Proveedor de embeddings conmutable** (OpenAI cloud / Ollama local) — diseño; implementación en Fase 2.
 
 ## 🔒 Seguridad
 
