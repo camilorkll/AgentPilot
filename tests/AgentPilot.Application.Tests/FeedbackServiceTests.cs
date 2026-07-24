@@ -1,6 +1,7 @@
 using AgentPilot.Application.Abstractions;
 using AgentPilot.Application.Feedback;
 using AgentPilot.Domain.Conversations;
+using FeedbackEntity = AgentPilot.Domain.Conversations.Feedback;
 
 namespace AgentPilot.Application.Tests;
 
@@ -34,9 +35,9 @@ public class FeedbackServiceTests
 
     private sealed class FakeFeedbackRepository(bool messageExists) : IFeedbackRepository
     {
-        public Feedback? Saved { get; private set; }
+        public FeedbackEntity? Saved { get; private set; }
         public Task<bool> MessageExistsAsync(Guid id, CancellationToken ct = default) => Task.FromResult(messageExists);
-        public Task AddAsync(Feedback feedback, CancellationToken ct = default) { Saved = feedback; return Task.CompletedTask; }
+        public Task AddAsync(FeedbackEntity feedback, CancellationToken ct = default) { Saved = feedback; return Task.CompletedTask; }
         public Task SaveChangesAsync(CancellationToken ct = default) => Task.CompletedTask;
     }
 }

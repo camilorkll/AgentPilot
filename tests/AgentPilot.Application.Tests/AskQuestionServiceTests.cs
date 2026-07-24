@@ -23,8 +23,9 @@ public class AskQuestionServiceTests
         ]);
         var chat = new FakeChat(["El cambio ", "es gratis."]);
         var repo = new FakeConversationRepository();
+        var metrics = new FakeMetrics();
 
-        var service = new AskQuestionService(embeddings, search, chat, repo);
+        var service = new AskQuestionService(embeddings, search, chat, repo, metrics);
 
         // Act
         var events = new List<AskEvent>();
@@ -64,6 +65,11 @@ public class AskQuestionServiceTests
         Assert.Equal(MessageRole.Assistant, assistant.Role);
         Assert.Equal("El cambio es gratis.", assistant.Content);
         Assert.Equal(2, assistant.Citations.Count);
+
+        // Se registró la llamada al LLM para el dashboard de coste.
+        Assert.NotNull(metrics.Recorded);
+        Assert.Equal("gpt-5-mini", metrics.Recorded!.Model);
+        Assert.Equal(120, metrics.Recorded.PromptTokens);
     }
 
     // --- Dobles ---
@@ -98,6 +104,15 @@ public class AskQuestionServiceTests
             }
             yield return new ChatCompletionChunk(null, new ChatUsage(120, 8));
         }
+    }
+
+    private sealed class FakeMetrics : IMetricsRepository
+    {
+        public Domain.Telemetry.LlmCallLog? Recorded { get; private set; }
+        public Task RecordCallAsync(Domain.Telemetry.LlmCallLog log, CancellationToken ct = default)
+        { Recorded = log; return Task.CompletedTask; }
+        public Task<Metrics.MetricsSummary> GetSummaryAsync(DateTime? f, DateTime? t, CancellationToken ct = default)
+            => Task.FromResult(new Metrics.MetricsSummary());
     }
 
     private sealed class FakeConversationRepository : IConversationRepository

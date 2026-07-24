@@ -16,7 +16,8 @@ public class AskQuestionService(
     IEmbeddingService embeddings,
     IChunkSearchService search,
     IChatCompletionService chat,
-    IConversationRepository conversations) : IAskQuestionService
+    IConversationRepository conversations,
+    IMetricsRepository metrics) : IAskQuestionService
 {
     private const int TopK = 5;
 
@@ -86,14 +87,19 @@ public class AskQuestionService(
 
         var promptTokens = usage?.PromptTokens ?? 0;
         var completionTokens = usage?.CompletionTokens ?? 0;
-        yield return new UsageEvent(
-            chat.ModelName, promptTokens, completionTokens,
-            LlmPricing.EstimateUsd(chat.ModelName, promptTokens, completionTokens),
-            stopwatch.ElapsedMilliseconds);
+        var costUsd = LlmPricing.EstimateUsd(chat.ModelName, promptTokens, completionTokens);
+        var latencyMs = stopwatch.ElapsedMilliseconds;
+        yield return new UsageEvent(chat.ModelName, promptTokens, completionTokens, costUsd, latencyMs);
 
         // 6. Persistir la respuesta del asistente con sus citas.
         conversation.AddAssistantMessage(answer.ToString(), citations);
         await conversations.SaveChangesAsync(cancellationToken);
+
+        // 7. Registrar la llamada para el dashboard de coste (LLMOps).
+        await metrics.RecordCallAsync(
+            new Domain.Telemetry.LlmCallLog(
+                chat.ModelName, promptTokens, completionTokens, costUsd, latencyMs, conversation.Id),
+            cancellationToken);
 
         yield return new DoneEvent(conversation.Id);
     }

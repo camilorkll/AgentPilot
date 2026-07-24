@@ -1,5 +1,6 @@
 using AgentPilot.Domain.Conversations;
 using AgentPilot.Domain.Documents;
+using AgentPilot.Domain.Telemetry;
 using AgentPilot.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 
@@ -25,6 +26,7 @@ public class AgentPilotDbContext(DbContextOptions<AgentPilotDbContext> options)
     public DbSet<Conversation> Conversations => Set<Conversation>();
     public DbSet<User> Users => Set<User>();
     public DbSet<Feedback> Feedback => Set<Feedback>();
+    public DbSet<LlmCallLog> LlmCallLogs => Set<LlmCallLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

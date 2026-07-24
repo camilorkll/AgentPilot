@@ -54,6 +54,9 @@ public static class DependencyInjection
         // --- Recuperación: búsqueda por similitud ---
         services.AddScoped<IChunkSearchService, ChunkSearchService>();
 
+        // --- Métricas / observabilidad ---
+        services.AddScoped<IMetricsRepository, MetricsRepository>();
+
         // --- Conversaciones y feedback ---
         services.AddScoped<IConversationRepository, ConversationRepository>();
         services.AddScoped<IFeedbackRepository, FeedbackRepository>();
