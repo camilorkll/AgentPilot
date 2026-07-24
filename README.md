@@ -106,7 +106,7 @@ Las reglas de dependencia entre capas se verifican con tests de arquitectura
 - [x] **Ingesta de documentos**: subida de PDF/Markdown → chunking con solapamiento → embeddings → indexado en pgvector, en segundo plano. *(Fase 2 ✓)*
 - [x] **Búsqueda por similitud**: recuperación de los chunks más relevantes por distancia coseno (pgvector). *(Fase 2 ✓)*
 - [x] **Proveedor de embeddings conmutable** (OpenAI cloud / Ollama local) por configuración. *(Fase 2 ✓)*
-- [ ] **Chat RAG con citas**: pregunta en lenguaje natural → respuesta en streaming con los fragmentos fuente. *(Fase 3)*
+- [x] **Chat RAG con citas**: pregunta en lenguaje natural → respuesta en streaming (SSE) anclada a los documentos, con citas y telemetría de coste. *(Fase 3 ✓)*
 - [ ] **Búsqueda híbrida**: similitud vectorial + keyword (tsvector). *(línea futura)*
 - [ ] **Autenticación JWT** con roles agente/administrador. *(Fase 4)*
 - [ ] **Feedback 👍/👎** por respuesta. *(Fase 4)*
