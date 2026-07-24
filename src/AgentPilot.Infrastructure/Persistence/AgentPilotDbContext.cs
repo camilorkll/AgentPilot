@@ -1,3 +1,4 @@
+using AgentPilot.Domain.Conversations;
 using AgentPilot.Domain.Documents;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,6 +21,7 @@ public class AgentPilotDbContext(DbContextOptions<AgentPilotDbContext> options)
 
     public DbSet<Documento> Documentos => Set<Documento>();
     public DbSet<Chunk> Chunks => Set<Chunk>();
+    public DbSet<Conversation> Conversations => Set<Conversation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
