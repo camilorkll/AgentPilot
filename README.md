@@ -118,7 +118,10 @@ Las reglas de dependencia entre capas se verifican con tests de arquitectura
 
 ## 🔒 Seguridad
 
-*(Se completa en la Fase 5: OWASP Top 10, OWASP LLM Top 10 — en particular mitigación de prompt injection vía documentos ingeridos, rate limiting y validación de uploads.)*
+Análisis completo en **[SECURITY.md](SECURITY.md)**: mapeo a OWASP Top 10 y OWASP LLM Top 10,
+gestión de secretos, y la defensa contra *prompt injection* (verificada con un documento
+envenenado y con inyección directa — el asistente no obedece ninguna de las dos).
+Observabilidad de errores con **Sentry** (DSN opcional por entorno).
 
 ## 🗺️ Líneas futuras
 
