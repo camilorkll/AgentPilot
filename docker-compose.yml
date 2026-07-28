@@ -35,6 +35,7 @@ services:
       Embeddings__Provider: ${EMBEDDINGS_PROVIDER:-openai}
       Embeddings__OllamaBaseUrl: http://ollama:11434
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Define JWT_SIGNING_KEY en .env}
+      Sentry__Dsn: ${SENTRY_DSN:-}
     ports:
       - "8080:8080"
     healthcheck:

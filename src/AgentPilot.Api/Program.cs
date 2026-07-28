@@ -11,6 +11,18 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// --- Observabilidad: Sentry ---
+// El DSN llega por configuración (Sentry:Dsn / SENTRY_DSN). Si está vacío, el
+// SDK se desactiva solo: la app arranca igual, sin cuenta de Sentry.
+var isDevelopment = builder.Environment.IsDevelopment();
+builder.WebHost.UseSentry(options =>
+{
+    options.SendDefaultPii = false;                 // no enviar datos personales (privacidad/OWASP)
+    options.TracesSampleRate = 0.2;                 // 20% de trazas de rendimiento
+    options.MinimumEventLevel = Microsoft.Extensions.Logging.LogLevel.Error; // captura logs Error+
+    options.Debug = isDevelopment;                  // en dev, registra su estado en el log
+});
+
 builder.Services.AddControllers();
 builder.Services.AddHealthChecks();
 builder.Services.AddApplication();
