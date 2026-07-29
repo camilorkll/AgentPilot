@@ -14,8 +14,32 @@ namespace AgentPilot.Api.Controllers;
 [ApiController]
 [Route("api/v1/health")]
 [AllowAnonymous]
-public class DiagnosticsController(AgentPilotDbContext db) : ControllerBase
+public class DiagnosticsController(AgentPilotDbContext db, IConfiguration configuration) : ControllerBase
 {
+    /// <summary>
+    /// Indica qué configuración crítica está presente (nunca su valor) y si hay
+    /// usuarios sembrados. Sirve para verificar un despliegue sin leer los logs.
+    /// </summary>
+    [HttpGet("config")]
+    public async Task<IActionResult> Config(CancellationToken cancellationToken)
+    {
+        var users = -1;
+        try { users = await db.Users.CountAsync(cancellationToken); } catch { /* la BD dirá su estado en /health/database */ }
+
+        return Ok(new
+        {
+            openAiApiKey = Present("OpenAI:ApiKey"),
+            jwtSigningKey = Present("Jwt:SigningKey"),
+            connectionString = Present("ConnectionStrings:Default"),
+            chatModel = configuration["OpenAI:ChatModel"] ?? "(por defecto)",
+            embeddingsProvider = configuration["Embeddings:Provider"] ?? "openai",
+            sentryEnabled = Present("Sentry:Dsn"),
+            seededUsers = users,
+        });
+
+        bool Present(string key) => !string.IsNullOrWhiteSpace(configuration[key]);
+    }
+
     [HttpGet("database")]
     public async Task<IActionResult> Database(CancellationToken cancellationToken)
     {

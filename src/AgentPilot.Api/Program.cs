@@ -59,10 +59,18 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 // --- Autenticación JWT ---
+// Si no se ha configurado la clave de firma, generamos una aleatoria en memoria en
+// lugar de usar un valor conocido (que permitiría falsificar tokens). La aplicación
+// funciona, pero los tokens dejan de ser válidos al reiniciar: en un despliegue real
+// hay que definir Jwt__SigningKey. La clave se escribe en la configuración para que
+// el generador y el validador de tokens compartan exactamente la misma.
+var generatedSigningKey = string.IsNullOrWhiteSpace(builder.Configuration[$"{JwtOptions.SectionName}:SigningKey"]);
+if (generatedSigningKey)
+    builder.Configuration[$"{JwtOptions.SectionName}:SigningKey"] =
+        Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(48));
+
 var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
-var signingKey = string.IsNullOrWhiteSpace(jwt.SigningKey)
-    ? "dev-only-insecure-signing-key-please-override-me!" // fallback de arranque; en prod va por Jwt__SigningKey
-    : jwt.SigningKey;
+var signingKey = jwt.SigningKey;
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -89,6 +97,15 @@ if (!builder.Environment.IsEnvironment("Testing"))
     builder.Services.AddHostedService<DatabaseInitializer>();
 
 var app = builder.Build();
+
+if (generatedSigningKey)
+    app.Logger.LogWarning(
+        "No se ha configurado 'Jwt__SigningKey': se ha generado una clave temporal. " +
+        "Los tokens emitidos dejarán de ser válidos al reiniciar la aplicación.");
+
+if (string.IsNullOrWhiteSpace(app.Configuration["OpenAI:ApiKey"]))
+    app.Logger.LogWarning(
+        "No se ha configurado 'OpenAI__ApiKey': la ingesta de documentos y el chat fallarán.");
 
 // Contrato OpenAPI (contract-first): docs/openapi.yaml es la fuente de verdad.
 app.MapGet("/openapi.yaml", () =>
