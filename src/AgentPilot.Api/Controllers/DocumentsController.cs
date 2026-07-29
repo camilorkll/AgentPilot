@@ -68,6 +68,19 @@ public class DocumentsController(
         return document is null ? NotFound() : document.ToResponse();
     }
 
+    /// <summary>
+    /// Devuelve los fragmentos indexados de un documento. Permite al supervisor consultar
+    /// qué hay realmente en la base de conocimiento sin tener el fichero original a mano:
+    /// se muestran los fragmentos tal como los usa la búsqueda, no el documento completo.
+    /// </summary>
+    [HttpGet("{documentId:guid}/content")]
+    public async Task<ActionResult<DocumentContentResponse>> GetContent(
+        Guid documentId, CancellationToken cancellationToken)
+    {
+        var document = await repository.GetByIdAsync(documentId, cancellationToken);
+        return document is null ? NotFound() : document.ToContentResponse();
+    }
+
     [HttpDelete("{documentId:guid}")]
     [Authorize(Roles = "admin")]
     public async Task<IActionResult> Delete(Guid documentId, CancellationToken cancellationToken)
@@ -78,5 +91,33 @@ public class DocumentsController(
         repository.Delete(document); // los chunks se borran en cascada
         await repository.SaveChangesAsync(cancellationToken);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Elimina varios documentos en una sola operación (y sus fragmentos, en cascada).
+    /// Se confirma en una única transacción para no dejar la base de conocimiento a medias.
+    /// </summary>
+    [HttpPost("delete")]
+    [Authorize(Roles = "admin")]
+    public async Task<ActionResult<DeleteDocumentsResponse>> DeleteMany(
+        [FromBody] DeleteDocumentsRequest request, CancellationToken cancellationToken)
+    {
+        if (request.DocumentIds is null || request.DocumentIds.Count == 0)
+            return BadRequest(new { code = "validation_error", message = "No se indicó ningún documento." });
+
+        var notFound = new List<Guid>();
+        var deleted = 0;
+
+        foreach (var id in request.DocumentIds.Distinct())
+        {
+            var document = await repository.GetByIdAsync(id, cancellationToken);
+            if (document is null) { notFound.Add(id); continue; }
+
+            repository.Delete(document);
+            deleted++;
+        }
+
+        await repository.SaveChangesAsync(cancellationToken);
+        return new DeleteDocumentsResponse(deleted, notFound);
     }
 }

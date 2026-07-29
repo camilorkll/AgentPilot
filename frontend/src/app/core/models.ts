@@ -33,6 +33,21 @@ export interface DocumentSummary {
   createdAtUtc: string;
 }
 
+/** Fragmento indexado de un documento (lo que realmente usa la búsqueda). */
+export interface DocumentChunk {
+  ordinal: number;
+  content: string;
+  charCount: number;
+}
+
+export interface DocumentContent {
+  id: string;
+  title: string;
+  fileName: string;
+  embeddingModel: string | null;
+  chunks: DocumentChunk[];
+}
+
 export interface OperatorUsage {
   userName: string;
   questions: number;

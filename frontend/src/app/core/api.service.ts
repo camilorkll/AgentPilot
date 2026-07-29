@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from './auth.service';
-import { Citation, DocumentSummary, MetricsSummary, Usage } from './models';
+import { Citation, DocumentContent, DocumentSummary, MetricsSummary, Usage } from './models';
 
 /** Callbacks del stream de una pregunta. */
 export interface AskHandlers {
@@ -103,6 +103,20 @@ export class ApiService {
 
   deleteDocument(id: string) {
     return firstValueFrom(this.http.delete(`/api/v1/documents/${id}`));
+  }
+
+  /** Elimina varios documentos en una sola operación. */
+  deleteDocuments(documentIds: string[]) {
+    return firstValueFrom(
+      this.http.post<{ deleted: number; notFound: string[] }>(
+        '/api/v1/documents/delete', { documentIds }
+      )
+    );
+  }
+
+  /** Fragmentos indexados de un documento, para consultarlo desde la interfaz. */
+  getDocumentContent(id: string) {
+    return firstValueFrom(this.http.get<DocumentContent>(`/api/v1/documents/${id}/content`));
   }
 
   // --- Métricas ---

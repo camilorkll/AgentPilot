@@ -13,6 +13,23 @@ public record DocumentResponse(
     string? ErrorMessage,
     DateTime CreatedAtUtc);
 
+/// <summary>Fragmento indexado de un documento, tal como lo usa la búsqueda.</summary>
+public record DocumentChunkResponse(int Ordinal, string Content, int CharCount);
+
+/// <summary>Contenido indexado de un documento, para consultarlo desde la interfaz.</summary>
+public record DocumentContentResponse(
+    Guid Id,
+    string Title,
+    string FileName,
+    string? EmbeddingModel,
+    IReadOnlyList<DocumentChunkResponse> Chunks);
+
+/// <summary>Petición de borrado múltiple.</summary>
+public record DeleteDocumentsRequest(IReadOnlyList<Guid> DocumentIds);
+
+/// <summary>Resultado del borrado múltiple.</summary>
+public record DeleteDocumentsResponse(int Deleted, IReadOnlyList<Guid> NotFound);
+
 public static class DocumentMappings
 {
     public static DocumentResponse ToResponse(this Documento d) => new(
@@ -24,4 +41,14 @@ public static class DocumentMappings
         d.EmbeddingModel,
         d.ErrorMessage,
         d.CreatedAtUtc);
+
+    public static DocumentContentResponse ToContentResponse(this Documento d) => new(
+        d.Id,
+        d.Title,
+        d.FileName,
+        d.EmbeddingModel,
+        d.Chunks
+            .OrderBy(c => c.Ordinal)
+            .Select(c => new DocumentChunkResponse(c.Ordinal, c.Content, c.Content.Length))
+            .ToList());
 }
