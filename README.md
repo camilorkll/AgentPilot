@@ -11,7 +11,7 @@ Los agentes de un call center pierden entre 30 y 60 segundos por llamada buscand
 
 | Recurso | URL |
 |---|---|
-| 🌐 Despliegue | *(pendiente — Fase 6)* |
+| 🌐 Despliegue | *(pendiente de publicar — guía en [docs/DEPLOY.md](docs/DEPLOY.md))* |
 | 📊 Slides | *(pendiente — Fase 7)* |
 | 🎬 Vídeo | *(pendiente — Fase 7)* |
 

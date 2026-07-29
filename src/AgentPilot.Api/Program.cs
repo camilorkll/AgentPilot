@@ -11,6 +11,25 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// --- Compatibilidad con PaaS (Railway, Render, Fly…) ---
+// Muchos proveedores inyectan el puerto en PORT y la base de datos en
+// DATABASE_URL con formato URI; los traducimos a lo que esperan Kestrel y Npgsql.
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(port))
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+if (!string.IsNullOrWhiteSpace(databaseUrl) && databaseUrl.StartsWith("postgres"))
+{
+    var uri = new Uri(databaseUrl);
+    var credentials = uri.UserInfo.Split(':', 2);
+    builder.Configuration["ConnectionStrings:Default"] =
+        $"Host={uri.Host};Port={(uri.Port > 0 ? uri.Port : 5432)};" +
+        $"Database={uri.AbsolutePath.TrimStart('/')};" +
+        $"Username={credentials[0]};Password={(credentials.Length > 1 ? credentials[1] : string.Empty)};" +
+        "SSL Mode=Require;Trust Server Certificate=true";
+}
+
 // --- Observabilidad: Sentry ---
 // El DSN llega por configuración (Sentry:Dsn / SENTRY_DSN). Si está vacío, el
 // SDK se desactiva solo: la app arranca igual, sin cuenta de Sentry.
@@ -101,6 +120,13 @@ app.UseAuthorization();
 
 app.MapHealthChecks("/api/v1/health");
 app.MapControllers();
+
+// La SPA de Angular se sirve desde wwwroot (la imagen Docker la copia ahí).
+// El fallback devuelve index.html para las rutas del cliente (/chat, /metrics…),
+// de modo que recargar la página no produzca un 404.
+app.UseDefaultFiles();
+app.UseStaticFiles();
+app.MapFallbackToFile("index.html");
 
 app.Run();
 
