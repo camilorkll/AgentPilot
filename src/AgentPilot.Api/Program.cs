@@ -64,10 +64,26 @@ builder.Services.AddInfrastructure(builder.Configuration);
 // funciona, pero los tokens dejan de ser válidos al reiniciar: en un despliegue real
 // hay que definir Jwt__SigningKey. La clave se escribe en la configuración para que
 // el generador y el validador de tokens compartan exactamente la misma.
-var generatedSigningKey = string.IsNullOrWhiteSpace(builder.Configuration[$"{JwtOptions.SectionName}:SigningKey"]);
+var signingKeyPath = $"{JwtOptions.SectionName}:SigningKey";
+var configuredKey = builder.Configuration[signingKeyPath];
+
+var generatedSigningKey = string.IsNullOrWhiteSpace(configuredKey);
+var derivedShortKey = false;
+
 if (generatedSigningKey)
-    builder.Configuration[$"{JwtOptions.SectionName}:SigningKey"] =
+{
+    builder.Configuration[signingKeyPath] =
         Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(48));
+}
+else if (Encoding.UTF8.GetByteCount(configuredKey!) < 32)
+{
+    // HMAC-SHA256 exige una clave de 256 bits. Si la configurada es más corta,
+    // derivamos una de 32 bytes con SHA-256: es determinista, así que los tokens
+    // siguen siendo válidos entre reinicios y firma y validación coinciden.
+    builder.Configuration[signingKeyPath] = Convert.ToBase64String(
+        System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(configuredKey!)));
+    derivedShortKey = true;
+}
 
 var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
 var signingKey = jwt.SigningKey;
@@ -102,6 +118,10 @@ if (generatedSigningKey)
     app.Logger.LogWarning(
         "No se ha configurado 'Jwt__SigningKey': se ha generado una clave temporal. " +
         "Los tokens emitidos dejarán de ser válidos al reiniciar la aplicación.");
+else if (derivedShortKey)
+    app.Logger.LogWarning(
+        "'Jwt__SigningKey' tiene menos de 32 bytes, que es el mínimo de HMAC-SHA256: " +
+        "se ha derivado una clave válida a partir de ella. Configura una más larga.");
 
 if (string.IsNullOrWhiteSpace(app.Configuration["OpenAI:ApiKey"]))
     app.Logger.LogWarning(

@@ -26,12 +26,17 @@ public class DiagnosticsController(AgentPilotDbContext db, IConfiguration config
         var users = -1;
         try { users = await db.Users.CountAsync(cancellationToken); } catch { /* la BD dirá su estado en /health/database */ }
 
+        var chatModel = configuration["OpenAI:ChatModel"];
+        var keyBytes = System.Text.Encoding.UTF8.GetByteCount(configuration["Jwt:SigningKey"] ?? string.Empty);
+
         return Ok(new
         {
             openAiApiKey = Present("OpenAI:ApiKey"),
             jwtSigningKey = Present("Jwt:SigningKey"),
+            jwtSigningKeyBytes = keyBytes, // HMAC-SHA256 exige 32 como mínimo
             connectionString = Present("ConnectionStrings:Default"),
-            chatModel = configuration["OpenAI:ChatModel"] ?? "(por defecto)",
+            chatModel = chatModel ?? "(por defecto)",
+            chatModelLooksValid = chatModel is null || chatModel.StartsWith("gpt", StringComparison.OrdinalIgnoreCase),
             embeddingsProvider = configuration["Embeddings:Provider"] ?? "openai",
             sentryEnabled = Present("Sentry:Dsn"),
             seededUsers = users,
