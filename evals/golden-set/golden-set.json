@@ -1,0 +1,36 @@
+{
+  "description": "Set dorado de evaluación del RAG de AgentPilot sobre el corpus de TeleNova. Las preguntas 1-25 tienen respuesta en el corpus (con documento fuente y dato clave esperados). Las 26-30 NO están en el corpus: el asistente debe abstenerse ('no dispongo de esa información') en lugar de inventar.",
+  "cases": [
+    { "id": 1,  "question": "¿Cuánto cuesta la tarifa Nova Mini al mes?", "expectedDocument": "01-catalogo-tarifas-moviles", "expectedKeywords": ["9,90"], "answerable": true },
+    { "id": 2,  "question": "¿Cuántos GB incluye la tarifa Nova Max?", "expectedDocument": "01-catalogo-tarifas-moviles", "expectedKeywords": ["120"], "answerable": true },
+    { "id": 3,  "question": "¿Qué descuento tiene la segunda línea móvil?", "expectedDocument": "01-catalogo-tarifas-moviles", "expectedKeywords": ["30"], "answerable": true },
+    { "id": 4,  "question": "¿Se acumulan los datos no consumidos de un mes para el siguiente?", "expectedDocument": "01-catalogo-tarifas-moviles", "expectedKeywords": ["Nova Max"], "answerable": true },
+    { "id": 5,  "question": "¿Cuánto cuesta la fibra de 1 Gb simétrico?", "expectedDocument": "02-catalogo-fibra-internet", "expectedKeywords": ["34,90"], "answerable": true },
+    { "id": 6,  "question": "¿Cuánto tarda la instalación estándar de fibra?", "expectedDocument": "02-catalogo-fibra-internet", "expectedKeywords": ["7"], "answerable": true },
+    { "id": 7,  "question": "¿Qué permanencia tiene un paquete convergente?", "expectedDocument": "02-catalogo-fibra-internet", "expectedKeywords": ["12"], "answerable": true },
+    { "id": 8,  "question": "¿Cuánto tarda en ejecutarse una portabilidad móvil?", "expectedDocument": "03-procedimiento-portabilidad", "expectedKeywords": ["1"], "answerable": true },
+    { "id": 9,  "question": "¿Qué significa el estado APOR en una portabilidad?", "expectedDocument": "03-procedimiento-portabilidad", "expectedKeywords": ["portada"], "answerable": true },
+    { "id": 10, "question": "¿Hasta cuándo puede el cliente cancelar una solicitud de portabilidad?", "expectedDocument": "03-procedimiento-portabilidad", "expectedKeywords": ["14"], "answerable": true },
+    { "id": 11, "question": "¿Qué día del mes se emite la factura?", "expectedDocument": "04-politica-facturacion-reclamaciones", "expectedKeywords": ["4"], "answerable": true },
+    { "id": 12, "question": "¿Cuál es el importe máximo que se puede abonar por cargos de tarificación especial?", "expectedDocument": "04-politica-facturacion-reclamaciones", "expectedKeywords": ["30"], "answerable": true },
+    { "id": 13, "question": "¿En cuántos días naturales debe resolverse una reclamación?", "expectedDocument": "04-politica-facturacion-reclamaciones", "expectedKeywords": ["15"], "answerable": true },
+    { "id": 14, "question": "¿Qué indica la luz LOS en rojo del router?", "expectedDocument": "05-averias-router-fibra", "expectedKeywords": ["óptica", "optica", "señal", "senal", "fibra"], "answerable": true },
+    { "id": 15, "question": "¿Cuánto cuesta la visita técnica si el cliente ha partido la fibra?", "expectedDocument": "05-averias-router-fibra", "expectedKeywords": ["60"], "answerable": true },
+    { "id": 16, "question": "¿Cuánto cuesta el amplificador NovaMesh?", "expectedDocument": "05-averias-router-fibra", "expectedKeywords": ["49", "29"], "answerable": true },
+    { "id": 17, "question": "¿Cuántas ofertas de retención se pueden dar a un cliente al año?", "expectedDocument": "06-argumentario-retencion", "expectedKeywords": ["una", "1"], "answerable": true },
+    { "id": 18, "question": "¿Qué nivel de descuento requiere autorización del supervisor?", "expectedDocument": "06-argumentario-retencion", "expectedKeywords": ["4", "supervisor"], "answerable": true },
+    { "id": 19, "question": "¿Cuál es el límite de datos en roaming en la UE con Nova Infinita?", "expectedDocument": "07-faq-roaming", "expectedKeywords": ["25"], "answerable": true },
+    { "id": 20, "question": "¿Cuánto cuesta el Bono Viaje de 10 GB?", "expectedDocument": "07-faq-roaming", "expectedKeywords": ["35"], "answerable": true },
+    { "id": 21, "question": "¿Se puede hacer un duplicado de SIM por teléfono sin código OTP?", "expectedDocument": "08-verificacion-identidad", "expectedKeywords": ["no", "tienda"], "answerable": true },
+    { "id": 22, "question": "¿Cuál es el código de la promoción de verano?", "expectedDocument": "09-promociones-julio-2026", "expectedKeywords": ["VERANO26"], "answerable": true },
+    { "id": 23, "question": "¿Cuánto se cobra si el cliente no devuelve el router tras la baja?", "expectedDocument": "10-permanencias-penalizaciones", "expectedKeywords": ["75"], "answerable": true },
+    { "id": 24, "question": "¿Cuántos intentos fallidos bloquean el acceso a la app?", "expectedDocument": "11-guia-app-area-cliente", "expectedKeywords": ["5"], "answerable": true },
+    { "id": 25, "question": "¿Cuál es el SLA de respuesta del soporte técnico de nivel 2?", "expectedDocument": "12-escalado-incidencias", "expectedKeywords": ["24"], "answerable": true },
+
+    { "id": 26, "question": "¿Cuál es el horario de atención de las tiendas físicas de TeleNova en Madrid?", "expectedDocument": null, "expectedKeywords": [], "answerable": false },
+    { "id": 27, "question": "¿Cuántos empleados tiene TeleNova en total?", "expectedDocument": null, "expectedKeywords": [], "answerable": false },
+    { "id": 28, "question": "¿Qué tarifas de televisión de pago ofrece TeleNova?", "expectedDocument": null, "expectedKeywords": [], "answerable": false },
+    { "id": 29, "question": "¿Cuál es la cotización en bolsa de TeleNova?", "expectedDocument": null, "expectedKeywords": [], "answerable": false },
+    { "id": 30, "question": "¿Ofrece TeleNova contratos de energía eléctrica?", "expectedDocument": null, "expectedKeywords": [], "answerable": false }
+  ]
+}
