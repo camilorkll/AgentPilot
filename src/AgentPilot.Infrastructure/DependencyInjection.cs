@@ -24,7 +24,9 @@ public static class DependencyInjection
         // --- Persistencia ---
         var connectionString = configuration.GetConnectionString("Default")
             ?? throw new InvalidOperationException(
-                "Falta la cadena de conexión 'ConnectionStrings:Default'.");
+                "Falta la cadena de conexión de la base de datos. Define la variable de " +
+                "entorno 'ConnectionStrings__Default' (o 'DATABASE_URL' con la URI de " +
+                "PostgreSQL, que la aplicación traduce automáticamente).");
 
         services.AddDbContext<AgentPilotDbContext>(options =>
             // UseVector() activa el mapeo del tipo pgvector en Npgsql.

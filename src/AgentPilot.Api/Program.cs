@@ -1,12 +1,9 @@
 using System.Text;
+using AgentPilot.Api.Startup;
 using AgentPilot.Application;
-using AgentPilot.Application.Abstractions;
 using AgentPilot.Infrastructure;
-using AgentPilot.Infrastructure.Auth;
 using AgentPilot.Infrastructure.Configuration;
-using AgentPilot.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -28,6 +25,23 @@ if (!string.IsNullOrWhiteSpace(databaseUrl) && databaseUrl.StartsWith("postgres"
         $"Database={uri.AbsolutePath.TrimStart('/')};" +
         $"Username={credentials[0]};Password={(credentials.Length > 1 ? credentials[1] : string.Empty)};" +
         "SSL Mode=Require;Trust Server Certificate=true";
+}
+
+// Acepta también los nombres "planos" del .env / docker-compose (OPENAI_API_KEY,
+// JWT_SIGNING_KEY…) como alternativa a las claves jerárquicas de .NET
+// (OpenAI__ApiKey, Jwt__SigningKey…). Evita despliegues fallidos por usar unos u otros.
+foreach (var (envName, configKey) in new[]
+{
+    ("OPENAI_API_KEY", "OpenAI:ApiKey"),
+    ("OPENAI_CHAT_MODEL", "OpenAI:ChatModel"),
+    ("JWT_SIGNING_KEY", "Jwt:SigningKey"),
+    ("EMBEDDINGS_PROVIDER", "Embeddings:Provider"),
+    ("SENTRY_DSN", "Sentry:Dsn"),
+})
+{
+    var value = Environment.GetEnvironmentVariable(envName);
+    if (!string.IsNullOrWhiteSpace(value) && string.IsNullOrWhiteSpace(builder.Configuration[configKey]))
+        builder.Configuration[configKey] = value;
 }
 
 // --- Observabilidad: Sentry ---
@@ -72,35 +86,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization();
 
+// Fuera de los tests: prepara la base de datos (migraciones + usuarios de prueba)
+// en segundo plano, sin bloquear el arranque del servidor.
+if (!builder.Environment.IsEnvironment("Testing"))
+    builder.Services.AddHostedService<DatabaseInitializer>();
+
 var app = builder.Build();
-
-// Fuera de los tests: aplica migraciones y siembra los usuarios de prueba al
-// arrancar. Se reintenta unos segundos porque la BD puede tardar en estar
-// accesible (arranque del contenedor, DNS de la red).
-if (!app.Environment.IsEnvironment("Testing"))
-{
-    using var scope = app.Services.CreateScope();
-    var services = scope.ServiceProvider;
-    var startupLogger = services.GetRequiredService<ILogger<Program>>();
-
-    for (var attempt = 1; ; attempt++)
-    {
-        try
-        {
-            await services.GetRequiredService<AgentPilotDbContext>().Database.MigrateAsync();
-            await IdentitySeeder.SeedAsync(
-                services.GetRequiredService<IUserRepository>(),
-                services.GetRequiredService<IPasswordHasher>());
-            break;
-        }
-        catch (Exception ex) when (attempt < 10)
-        {
-            startupLogger.LogWarning(ex,
-                "La base de datos no está lista (intento {Attempt}/10); reintento en 3 s…", attempt);
-            await Task.Delay(TimeSpan.FromSeconds(3));
-        }
-    }
-}
 
 // Contrato OpenAPI (contract-first): docs/openapi.yaml es la fuente de verdad.
 app.MapGet("/openapi.yaml", () =>

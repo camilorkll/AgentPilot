@@ -71,6 +71,25 @@ Añádela en la tabla de enlaces del [README](../README.md) y en el formulario d
 
 ---
 
+## Diagnóstico de problemas
+
+La aplicación **arranca aunque la base de datos no esté disponible**: las migraciones y el
+sembrado se ejecutan en segundo plano con reintentos, de modo que el servidor responde al
+healthcheck desde el primer momento y cualquier problema queda descrito en los **Deploy Logs**
+en lugar de provocar un ciclo de reinicios.
+
+| Síntoma en el log | Causa y solución |
+|---|---|
+| `Falta la cadena de conexión de la base de datos…` | No están definidas `ConnectionStrings__Default` ni `DATABASE_URL` en el servicio |
+| `La base de datos no está lista (intento n/12)` | La BD aún arranca (normal los primeros segundos) o la cadena de conexión apunta a un host equivocado |
+| `type "vector" does not exist` | Falta ejecutar `CREATE EXTENSION IF NOT EXISTS vector;` en la base de datos |
+| `Railpack could not determine how to build the app` | El build no está usando el Dockerfile: comprueba `railway.json` o fíjalo en **Settings → Build** |
+| Healthcheck falla y el log está vacío | El contenedor no llegó a escuchar: revisa que no haya un error de configuración en las primeras líneas del log |
+
+> Los nombres de variable admiten **ambos formatos**: el jerárquico de .NET
+> (`OpenAI__ApiKey`, `Jwt__SigningKey`) y el plano del `.env` local
+> (`OPENAI_API_KEY`, `JWT_SIGNING_KEY`). La aplicación resuelve unos u otros.
+
 ## Notas y advertencias
 
 - **Ollama no se despliega**: el modo de embeddings local es para demostración en máquina
