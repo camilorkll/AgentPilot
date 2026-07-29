@@ -1,0 +1,77 @@
+<div class="head">
+  <div>
+    <h1>Métricas y coste</h1>
+    <p class="muted small">Uso, calidad percibida y coste de las consultas al modelo (LLMOps).</p>
+  </div>
+  <button (click)="refresh()">Refrescar</button>
+</div>
+
+@if (error()) {
+  <p class="error small">{{ error() }}</p>
+}
+
+@if (data(); as m) {
+  <div class="kpis">
+    <div class="card kpi">
+      <span class="small muted">Preguntas</span>
+      <strong>{{ m.totalQuestions }}</strong>
+    </div>
+    <div class="card kpi">
+      <span class="small muted">Respuestas útiles</span>
+      <strong>
+        {{ m.positiveFeedbackRate !== null ? (m.positiveFeedbackRate | percent:'1.0-0') : '—' }}
+      </strong>
+    </div>
+    <div class="card kpi">
+      <span class="small muted">Latencia media</span>
+      <strong>{{ m.avgLatencyMs | number:'1.0-0' }} ms</strong>
+    </div>
+    <div class="card kpi">
+      <span class="small muted">Latencia p95</span>
+      <strong>{{ m.p95LatencyMs | number:'1.0-0' }} ms</strong>
+    </div>
+    <div class="card kpi accent">
+      <span class="small muted">Coste total</span>
+      <strong>${{ m.totalCostUsd | number:'1.4-4' }}</strong>
+    </div>
+    <div class="card kpi accent">
+      <span class="small muted">Coste por pregunta</span>
+      <strong>
+        ${{ (m.totalQuestions ? m.totalCostUsd / m.totalQuestions : 0) | number:'1.6-6' }}
+      </strong>
+    </div>
+  </div>
+
+  <div class="panels">
+    <div class="card">
+      <h3>Coste por modelo</h3>
+      <table>
+        <tbody>
+          @for (row of costByModel(); track row.model) {
+            <tr>
+              <td>{{ row.model }}</td>
+              <td class="right">${{ row.cost | number:'1.4-4' }}</td>
+            </tr>
+          } @empty {
+            <tr><td class="muted">Sin datos todavía.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>Preguntas por día</h3>
+      @for (day of m.questionsPerDay; track day.date) {
+        <div class="bar-row">
+          <span class="small muted date">{{ day.date }}</span>
+          <div class="bar" [style.width.%]="day.count / maxPerDay() * 100"></div>
+          <span class="small">{{ day.count }}</span>
+        </div>
+      } @empty {
+        <p class="muted small">Sin datos todavía.</p>
+      }
+    </div>
+  </div>
+} @else if (!error()) {
+  <p class="muted">Cargando…</p>
+}

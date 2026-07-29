@@ -1,0 +1,50 @@
+<div class="head">
+  <div>
+    <h1>Base de conocimiento</h1>
+    <p class="muted small">
+      Los documentos se trocean, se vectorizan y se indexan en segundo plano.
+    </p>
+  </div>
+
+  <div class="actions">
+    <label class="upload primary">
+      {{ uploading() ? 'Subiendo…' : '+ Subir documento' }}
+      <input type="file" accept=".pdf,.md,.markdown,.txt"
+             (change)="onFileSelected($event)" [disabled]="uploading()" hidden />
+    </label>
+    <button (click)="refresh()">Refrescar</button>
+  </div>
+</div>
+
+@if (error()) {
+  <p class="error small">{{ error() }}</p>
+}
+
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Documento</th>
+        <th>Estado</th>
+        <th>Fragmentos</th>
+        <th>Modelo de embeddings</th>
+        <th>Subido</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (document of documents(); track document.id) {
+        <tr>
+          <td>{{ document.title }}</td>
+          <td><span class="badge {{ document.status }}">{{ document.status }}</span></td>
+          <td>{{ document.chunkCount ?? '—' }}</td>
+          <td class="small muted">{{ document.embeddingModel ?? '—' }}</td>
+          <td class="small muted">{{ document.createdAtUtc | date:'short' }}</td>
+          <td><button class="small" (click)="remove(document)">Eliminar</button></td>
+        </tr>
+      } @empty {
+        <tr><td colspan="6" class="muted">Todavía no hay documentos indexados.</td></tr>
+      }
+    </tbody>
+  </table>
+</div>

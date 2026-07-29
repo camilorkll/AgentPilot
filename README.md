@@ -36,7 +36,7 @@ usa el token devuelto como `Authorization: Bearer <token>`.
 | IA — Embeddings | OpenAI `text-embedding-3-small` · alternativo local: Ollama `nomic-embed-text` |
 | IA — Orquestación | Semantic Kernel (prompt templates versionados) |
 | Base de datos | PostgreSQL 16 + pgvector (relacional + vectorial) |
-| Frontend | Angular 18 (standalone components + signals) |
+| Frontend | Angular 20 (standalone components + signals, lazy loading) |
 | API | Contract-first con OpenAPI 3 ([docs/openapi.yaml](docs/openapi.yaml)) |
 | Calidad | xUnit · NetArchTest · Testcontainers · tests de contrato |
 | Observabilidad | Sentry · telemetría de tokens/coste por llamada LLM |
@@ -59,7 +59,16 @@ docker compose up --build
 
 - API + Swagger UI: http://localhost:8080/swagger
 - Healthcheck: http://localhost:8080/api/v1/health
-- Frontend: *(pendiente — Fase 4)*
+
+### Frontend (Angular)
+
+```bash
+cd frontend
+npm install
+npm start
+```
+
+- Interfaz: http://localhost:4200 (el dev-server proxya `/api` al backend del 8080)
 
 ### Modo embeddings 100% local (opcional)
 
@@ -94,7 +103,10 @@ dotnet run --project src/AgentPilot.Api
 │   ├── AgentPilot.Domain.Tests/       # Unitarios de dominio puro
 │   ├── AgentPilot.Application.Tests/  # Casos de uso con LLM mockeado
 │   └── AgentPilot.Integration.Tests/  # Arquitectura (NetArchTest), API, Testcontainers
-├── frontend/                 # Angular 18
+├── frontend/                 # Angular 20 (standalone components + signals)
+│   └── src/app/
+│       ├── core/             # AuthService (signals), interceptor JWT, guardas, ApiService (SSE)
+│       └── features/         # login · chat · documents · metrics (lazy loading)
 ├── evals/                    # Set dorado de preguntas + script de evaluación
 ├── corpus/                   # Documentos de ejemplo (sintéticos)
 └── docker-compose.yml

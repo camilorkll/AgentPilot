@@ -1,0 +1,24 @@
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.actions { display: flex; gap: .5rem; }
+
+.upload {
+  display: inline-block;
+  cursor: pointer;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  padding: .5rem .9rem;
+  border-radius: var(--radius);
+}
+.upload:hover { filter: brightness(1.1); }
+
+.error { color: var(--err); }

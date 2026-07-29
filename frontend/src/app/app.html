@@ -1,0 +1,22 @@
+@if (auth.isAuthenticated()) {
+  <header class="topbar">
+    <div class="brand">🎧 AgentPilot</div>
+
+    <nav>
+      <a routerLink="/chat" routerLinkActive="active">Chat</a>
+      @if (auth.isAdmin()) {
+        <a routerLink="/documents" routerLinkActive="active">Documentos</a>
+        <a routerLink="/metrics" routerLinkActive="active">Métricas</a>
+      }
+    </nav>
+
+    <div class="session">
+      <span class="small muted">{{ auth.username() }} · {{ auth.role() }}</span>
+      <button (click)="logout()">Salir</button>
+    </div>
+  </header>
+}
+
+<main [class.with-header]="auth.isAuthenticated()">
+  <router-outlet />
+</main>

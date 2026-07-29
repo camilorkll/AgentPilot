@@ -1,0 +1,29 @@
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: .7rem 1.25rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.brand { font-weight: 700; letter-spacing: .2px; }
+
+nav { display: flex; gap: .25rem; flex: 1; }
+
+nav a {
+  color: var(--muted);
+  text-decoration: none;
+  padding: .4rem .7rem;
+  border-radius: var(--radius);
+}
+nav a:hover { color: var(--text); background: var(--surface-2); }
+nav a.active { color: var(--text); background: var(--accent-soft); }
+
+.session { display: flex; align-items: center; gap: .75rem; }
+
+main { padding: 1.5rem; max-width: 1100px; margin: 0 auto; }
+main.with-header { min-height: calc(100vh - 58px); }

@@ -1,0 +1,39 @@
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: .85rem;
+  margin-bottom: 1.25rem;
+}
+
+.kpi { display: flex; flex-direction: column; gap: .3rem; }
+.kpi strong { font-size: 1.6rem; font-weight: 600; }
+.kpi.accent strong { color: var(--accent); }
+
+.panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: .85rem;
+}
+
+.right { text-align: right; }
+
+.bar-row { display: flex; align-items: center; gap: .6rem; margin-bottom: .45rem; }
+.date { min-width: 84px; }
+.bar {
+  height: 10px;
+  min-width: 3px;
+  background: var(--accent);
+  border-radius: 999px;
+  flex: 0 0 auto;
+  max-width: 70%;
+}
+
+.error { color: var(--err); }

@@ -1,0 +1,63 @@
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  height: calc(100vh - 100px);
+}
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding-right: .25rem;
+}
+
+.empty { text-align: center; margin: auto 0; padding: 2rem 1rem; }
+.examples { display: flex; flex-direction: column; gap: .5rem; align-items: center; margin-top: 1.25rem; }
+.examples button { max-width: 100%; text-align: left; }
+
+.msg { display: flex; flex-direction: column; gap: .4rem; max-width: 82%; }
+.msg.user { align-self: flex-end; align-items: flex-end; }
+
+.bubble {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .7rem .9rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.msg.user .bubble { background: var(--accent-soft); border-color: var(--accent); }
+
+/* Cursor parpadeante mientras llegan tokens */
+.caret {
+  display: inline-block;
+  width: 7px;
+  height: 1em;
+  margin-left: 2px;
+  background: var(--accent);
+  vertical-align: text-bottom;
+  animation: blink 1s step-end infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+.citations {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .5rem .75rem;
+}
+.citations summary { cursor: pointer; color: var(--muted); }
+.citation { margin-top: .6rem; padding-top: .6rem; border-top: 1px solid var(--border); }
+.snippet { margin: .25rem 0 0; max-height: 4.5em; overflow: hidden; }
+
+.meta { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.rate { display: flex; gap: .3rem; }
+.rate button { padding: .15rem .5rem; }
+
+.composer { display: flex; gap: .6rem; }
+.composer input { flex: 1; }
+
+.error { color: var(--err); }

@@ -1,0 +1,85 @@
+<div class="chat">
+  <div class="messages" #scroller>
+    @if (messages().length === 0) {
+      <div class="empty">
+        <h2>¿En qué te ayudo?</h2>
+        <p class="muted">
+          Pregunta en lenguaje natural sobre la base de conocimiento.
+          Cada respuesta incluye las fuentes utilizadas.
+        </p>
+        <div class="examples">
+          @for (example of examples; track example) {
+            <button class="small" (click)="useExample(example)">{{ example }}</button>
+          }
+        </div>
+      </div>
+    }
+
+    @for (message of messages(); track $index) {
+      <div class="msg" [class.user]="message.role === 'user'">
+        <div class="bubble">
+          @if (message.role === 'assistant' && message.streaming && !message.content) {
+            <span class="muted">Buscando en la base de conocimiento…</span>
+          }
+          <span class="content">{{ message.content }}</span>
+          @if (message.streaming && message.content) { <span class="caret"></span> }
+        </div>
+
+        @if (message.role === 'assistant' && !message.streaming) {
+          <!-- Citas: las fuentes que respaldan la respuesta -->
+          @if (message.citations?.length) {
+            <details class="citations">
+              <summary class="small">
+                📎 {{ message.citations!.length }} fuentes utilizadas
+              </summary>
+              @for (citation of message.citations; track citation.chunkId; let i = $index) {
+                <div class="citation">
+                  <div class="small">
+                    <strong>[{{ i + 1 }}] {{ citation.documentTitle }}</strong>
+                    <span class="muted"> · similitud {{ citation.score | number:'1.2-2' }}</span>
+                  </div>
+                  <p class="small muted snippet">{{ citation.snippet }}</p>
+                </div>
+              }
+            </details>
+          }
+
+          <div class="meta">
+            @if (message.usage) {
+              <span class="small muted">
+                {{ message.usage.model }} ·
+                {{ message.usage.promptTokens + message.usage.completionTokens }} tokens ·
+                {{ message.usage.latencyMs }} ms ·
+                ${{ message.usage.estimatedCostUsd | number:'1.6-6' }}
+              </span>
+            }
+            @if (message.id) {
+              <span class="rate">
+                @if (message.feedbackSent) {
+                  <span class="small muted">
+                    {{ message.feedbackSent === 'positive' ? '👍 ¡Gracias!' : '👎 Anotado' }}
+                  </span>
+                } @else {
+                  <button class="small" title="Útil" (click)="rate(message, 'positive')">👍</button>
+                  <button class="small" title="No útil" (click)="rate(message, 'negative')">👎</button>
+                }
+              </span>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    @if (error()) {
+      <p class="error small">{{ error() }}</p>
+    }
+  </div>
+
+  <form class="composer" (ngSubmit)="send()">
+    <input name="question" [(ngModel)]="question" [disabled]="sending()"
+           placeholder="Escribe la pregunta del cliente…" autocomplete="off" />
+    <button class="primary" type="submit" [disabled]="sending() || !question.trim()">
+      {{ sending() ? '…' : 'Enviar' }}
+    </button>
+  </form>
+</div>
