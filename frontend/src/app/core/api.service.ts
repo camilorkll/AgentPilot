@@ -119,6 +119,16 @@ export class ApiService {
     return firstValueFrom(this.http.get<DocumentContent>(`/api/v1/documents/${id}/content`));
   }
 
+  /**
+   * Activa o desactiva documentos. Un documento inactivo conserva lo indexado pero
+   * queda fuera de las búsquedas, así que reactivarlo es inmediato y sin coste.
+   */
+  setDocumentsActive(documentIds: string[], isActive: boolean) {
+    return firstValueFrom(
+      this.http.post<DocumentSummary[]>('/api/v1/documents/active', { documentIds, isActive })
+    );
+  }
+
   // --- Métricas ---
 
   /** Resumen de métricas, opcionalmente limitado a uno o varios operadores. */

@@ -36,6 +36,13 @@ button.danger:hover { background: var(--err); color: #fff; }
 .pick input { width: auto; }
 tr.picked { background: var(--accent-soft); }
 
+/* Documento retirado de las consultas: se atenúa para distinguirlo de un vistazo */
+tr.inactive td:not(.pick) { opacity: .55; }
+
+button.toggle { padding: .15rem .55rem; }
+button.toggle.on { color: var(--ok); border-color: var(--ok); }
+button.toggle:not(.on) { color: var(--muted); }
+
 .error { color: var(--err); }
 
 /* --- Visor de fragmentos --- */

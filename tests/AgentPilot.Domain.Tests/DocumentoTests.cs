@@ -69,6 +69,32 @@ public class DocumentoTests
     }
 
     [Fact]
+    public void NuevoDocumento_NaceActivo()
+    {
+        var doc = new Documento("Promociones", "promos.md");
+
+        Assert.True(doc.IsActive);
+    }
+
+    [Fact]
+    public void Desactivar_YActivar_AlternanLaDisponibilidad()
+    {
+        // Caso de uso: una promoción caduca y se retira; más adelante vuelve a estar
+        // vigente y se reactiva sin volver a vectorizar el documento.
+        var doc = new Documento("Promociones de julio", "promos.md");
+        doc.MarcarProcesando();
+        doc.MarcarIndexado("text-embedding-3-small", [new Chunk(0, "oferta", [0.1f])]);
+
+        doc.Desactivar();
+        Assert.False(doc.IsActive);
+        Assert.Single(doc.Chunks);                       // los fragmentos se conservan
+        Assert.Equal(EstadoIngesta.Ready, doc.Status);   // y sigue indexado
+
+        doc.Activar();
+        Assert.True(doc.IsActive);
+    }
+
+    [Fact]
     public void Chunk_SinContenido_Falla()
     {
         Assert.Throws<ArgumentException>(() => new Chunk(0, "  ", [0.1f]));

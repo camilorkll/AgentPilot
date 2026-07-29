@@ -66,6 +66,40 @@ public class ChunkSearchTests(PgVectorFixture fixture, ITestOutputHelper output)
         Assert.Empty(results);
     }
 
+    [Fact]
+    public async Task Busqueda_IgnoraDocumentosDesactivados()
+    {
+        await using var db = fixture.CreateContext();
+        await ResetAsync(db);
+
+        // Dos documentos indexados con el mismo vector; uno se desactiva (p. ej. una
+        // promoción caducada): su contenido debe desaparecer de los resultados.
+        var vigente = new Documento("Tarifas vigentes", "tarifas.md");
+        vigente.MarcarProcesando();
+        vigente.MarcarIndexado("test", [new Chunk(0, "tarifa vigente", UnitVector(0))]);
+
+        var caducado = new Documento("Promoción caducada", "promos.md");
+        caducado.MarcarProcesando();
+        caducado.MarcarIndexado("test", [new Chunk(0, "promoción caducada", UnitVector(0))]);
+        caducado.Desactivar();
+
+        db.Documentos.AddRange(vigente, caducado);
+        await db.SaveChangesAsync();
+
+        var results = await new ChunkSearchService(db).SearchAsync(UnitVector(0), topK: 5);
+
+        var contenidos = results.Select(r => r.Content).ToList();
+        Assert.Contains("tarifa vigente", contenidos);
+        Assert.DoesNotContain("promoción caducada", contenidos);
+
+        // Al reactivarlo, vuelve a estar disponible sin volver a vectorizar.
+        caducado.Activar();
+        await db.SaveChangesAsync();
+
+        var afterReactivation = await new ChunkSearchService(db).SearchAsync(UnitVector(0), topK: 5);
+        Assert.Contains("promoción caducada", afterReactivation.Select(r => r.Content));
+    }
+
     [SkippableFact]
     public async Task Recuperacion_EncuentraElChunkRelevante_AunqueNoCompartaPalabras()
     {

@@ -29,7 +29,7 @@ public class ChunkSearchService(AgentPilotDbContext db) : IChunkSearchService
                    1 - (c.""Embedding"" <=> CAST({vectorLiteral} AS vector)) AS ""Score""
             FROM chunks c
             JOIN documents d ON d.""Id"" = c.""DocumentId""
-            WHERE d.""Status"" = 'Ready'
+            WHERE d.""Status"" = 'Ready' AND d.""IsActive"" = true
             ORDER BY c.""Embedding"" <=> CAST({vectorLiteral} AS vector)
             LIMIT {topK}";
 

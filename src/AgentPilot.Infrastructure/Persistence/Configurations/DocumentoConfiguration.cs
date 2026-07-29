@@ -26,6 +26,9 @@ public class DocumentoConfiguration : IEntityTypeConfiguration<Documento>
         builder.Property(d => d.ErrorMessage);
         builder.Property(d => d.CreatedAtUtc).IsRequired();
 
+        // Los documentos existentes siguen activos tras la migración.
+        builder.Property(d => d.IsActive).IsRequired().HasDefaultValue(true);
+
         // Relación 1-a-N: un documento tiene muchos chunks. Al borrar el
         // documento, se borran sus chunks en cascada.
         builder.HasMany(d => d.Chunks)

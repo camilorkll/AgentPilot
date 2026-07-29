@@ -3,6 +3,8 @@
     <h1>Base de conocimiento</h1>
     <p class="muted small">
       Los documentos se trocean, se vectorizan y se indexan en segundo plano, uno tras otro.
+      Un documento <strong>inactivo</strong> conserva lo indexado pero queda fuera de las
+      consultas: útil para información con vigencia, como promociones caducadas.
     </p>
   </div>
 
@@ -27,6 +29,8 @@
 @if (selectedCount() > 0) {
   <div class="card bulkbar">
     <span class="small">{{ selectedCount() }} seleccionado(s)</span>
+    <button class="small" (click)="setSelectedActive(true)">Activar</button>
+    <button class="small" (click)="setSelectedActive(false)">Desactivar</button>
     <button class="small danger" (click)="deleteSelected()">Eliminar seleccionados</button>
   </div>
 }
@@ -41,6 +45,7 @@
         </th>
         <th>Documento</th>
         <th>Estado</th>
+        <th>En uso</th>
         <th>Fragmentos</th>
         <th>Modelo de embeddings</th>
         <th>Subido</th>
@@ -49,13 +54,22 @@
     </thead>
     <tbody>
       @for (document of documents(); track document.id) {
-        <tr [class.picked]="isSelected(document.id)">
+        <tr [class.picked]="isSelected(document.id)" [class.inactive]="!document.isActive">
           <td class="pick">
             <input type="checkbox" [checked]="isSelected(document.id)"
                    (change)="toggle(document.id)" />
           </td>
           <td>{{ document.title }}</td>
           <td><span class="badge {{ document.status }}">{{ document.status }}</span></td>
+          <td>
+            <button class="small toggle" [class.on]="document.isActive"
+                    (click)="toggleActive(document)"
+                    [title]="document.isActive
+                      ? 'En uso: el asistente puede citarlo. Pulsa para retirarlo.'
+                      : 'Retirado: el asistente no puede citarlo. Pulsa para volver a usarlo.'">
+              {{ document.isActive ? 'Activo' : 'Inactivo' }}
+            </button>
+          </td>
           <td>{{ document.chunkCount ?? '—' }}</td>
           <td class="small muted">{{ document.embeddingModel ?? '—' }}</td>
           <td class="small muted">{{ document.createdAtUtc | date:'short' }}</td>
@@ -68,7 +82,7 @@
           </td>
         </tr>
       } @empty {
-        <tr><td colspan="7" class="muted">Todavía no hay documentos indexados.</td></tr>
+        <tr><td colspan="8" class="muted">Todavía no hay documentos indexados.</td></tr>
       }
     </tbody>
   </table>

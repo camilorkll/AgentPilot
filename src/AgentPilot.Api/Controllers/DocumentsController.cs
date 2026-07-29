@@ -94,6 +94,37 @@ public class DocumentsController(
     }
 
     /// <summary>
+    /// Activa o desactiva uno o varios documentos. Un documento inactivo queda fuera de
+    /// las búsquedas —el asistente no puede recuperarlo ni citarlo— pero conserva sus
+    /// fragmentos indexados, de modo que reactivarlo es inmediato y sin coste. Está
+    /// pensado para información con vigencia, como promociones temporales.
+    /// </summary>
+    [HttpPost("active")]
+    [Authorize(Roles = "admin")]
+    public async Task<ActionResult<IReadOnlyList<DocumentResponse>>> SetActive(
+        [FromBody] SetActiveRequest request, CancellationToken cancellationToken)
+    {
+        if (request.DocumentIds is null || request.DocumentIds.Count == 0)
+            return BadRequest(new { code = "validation_error", message = "No se indicó ningún documento." });
+
+        var updated = new List<DocumentResponse>();
+
+        foreach (var id in request.DocumentIds.Distinct())
+        {
+            var document = await repository.GetByIdAsync(id, cancellationToken);
+            if (document is null) continue;
+
+            if (request.IsActive) document.Activar();
+            else document.Desactivar();
+
+            updated.Add(document.ToResponse());
+        }
+
+        await repository.SaveChangesAsync(cancellationToken);
+        return updated;
+    }
+
+    /// <summary>
     /// Elimina varios documentos en una sola operación (y sus fragmentos, en cascada).
     /// Se confirma en una única transacción para no dejar la base de conocimiento a medias.
     /// </summary>

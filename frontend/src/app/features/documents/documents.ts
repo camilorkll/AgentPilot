@@ -141,6 +141,33 @@ export class Documents {
     );
   }
 
+  // --- Activación / desactivación ---
+
+  /** Alterna la disponibilidad de un documento en la base de conocimiento. */
+  async toggleActive(document: DocumentSummary): Promise<void> {
+    await this.setActive([document.id], !document.isActive);
+  }
+
+  async setSelectedActive(isActive: boolean): Promise<void> {
+    const ids = [...this.selected()];
+    if (ids.length === 0) return;
+    await this.setActive(ids, isActive);
+    this.selected.set(new Set());
+  }
+
+  private async setActive(ids: string[], isActive: boolean): Promise<void> {
+    try {
+      await this.api.setDocumentsActive(ids, isActive);
+      await this.refresh();
+    } catch {
+      this.error.set(
+        isActive
+          ? 'No se pudieron activar los documentos.'
+          : 'No se pudieron desactivar los documentos.'
+      );
+    }
+  }
+
   async deleteSelected(): Promise<void> {
     const ids = [...this.selected()];
     if (ids.length === 0) return;

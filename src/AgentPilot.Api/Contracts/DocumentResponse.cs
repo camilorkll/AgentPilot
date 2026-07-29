@@ -11,7 +11,8 @@ public record DocumentResponse(
     int? ChunkCount,
     string? EmbeddingModel,
     string? ErrorMessage,
-    DateTime CreatedAtUtc);
+    DateTime CreatedAtUtc,
+    bool IsActive);
 
 /// <summary>Fragmento indexado de un documento, tal como lo usa la búsqueda.</summary>
 public record DocumentChunkResponse(int Ordinal, string Content, int CharCount);
@@ -27,6 +28,9 @@ public record DocumentContentResponse(
 /// <summary>Petición de borrado múltiple.</summary>
 public record DeleteDocumentsRequest(IReadOnlyList<Guid> DocumentIds);
 
+/// <summary>Activa o desactiva uno o varios documentos.</summary>
+public record SetActiveRequest(IReadOnlyList<Guid> DocumentIds, bool IsActive);
+
 /// <summary>Resultado del borrado múltiple.</summary>
 public record DeleteDocumentsResponse(int Deleted, IReadOnlyList<Guid> NotFound);
 
@@ -40,7 +44,8 @@ public static class DocumentMappings
         d.ChunkCount,
         d.EmbeddingModel,
         d.ErrorMessage,
-        d.CreatedAtUtc);
+        d.CreatedAtUtc,
+        d.IsActive);
 
     public static DocumentContentResponse ToContentResponse(this Documento d) => new(
         d.Id,

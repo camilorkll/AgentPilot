@@ -31,6 +31,8 @@ export interface DocumentSummary {
   embeddingModel: string | null;
   errorMessage: string | null;
   createdAtUtc: string;
+  /** Un documento inactivo conserva sus fragmentos pero queda fuera de las búsquedas. */
+  isActive: boolean;
 }
 
 /** Fragmento indexado de un documento (lo que realmente usa la búsqueda). */

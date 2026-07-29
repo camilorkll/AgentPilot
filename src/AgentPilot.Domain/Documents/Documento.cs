@@ -29,6 +29,14 @@ public class Documento
     public string? ErrorMessage { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
 
+    /// <summary>
+    /// Si está inactivo, sus fragmentos quedan fuera de la búsqueda: el asistente no
+    /// puede recuperarlos ni citarlos. Sirve para retirar temporalmente información con
+    /// vigencia (promociones caducadas, por ejemplo) sin perder lo ya indexado, de modo
+    /// que reactivarlo sea inmediato y no haya que volver a vectorizar el documento.
+    /// </summary>
+    public bool IsActive { get; private set; } = true;
+
     /// <summary>Solo lectura hacia fuera: los chunks se añaden vía MarcarIndexado.</summary>
     public IReadOnlyCollection<Chunk> Chunks => _chunks.AsReadOnly();
 
@@ -43,8 +51,15 @@ public class Documento
         FileName = fileName;
         Title = string.IsNullOrWhiteSpace(title) ? fileName : title;
         Status = EstadoIngesta.Pending;
+        IsActive = true;
         CreatedAtUtc = DateTime.UtcNow;
     }
+
+    /// <summary>Devuelve el documento a la base de conocimiento consultable.</summary>
+    public void Activar() => IsActive = true;
+
+    /// <summary>Retira el documento de las búsquedas sin perder lo indexado.</summary>
+    public void Desactivar() => IsActive = false;
 
     /// <summary>El worker toma el documento y empieza a procesarlo.</summary>
     public void MarcarProcesando()
