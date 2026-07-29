@@ -41,15 +41,22 @@ El proyecto está preparado para PaaS: si el proveedor inyecta `PORT` o `DATABAS
 
 ### 3. Desplegar la aplicación
 1. En el mismo proyecto: **New** → **GitHub Repo** → selecciona `camilorkll/AgentPilot`.
-2. Railway detecta el Dockerfile. Si pide la ruta, indica:
-   `src/AgentPilot.Api/Dockerfile` con **contexto la raíz del repositorio**.
-3. En **Variables** del servicio, añade:
+2. La configuración de build está declarada en [`railway.json`](../railway.json): usa el
+   builder **Dockerfile** con la ruta `src/AgentPilot.Api/Dockerfile`.
+
+   > ⚠️ Sin ese fichero, Railway intenta autodetectar el proyecto con **Railpack**, que solo
+   > mira la raíz del repositorio; al no encontrar allí un Dockerfile ni un proyecto que
+   > reconozca, el build falla con *"Railpack could not determine how to build the app"*.
+   > Si aun así ocurriera, fíjalo a mano en **Settings → Build → Builder: Dockerfile**.
+3. En **Variables** del servicio, añade (los nombres van en formato .NET, con doble
+   guion bajo — **no** los nombres del `docker-compose.yml`, que solo valen en local):
    - `OpenAI__ApiKey` → tu clave
    - `Jwt__SigningKey` → cadena aleatoria larga
    - `ASPNETCORE_ENVIRONMENT` → `Production`
    - `ConnectionStrings__Default` → referencia la BD del proyecto
      (Railway ofrece `${{Postgres.DATABASE_URL}}`; también puedes definir
      `DATABASE_URL` con ese valor y la app lo traduce sola).
+   - `Sentry__Dsn` → **opcional**; déjala vacía o no la definas y Sentry queda desactivado.
 4. **Settings → Networking → Generate Domain** para obtener la URL pública.
 
 ### 4. Verificar

@@ -2,15 +2,21 @@
 **/bin/
 **/obj/
 **/.vs/
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
 
-# No necesarios en la imagen
+# No necesarios en la imagen (reducen el contexto de build)
 .git/
 .github/
-frontend/node_modules/
+.claude/
+tests/
+evals/
+corpus/
+docs/adr/
 .env
 .env.*
 !.env.example
 README.md
-docs/adr/
-evals/
-corpus/
+SECURITY.md
+dotnet-tools.json
