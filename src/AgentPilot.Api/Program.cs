@@ -15,17 +15,14 @@ var port = Environment.GetEnvironmentVariable("PORT");
 if (!string.IsNullOrWhiteSpace(port))
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
-var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-if (!string.IsNullOrWhiteSpace(databaseUrl) && databaseUrl.StartsWith("postgres"))
-{
-    var uri = new Uri(databaseUrl);
-    var credentials = uri.UserInfo.Split(':', 2);
+// La base de datos puede llegar como cadena Npgsql o como URI (postgresql://…),
+// y en ConnectionStrings__Default o en DATABASE_URL: aceptamos las cuatro
+// combinaciones y normalizamos a lo que espera Npgsql.
+var rawConnectionString = builder.Configuration.GetConnectionString("Default")
+    ?? Environment.GetEnvironmentVariable("DATABASE_URL");
+if (!string.IsNullOrWhiteSpace(rawConnectionString))
     builder.Configuration["ConnectionStrings:Default"] =
-        $"Host={uri.Host};Port={(uri.Port > 0 ? uri.Port : 5432)};" +
-        $"Database={uri.AbsolutePath.TrimStart('/')};" +
-        $"Username={credentials[0]};Password={(credentials.Length > 1 ? credentials[1] : string.Empty)};" +
-        "SSL Mode=Require;Trust Server Certificate=true";
-}
+        PaasConfiguration.NormalizePostgresConnectionString(rawConnectionString);
 
 // Acepta también los nombres "planos" del .env / docker-compose (OPENAI_API_KEY,
 // JWT_SIGNING_KEY…) como alternativa a las claves jerárquicas de .NET
