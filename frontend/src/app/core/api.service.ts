@@ -89,10 +89,15 @@ export class ApiService {
     return firstValueFrom(this.http.get<DocumentSummary[]>('/api/v1/documents'));
   }
 
-  uploadDocument(file: File, title?: string) {
+  /**
+   * Sube un documento. Si ya existe uno con el mismo nombre, la API responde 409 y
+   * hay que reintentar con `replace = true` para sustituirlo.
+   */
+  uploadDocument(file: File, options?: { title?: string; replace?: boolean }) {
     const form = new FormData();
     form.append('file', file);
-    if (title) form.append('title', title);
+    if (options?.title) form.append('title', options.title);
+    if (options?.replace) form.append('replace', 'true');
     return firstValueFrom(this.http.post<DocumentSummary>('/api/v1/documents', form));
   }
 

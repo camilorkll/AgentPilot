@@ -9,6 +9,12 @@ public interface IDocumentRepository
 
     Task<Documento?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Busca un documento por nombre de fichero. Se usa para detectar duplicados: reingerir
+    /// el mismo fichero duplicaría sus fragmentos en el índice vectorial y ensuciaría las citas.
+    /// </summary>
+    Task<Documento?> GetByFileNameAsync(string fileName, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<Documento>> ListAsync(
         EstadoIngesta? status = null, CancellationToken cancellationToken = default);
 

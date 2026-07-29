@@ -13,6 +13,9 @@ public class DocumentRepository(AgentPilotDbContext db) : IDocumentRepository
         => db.Documentos.Include(d => d.Chunks)
              .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
 
+    public Task<Documento?> GetByFileNameAsync(string fileName, CancellationToken cancellationToken = default)
+        => db.Documentos.FirstOrDefaultAsync(d => d.FileName == fileName, cancellationToken);
+
     public async Task<IReadOnlyList<Documento>> ListAsync(
         EstadoIngesta? status = null, CancellationToken cancellationToken = default)
     {

@@ -44,9 +44,13 @@ public class AskQuestionServiceTests
         Assert.Single(events.OfType<UsageEvent>());
         var done = Assert.Single(events.OfType<DoneEvent>());
 
-        // El orden: el último evento es Done; las citas van tras los tokens.
+        // Orden: las fuentes se emiten ANTES de los tokens (el agente ve en qué se basa
+        // la respuesta mientras el modelo la redacta), el uso al final y Done cierra.
         Assert.IsType<DoneEvent>(events[^1]);
-        Assert.True(events.FindIndex(e => e is CitationsEvent) > events.FindLastIndex(e => e is TokenEvent) - 1);
+        Assert.True(
+            events.FindIndex(e => e is CitationsEvent) < events.FindIndex(e => e is TokenEvent),
+            "Las citas deben emitirse antes del primer token.");
+        Assert.True(events.FindIndex(e => e is UsageEvent) > events.FindLastIndex(e => e is TokenEvent));
 
         // El prompt enviado al LLM lleva grounding y el contexto numerado.
         var system = chat.CapturedMessages.First(m => m.Role == PromptRole.System).Content;

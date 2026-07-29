@@ -17,11 +17,26 @@ public class DocumentIngestionService(
     ILogger<DocumentIngestionService> logger) : IDocumentIngestionService
 {
     public async Task<Documento> SubmitAsync(
-        string fileName, string? title, Stream content, CancellationToken cancellationToken = default)
+        string fileName, string? title, Stream content,
+        bool replaceExisting = false, CancellationToken cancellationToken = default)
     {
         if (!extractor.Supports(fileName))
             throw new NotSupportedException(
                 $"Formato de fichero no soportado: '{Path.GetExtension(fileName)}'.");
+
+        // Un mismo fichero ingerido dos veces duplicaría sus fragmentos en el índice
+        // vectorial: o se avisa al cliente, o se sustituye el documento anterior.
+        var existing = await repository.GetByFileNameAsync(fileName, cancellationToken);
+        if (existing is not null)
+        {
+            if (!replaceExisting)
+                throw new DuplicateDocumentException(existing.Id, fileName);
+
+            repository.Delete(existing); // los fragmentos se borran en cascada
+            await repository.SaveChangesAsync(cancellationToken);
+            logger.LogInformation(
+                "Documento {Id} ({File}) reemplazado por una nueva versión.", existing.Id, fileName);
+        }
 
         // Copiamos los bytes para llevarlos en el trabajo: la petición HTTP
         // termina enseguida y el stream original se cerraría.

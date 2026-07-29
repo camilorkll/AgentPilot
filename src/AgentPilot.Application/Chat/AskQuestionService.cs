@@ -66,6 +66,11 @@ public class AskQuestionService(
             .Select(m => new Citation(m.DocumentId, m.DocumentTitle, m.ChunkId, m.Content, m.Score))
             .ToList();
 
+        // Las fuentes se emiten en cuanto se recuperan, sin esperar al modelo: el agente
+        // ve de inmediato en qué documentos se va a basar la respuesta mientras el LLM
+        // todavía está generando (que es la parte lenta).
+        yield return new CitationsEvent(citations);
+
         // 3. Construir el prompt "grounded" (system + historial + contexto + pregunta).
         var messages = BuildPrompt(conversation, question, matches);
 
@@ -86,9 +91,7 @@ public class AskQuestionService(
         }
         stopwatch.Stop();
 
-        // 5. Emitir las citas y la telemetría de uso.
-        yield return new CitationsEvent(citations);
-
+        // 5. Emitir la telemetría de uso (las citas ya se enviaron antes de generar).
         var promptTokens = usage?.PromptTokens ?? 0;
         var completionTokens = usage?.CompletionTokens ?? 0;
         var costUsd = LlmPricing.EstimateUsd(chat.ModelName, promptTokens, completionTokens);

@@ -19,14 +19,20 @@
       <div class="msg" [class.user]="message.role === 'user'">
         <div class="bubble">
           @if (message.role === 'assistant' && message.streaming && !message.content) {
-            <span class="muted">Buscando en la base de conocimiento…</span>
+            <span class="muted">
+              @if (message.citations?.length) {
+                Fuentes localizadas · redactando la respuesta…
+              } @else {
+                Buscando en la base de conocimiento…
+              }
+            </span>
           }
           <span class="content">{{ message.content }}</span>
           @if (message.streaming && message.content) { <span class="caret"></span> }
         </div>
 
-        @if (message.role === 'assistant' && !message.streaming) {
-          <!-- Citas: las fuentes que respaldan la respuesta -->
+        @if (message.role === 'assistant') {
+          <!-- Fuentes: llegan en cuanto se recuperan, antes de que el modelo responda -->
           @if (message.citations?.length) {
             <details class="citations">
               <summary class="small">
@@ -43,7 +49,9 @@
               }
             </details>
           }
+        }
 
+        @if (message.role === 'assistant' && !message.streaming) {
           <div class="meta">
             @if (message.usage) {
               <span class="small muted">

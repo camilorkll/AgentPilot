@@ -18,7 +18,8 @@ public class DocumentsController(
     [HttpPost]
     [Authorize(Roles = "admin")]
     public async Task<IActionResult> Upload(
-        IFormFile file, [FromForm] string? title, CancellationToken cancellationToken)
+        IFormFile file, [FromForm] string? title, [FromForm] bool replace,
+        CancellationToken cancellationToken)
     {
         if (file is null || file.Length == 0)
             return BadRequest(new { code = "validation_error", message = "El fichero está vacío." });
@@ -26,7 +27,8 @@ public class DocumentsController(
         try
         {
             await using var stream = file.OpenReadStream();
-            var document = await ingestion.SubmitAsync(file.FileName, title, stream, cancellationToken);
+            var document = await ingestion.SubmitAsync(
+                file.FileName, title, stream, replace, cancellationToken);
 
             // 202 Accepted: aceptado y en proceso. Location apunta a la consulta de estado.
             return AcceptedAtAction(
@@ -35,6 +37,17 @@ public class DocumentsController(
         catch (NotSupportedException ex)
         {
             return BadRequest(new { code = "unsupported_format", message = ex.Message });
+        }
+        catch (DuplicateDocumentException ex)
+        {
+            // 409: el cliente decide si reemplazar (reenviando con replace = true).
+            return Conflict(new
+            {
+                code = "duplicate_document",
+                message = ex.Message,
+                documentId = ex.ExistingDocumentId,
+                fileName = ex.FileName,
+            });
         }
     }
 
