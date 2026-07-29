@@ -6,6 +6,20 @@
   <button (click)="refresh()">Refrescar</button>
 </div>
 
+@if (operators().length) {
+  <div class="card filter">
+    <span class="small muted">Filtrar por operador:</span>
+    @for (op of operators(); track op) {
+      <button class="small" [class.on]="isSelected(op)" (click)="toggle(op)">
+        {{ op }}
+      </button>
+    }
+    @if (selected().length) {
+      <button class="small clear" (click)="clearFilter()">Ver todos</button>
+    }
+  </div>
+}
+
 @if (error()) {
   <p class="error small">{{ error() }}</p>
 }
@@ -54,6 +68,36 @@
             </tr>
           } @empty {
             <tr><td class="muted">Sin datos todavía.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>Actividad por operador</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Operador</th>
+            <th class="right">Preguntas</th>
+            <th class="right">Coste</th>
+            <th class="right">Latencia</th>
+            <th class="right">Útiles</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (op of m.byOperator; track op.userName) {
+            <tr>
+              <td>{{ op.userName }}</td>
+              <td class="right">{{ op.questions }}</td>
+              <td class="right">${{ op.totalCostUsd | number:'1.4-4' }}</td>
+              <td class="right">{{ op.avgLatencyMs | number:'1.0-0' }} ms</td>
+              <td class="right">
+                {{ op.positiveFeedbackRate !== null ? (op.positiveFeedbackRate | percent:'1.0-0') : '—' }}
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="5" class="muted">Sin actividad registrada por operador.</td></tr>
           }
         </tbody>
       </table>

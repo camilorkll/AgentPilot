@@ -33,6 +33,14 @@ export interface DocumentSummary {
   createdAtUtc: string;
 }
 
+export interface OperatorUsage {
+  userName: string;
+  questions: number;
+  totalCostUsd: number;
+  avgLatencyMs: number;
+  positiveFeedbackRate: number | null;
+}
+
 export interface MetricsSummary {
   totalQuestions: number;
   positiveFeedbackRate: number | null;
@@ -41,6 +49,8 @@ export interface MetricsSummary {
   totalCostUsd: number;
   costByModel: Record<string, number>;
   questionsPerDay: { date: string; count: number }[];
+  byOperator: OperatorUsage[];
+  filteredOperators: string[];
 }
 
 /** Mensaje mostrado en el chat. */

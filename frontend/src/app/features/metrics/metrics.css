@@ -6,6 +6,16 @@
   margin-bottom: 1.25rem;
 }
 
+.filter {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.filter button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.filter button.clear { margin-left: auto; }
+
 .kpis {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));

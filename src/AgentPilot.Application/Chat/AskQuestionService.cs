@@ -17,7 +17,8 @@ public class AskQuestionService(
     IChunkSearchService search,
     IChatCompletionService chat,
     IConversationRepository conversations,
-    IMetricsRepository metrics) : IAskQuestionService
+    IMetricsRepository metrics,
+    ICurrentUser currentUser) : IAskQuestionService
 {
     private const int TopK = 5;
 
@@ -105,7 +106,8 @@ public class AskQuestionService(
         // 7. Registrar la llamada para el dashboard de coste (LLMOps).
         await metrics.RecordCallAsync(
             new Domain.Telemetry.LlmCallLog(
-                chat.ModelName, promptTokens, completionTokens, costUsd, latencyMs, conversation.Id),
+                chat.ModelName, promptTokens, completionTokens, costUsd, latencyMs,
+                conversation.Id, currentUser.UserName),
             cancellationToken);
 
         yield return new DoneEvent(conversation.Id);

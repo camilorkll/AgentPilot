@@ -9,6 +9,10 @@ public class LlmCallLog
     public Guid Id { get; private set; }
     public Guid? ConversationId { get; private set; }
     public string Model { get; private set; } = string.Empty;
+
+    /// <summary>Operador que hizo la consulta, para el desglose por agente del dashboard.</summary>
+    public string? UserName { get; private set; }
+
     public int PromptTokens { get; private set; }
     public int CompletionTokens { get; private set; }
     public double EstimatedCostUsd { get; private set; }
@@ -19,7 +23,7 @@ public class LlmCallLog
 
     public LlmCallLog(
         string model, int promptTokens, int completionTokens,
-        double estimatedCostUsd, long latencyMs, Guid? conversationId)
+        double estimatedCostUsd, long latencyMs, Guid? conversationId, string? userName = null)
     {
         Id = Guid.NewGuid();
         Model = model;
@@ -28,6 +32,7 @@ public class LlmCallLog
         EstimatedCostUsd = estimatedCostUsd;
         LatencyMs = latencyMs;
         ConversationId = conversationId;
+        UserName = userName;
         CreatedAtUtc = DateTime.UtcNow;
     }
 }

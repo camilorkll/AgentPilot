@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from './auth.service';
 import { Citation, DocumentSummary, MetricsSummary, Usage } from './models';
@@ -107,7 +107,16 @@ export class ApiService {
 
   // --- Métricas ---
 
-  getMetrics() {
-    return firstValueFrom(this.http.get<MetricsSummary>('/api/v1/metrics/summary'));
+  /** Resumen de métricas, opcionalmente limitado a uno o varios operadores. */
+  getMetrics(operators: string[] = []) {
+    let params = new HttpParams();
+    for (const op of operators) params = params.append('operator', op);
+    return firstValueFrom(
+      this.http.get<MetricsSummary>('/api/v1/metrics/summary', { params })
+    );
+  }
+
+  getOperators() {
+    return firstValueFrom(this.http.get<string[]>('/api/v1/metrics/operators'));
   }
 }

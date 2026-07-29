@@ -25,7 +25,8 @@ public class AskQuestionServiceTests
         var repo = new FakeConversationRepository();
         var metrics = new FakeMetrics();
 
-        var service = new AskQuestionService(embeddings, search, chat, repo, metrics);
+        var service = new AskQuestionService(
+            embeddings, search, chat, repo, metrics, new FakeCurrentUser("agente"));
 
         // Act
         var events = new List<AskEvent>();
@@ -70,10 +71,11 @@ public class AskQuestionServiceTests
         Assert.Equal("El cambio es gratis.", assistant.Content);
         Assert.Equal(2, assistant.Citations.Count);
 
-        // Se registró la llamada al LLM para el dashboard de coste.
+        // Se registró la llamada al LLM para el dashboard de coste, atribuida al operador.
         Assert.NotNull(metrics.Recorded);
         Assert.Equal("gpt-5-mini", metrics.Recorded!.Model);
         Assert.Equal(120, metrics.Recorded.PromptTokens);
+        Assert.Equal("agente", metrics.Recorded.UserName);
     }
 
     // --- Dobles ---
@@ -110,13 +112,21 @@ public class AskQuestionServiceTests
         }
     }
 
+    private sealed class FakeCurrentUser(string? userName) : ICurrentUser
+    {
+        public string? UserName => userName;
+    }
+
     private sealed class FakeMetrics : IMetricsRepository
     {
         public Domain.Telemetry.LlmCallLog? Recorded { get; private set; }
         public Task RecordCallAsync(Domain.Telemetry.LlmCallLog log, CancellationToken ct = default)
         { Recorded = log; return Task.CompletedTask; }
-        public Task<Metrics.MetricsSummary> GetSummaryAsync(DateTime? f, DateTime? t, CancellationToken ct = default)
+        public Task<Metrics.MetricsSummary> GetSummaryAsync(
+            DateTime? f, DateTime? t, IReadOnlyList<string>? ops = null, CancellationToken ct = default)
             => Task.FromResult(new Metrics.MetricsSummary());
+        public Task<IReadOnlyList<string>> GetOperatorsAsync(CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<string>>([]);
     }
 
     private sealed class FakeConversationRepository : IConversationRepository

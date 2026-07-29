@@ -58,6 +58,11 @@ builder.Services.AddHealthChecks();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
+// Operador de la petición (claim 'sub' del JWT): permite atribuir la telemetría
+// a cada agente sin que la capa de aplicación conozca HTTP.
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<AgentPilot.Application.Abstractions.ICurrentUser, HttpCurrentUser>();
+
 // --- Autenticación JWT ---
 // Si no se ha configurado la clave de firma, generamos una aleatoria en memoria en
 // lugar de usar un valor conocido (que permitiría falsificar tokens). La aplicación
