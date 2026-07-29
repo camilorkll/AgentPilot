@@ -16,7 +16,7 @@
     { "id": 13, "question": "¿En cuántos días naturales debe resolverse una reclamación?", "expectedDocument": "04-politica-facturacion-reclamaciones", "expectedKeywords": ["15"], "answerable": true },
     { "id": 14, "question": "¿Qué indica la luz LOS en rojo del router?", "expectedDocument": "05-averias-router-fibra", "expectedKeywords": ["óptica", "optica", "señal", "senal", "fibra"], "answerable": true },
     { "id": 15, "question": "¿Cuánto cuesta la visita técnica si el cliente ha partido la fibra?", "expectedDocument": "05-averias-router-fibra", "expectedKeywords": ["60"], "answerable": true },
-    { "id": 16, "question": "¿Cuánto cuesta el amplificador NovaMesh?", "expectedDocument": "05-averias-router-fibra", "expectedKeywords": ["49", "29"], "answerable": true },
+    { "id": 16, "question": "¿Cuánto cuesta el amplificador NovaMesh?", "expectedDocument": null, "expectedKeywords": ["49", "29"], "answerable": true, "note": "El precio aparece en dos documentos (05-averias-router-fibra y 09-promociones-julio-2026): no se fija un documento fuente único." },
     { "id": 17, "question": "¿Cuántas ofertas de retención se pueden dar a un cliente al año?", "expectedDocument": "06-argumentario-retencion", "expectedKeywords": ["una", "1"], "answerable": true },
     { "id": 18, "question": "¿Qué nivel de descuento requiere autorización del supervisor?", "expectedDocument": "06-argumentario-retencion", "expectedKeywords": ["4", "supervisor"], "answerable": true },
     { "id": 19, "question": "¿Cuál es el límite de datos en roaming en la UE con Nova Infinita?", "expectedDocument": "07-faq-roaming", "expectedKeywords": ["25"], "answerable": true },

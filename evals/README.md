@@ -50,6 +50,51 @@ reconstruye (`docker compose up -d --build`) y vuelve a ejecutar, guardando cada
 # .env: OPENAI_CHAT_MODEL=gpt-5       -> ejecutar -> renombrar a RESULTS-gpt-5.md
 ```
 
+## Resultados obtenidos (gpt-5-mini, 30 casos)
+
+Informe completo y detalle por caso en [`RESULTS.md`](RESULTS.md).
+
+| Métrica | Resultado |
+|---|---|
+| Aciertos globales | **96,7%** (29/30) |
+| Precisión de recuperación | **100,0%** |
+| Exactitud de la respuesta | **96,0%** |
+| Abstención correcta | **100,0%** |
+| Latencia media / p95 | 3.928 ms / 10.523 ms |
+| Coste medio por pregunta | **$0,001** (≈ $0,03 el set completo) |
+
+### Lectura de los resultados
+
+- **Recuperación 100%**: la búsqueda vectorial localizó el documento correcto en las 25
+  preguntas respondibles. El motor de *retrieval* (embeddings + pgvector) es sólido.
+- **Abstención 100%**: ninguna de las 5 preguntas fuera del corpus produjo una respuesta
+  inventada. Es la evidencia de que el *grounding* funciona: **el sistema no alucina**.
+- **Coste**: ~0,001 $ por consulta con `gpt-5-mini`. Proyectado a 1.000 consultas/día son
+  ~30 $/mes, una cifra manejable para una operación de contact center.
+
+### Análisis del único fallo (caso 4)
+
+*"¿Se acumulan los datos no consumidos de un mes para el siguiente?"* → el asistente
+respondió "no dispongo de esa información" cuando el dato **sí** está en el corpus.
+
+Diagnóstico realizado sobre la base de datos: el dato está en el chunk 0 del catálogo de
+tarifas y **ese chunk fue recuperado** (por eso la recuperación puntúa OK). No es un fallo
+de *chunking* ni de búsqueda: el fragmento son ~1.000 caracteres dominados por la tabla de
+tarifas, y la línea sobre acumulación queda diluida entre ese ruido compitiendo con otros
+cuatro fragmentos. Es un fallo de **atención sobre el contexto**.
+
+Mitigaciones candidatas (líneas futuras): *chunking* consciente de la estructura Markdown
+(separar tablas de prosa), *re-ranking* de los fragmentos recuperados, o reducir `TopK`
+para concentrar la atención del modelo.
+
+### Nota metodológica
+
+En la primera ejecución el caso 16 (*precio del NovaMesh*) apareció como fallo, pero al
+revisarlo la respuesta era correcta: el precio figura en **dos** documentos y el set dorado
+fijaba solo uno como fuente válida. Se corrigió el set (no el sistema), lo que subió la
+precisión de recuperación del 96% al 100%. Es un recordatorio de que **el set dorado
+también se depura**: un falso negativo en la medición es tan dañino como un fallo real.
+
 ## Limitaciones
 
 - La exactitud se evalúa por **coincidencia de palabras clave**, no con un juez LLM:

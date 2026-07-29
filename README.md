@@ -114,7 +114,22 @@ Las reglas de dependencia entre capas se verifican con tests de arquitectura
 - [x] **Autenticación JWT** con roles agente/administrador (contraseñas con hash BCrypt). *(Fase 4 ✓)*
 - [x] **Feedback 👍/👎** por respuesta, con comentario y autor. *(Fase 4 ✓)*
 - [x] **Métricas / coste (LLMOps)**: endpoint `/metrics/summary` con uso, latencia media/p95, % feedback positivo y coste por modelo. *(Fase 5 ✓)*
-- [ ] **Evals**: set dorado de 25–30 preguntas con métricas de precisión de citas. *(Fase 6)*
+- [x] **Evals**: set dorado de 30 preguntas — **100% de precisión de recuperación, 96% de exactitud y 100% de abstención correcta** (sin alucinaciones), a ~$0,001 por consulta. *(Fase 6 ✓)*
+
+## 📏 Calidad medida (evals)
+
+El RAG se evalúa con un **set dorado de 30 preguntas** sobre el corpus, incluidas 5 que
+**no** tienen respuesta en él (para verificar que el asistente se abstiene en vez de inventar).
+
+| Métrica | Resultado |
+|---|---|
+| Precisión de recuperación | **100,0%** |
+| Exactitud de la respuesta | **96,0%** |
+| Abstención correcta (no alucina) | **100,0%** |
+| Coste medio por consulta | **~$0,001** |
+
+Metodología, análisis del único fallo y detalle por caso en **[evals/README.md](evals/README.md)**
+y [evals/RESULTS.md](evals/RESULTS.md). Reproducible con `dotnet run --project evals/AgentPilot.Evals`.
 
 ## 🔒 Seguridad
 
