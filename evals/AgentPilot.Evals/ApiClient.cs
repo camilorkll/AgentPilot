@@ -1,9 +1,29 @@
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 
 namespace AgentPilot.Evals;
+
+/// <summary>
+/// Medida de una pregunta. Se distinguen tres tiempos porque la experiencia del agente
+/// depende de cuándo empieza a ver algo, no de cuándo termina la respuesta:
+/// <list type="bullet">
+///   <item><c>CitationsMs</c>: primer indicio en pantalla (las fuentes se emiten al recuperarlas).</item>
+///   <item><c>FirstTokenMs</c>: el modelo empieza a redactar; con modelos de razonamiento es
+///   donde se concentra la espera.</item>
+///   <item><c>LatencyMs</c>: total que reporta el servidor.</item>
+/// </list>
+/// </summary>
+public sealed record AskMeasurement(
+    string Answer,
+    string[] Documents,
+    string Model,
+    long LatencyMs,
+    long CitationsMs,
+    long FirstTokenMs,
+    double CostUsd);
 
 /// <summary>Cliente HTTP del arnés: login y consumo del stream SSE de /chat/ask.</summary>
 public class ApiClient(string baseUrl)
@@ -22,7 +42,7 @@ public class ApiClient(string baseUrl)
     }
 
     /// <summary>Lanza una pregunta y agrega el stream SSE en un único resultado.</summary>
-    public async Task<(string Answer, string[] Documents, long LatencyMs, double CostUsd)> AskAsync(string question)
+    public async Task<AskMeasurement> AskAsync(string question)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/chat/ask")
         {
@@ -30,6 +50,8 @@ public class ApiClient(string baseUrl)
                 JsonSerializer.Serialize(new { question }), Encoding.UTF8, "application/json"),
         };
 
+        // El cronómetro arranca antes de enviar: mide lo que espera el agente, no lo que tarda el modelo.
+        var clock = Stopwatch.StartNew();
         using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
         response.EnsureSuccessStatusCode();
 
@@ -38,7 +60,8 @@ public class ApiClient(string baseUrl)
 
         var answer = new StringBuilder();
         var documents = new List<string>();
-        long latency = 0;
+        var model = "desconocido";
+        long latency = 0, citationsMs = 0, firstTokenMs = 0;
         double cost = 0;
         string? currentEvent = null;
 
@@ -55,20 +78,25 @@ public class ApiClient(string baseUrl)
             switch (currentEvent)
             {
                 case "token":
+                    if (firstTokenMs == 0) firstTokenMs = clock.ElapsedMilliseconds;
                     answer.Append(JsonSerializer.Deserialize<JsonElement>(data).GetProperty("text").GetString());
                     break;
                 case "citations":
+                    if (citationsMs == 0) citationsMs = clock.ElapsedMilliseconds;
                     foreach (var citation in JsonSerializer.Deserialize<JsonElement>(data).EnumerateArray())
                         documents.Add(citation.GetProperty("documentTitle").GetString() ?? "");
                     break;
                 case "usage":
                     var usage = JsonSerializer.Deserialize<JsonElement>(data);
+                    model = usage.GetProperty("model").GetString() ?? model;
                     latency = usage.GetProperty("latencyMs").GetInt64();
                     cost = usage.GetProperty("estimatedCostUsd").GetDouble();
                     break;
             }
         }
 
-        return (answer.ToString(), documents.Distinct().ToArray(), latency, cost);
+        return new AskMeasurement(
+            answer.ToString(), documents.Distinct().ToArray(), model,
+            latency, citationsMs, firstTokenMs, cost);
     }
 }

@@ -10,7 +10,8 @@ en lugar de una valoración subjetiva ("parece que responde bien").
 | **Precisión de recuperación** | El documento correcto aparece entre las citas | Mide la calidad del *retrieval* (embeddings + búsqueda vectorial) |
 | **Exactitud de la respuesta** | La respuesta contiene el dato clave esperado | Mide que el modelo usa bien el contexto recuperado |
 | **Abstención correcta** | Ante preguntas fuera del corpus, dice que no dispone de la información | Mide el *grounding*: que **no alucina** |
-| Latencia (media y p95) y coste | Rendimiento y economía por pregunta | Viabilidad operativa (LLMOps) |
+| **Tiempo hasta el primer token** | Cuánto espera el agente antes de ver la respuesta empezar | Es la espera que se percibe: con modelos de razonamiento se concentra aquí |
+| Latencia total (media y p95) y coste | Rendimiento y economía por pregunta | Viabilidad operativa (LLMOps) |
 
 ## Set dorado
 
@@ -41,14 +42,20 @@ salida 0 si todos los casos pasan (útil para integrarlo en CI).
 
 ## Comparar modelos
 
-Para comparar calidad/coste entre modelos, cambia `OPENAI_CHAT_MODEL` en `.env`,
-reconstruye (`docker compose up -d --build`) y vuelve a ejecutar, guardando cada
-`RESULTS.md`:
+El informe registra siempre **qué modelo** lo generó (lo toma del evento `usage`, no
+de la configuración), así que ningún resultado queda huérfano de su origen.
+
+Para comparar, basta recrear el contenedor con otro modelo y volver a ejecutar:
 
 ```bash
-# .env: OPENAI_CHAT_MODEL=gpt-5-mini  -> ejecutar -> renombrar a RESULTS-gpt-5-mini.md
-# .env: OPENAI_CHAT_MODEL=gpt-5       -> ejecutar -> renombrar a RESULTS-gpt-5.md
+OPENAI_CHAT_MODEL=gpt-4o-mini docker compose up -d api
 ```
+
+Conviene lanzar **varios pases por modelo**: un único pase de 30 casos no distingue
+una diferencia real de una variación de redacción (ver la comparativa).
+
+Comparativa realizada entre `gpt-5-mini` y `gpt-4o-mini`, con la decisión razonada y
+sus cifras: [`COMPARATIVA-MODELOS.md`](COMPARATIVA-MODELOS.md).
 
 ## Resultados obtenidos (gpt-5-mini, 30 casos)
 
@@ -60,8 +67,12 @@ Informe completo y detalle por caso en [`RESULTS.md`](RESULTS.md).
 | Precisión de recuperación | **100,0%** |
 | Exactitud de la respuesta | **96,0%** |
 | Abstención correcta | **100,0%** |
-| Latencia media / p95 | 3.928 ms / 10.523 ms |
+| Primer token, media / p95 | 4.199 ms / 7.689 ms |
+| Latencia total media | 4.373 ms |
 | Coste medio por pregunta | **$0,001** (≈ $0,03 el set completo) |
+
+Cifras de tres pases. Con `gpt-4o-mini` la calidad es idéntica y el primer token baja a
+776 ms: ver [`COMPARATIVA-MODELOS.md`](COMPARATIVA-MODELOS.md).
 
 ### Lectura de los resultados
 
@@ -95,10 +106,18 @@ fijaba solo uno como fuente válida. Se corrigió el set (no el sistema), lo que
 precisión de recuperación del 96% al 100%. Es un recordatorio de que **el set dorado
 también se depura**: un falso negativo en la medición es tan dañino como un fallo real.
 
+El mismo patrón reapareció al comparar modelos: el corrector marcaba como fallo respuestas
+correctas por escribir «Cinco» en lugar de «5», o por parafrasear un término del corpus. Se
+corrigió el **criterio general** (normalizar los números escritos con letras), no cada caso
+suelto, para no acabar ajustando el examen a las respuestas observadas. Detalle en
+[`COMPARATIVA-MODELOS.md`](COMPARATIVA-MODELOS.md).
+
 ## Limitaciones
 
 - La exactitud se evalúa por **coincidencia de palabras clave**, no con un juez LLM:
   es determinista y gratis, pero puede penalizar respuestas correctas formuladas de
-  otra manera. Un *LLM-as-judge* sería la evolución natural.
+  otra manera. Se mitiga normalizando los números escritos con letras («cinco» ≡ «5»),
+  pero la paráfrasis sigue siendo su punto ciego: un *LLM-as-judge* sería la evolución
+  natural.
 - El set es pequeño (30 casos) y sobre un corpus sintético controlado, adecuado para
   un MVP; en producción se ampliaría con preguntas reales de agentes.

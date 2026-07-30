@@ -31,6 +31,13 @@ public record EvalResult
     public string Answer { get; init; } = string.Empty;
     public string[] CitedDocuments { get; init; } = [];
     public long LatencyMs { get; init; }
+
+    /// <summary>Momento en que el agente ve el primer indicio en pantalla (las fuentes).</summary>
+    public long CitationsMs { get; init; }
+
+    /// <summary>Momento en que el modelo empieza a redactar.</summary>
+    public long FirstTokenMs { get; init; }
+
     public double CostUsd { get; init; }
 
     /// <summary>El documento esperado está entre las citas.</summary>

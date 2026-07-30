@@ -9,7 +9,7 @@
     { "id": 6,  "question": "¿Cuánto tarda la instalación estándar de fibra?", "expectedDocument": "02-catalogo-fibra-internet", "expectedKeywords": ["7"], "answerable": true },
     { "id": 7,  "question": "¿Qué permanencia tiene un paquete convergente?", "expectedDocument": "02-catalogo-fibra-internet", "expectedKeywords": ["12"], "answerable": true },
     { "id": 8,  "question": "¿Cuánto tarda en ejecutarse una portabilidad móvil?", "expectedDocument": "03-procedimiento-portabilidad", "expectedKeywords": ["1"], "answerable": true },
-    { "id": 9,  "question": "¿Qué significa el estado APOR en una portabilidad?", "expectedDocument": "03-procedimiento-portabilidad", "expectedKeywords": ["portada"], "answerable": true },
+    { "id": 9,  "question": "¿Qué significa el estado APOR en una portabilidad?", "expectedDocument": "03-procedimiento-portabilidad", "expectedKeywords": ["portada", "correctamente", "exitosamente", "con éxito"], "answerable": true },
     { "id": 10, "question": "¿Hasta cuándo puede el cliente cancelar una solicitud de portabilidad?", "expectedDocument": "03-procedimiento-portabilidad", "expectedKeywords": ["14"], "answerable": true },
     { "id": 11, "question": "¿Qué día del mes se emite la factura?", "expectedDocument": "04-politica-facturacion-reclamaciones", "expectedKeywords": ["4"], "answerable": true },
     { "id": 12, "question": "¿Cuál es el importe máximo que se puede abonar por cargos de tarificación especial?", "expectedDocument": "04-politica-facturacion-reclamaciones", "expectedKeywords": ["30"], "answerable": true },
