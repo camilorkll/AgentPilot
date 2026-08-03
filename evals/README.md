@@ -57,7 +57,7 @@ una diferencia real de una variación de redacción (ver la comparativa).
 Comparativa realizada entre `gpt-5-mini` y `gpt-4o-mini`, con la decisión razonada y
 sus cifras: [`COMPARATIVA-MODELOS.md`](COMPARATIVA-MODELOS.md).
 
-## Resultados obtenidos (gpt-5-mini, 30 casos)
+## Resultados obtenidos (gpt-4o-mini, 30 casos)
 
 Informe completo y detalle por caso en [`RESULTS.md`](RESULTS.md).
 
@@ -67,12 +67,13 @@ Informe completo y detalle por caso en [`RESULTS.md`](RESULTS.md).
 | Precisión de recuperación | **100,0%** |
 | Exactitud de la respuesta | **96,0%** |
 | Abstención correcta | **100,0%** |
-| Primer token, media / p95 | 4.199 ms / 7.689 ms |
-| Latencia total media | 4.373 ms |
-| Coste medio por pregunta | **$0,001** (≈ $0,03 el set completo) |
+| Primer token, media / p95 | 776 ms / 1.420 ms |
+| Latencia total media | 918 ms |
+| Coste medio por pregunta | **$0,00022** (≈ $0,0066 el set completo) |
 
-Cifras de tres pases. Con `gpt-4o-mini` la calidad es idéntica y el primer token baja a
-776 ms: ver [`COMPARATIVA-MODELOS.md`](COMPARATIVA-MODELOS.md).
+Cifras de tres pases. `gpt-5-mini` da exactamente la misma calidad pero tarda 4.199 ms en
+el primer token y cuesta 4,2 veces más; la comparativa completa, con el método, está en
+[`COMPARATIVA-MODELOS.md`](COMPARATIVA-MODELOS.md).
 
 ### Lectura de los resultados
 
@@ -80,8 +81,8 @@ Cifras de tres pases. Con `gpt-4o-mini` la calidad es idéntica y el primer toke
   preguntas respondibles. El motor de *retrieval* (embeddings + pgvector) es sólido.
 - **Abstención 100%**: ninguna de las 5 preguntas fuera del corpus produjo una respuesta
   inventada. Es la evidencia de que el *grounding* funciona: **el sistema no alucina**.
-- **Coste**: ~0,001 $ por consulta con `gpt-5-mini`. Proyectado a 1.000 consultas/día son
-  ~30 $/mes, una cifra manejable para una operación de contact center.
+- **Coste**: ~0,0002 $ por consulta con `gpt-4o-mini`. Proyectado a 1.000 consultas/día son
+  ~7 $/mes, una cifra irrelevante frente al coste de un minuto de llamada.
 
 ### Análisis del único fallo (caso 4)
 

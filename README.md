@@ -32,7 +32,7 @@ usa el token devuelto como `Authorization: Bearer <token>`.
 | Capa | Tecnología |
 |---|---|
 | Backend | .NET 8 Web API · Clean Architecture (4 capas) · EF Core |
-| IA — Chat | OpenAI `gpt-5` / `gpt-5-mini` (SDK oficial .NET) con streaming |
+| IA — Chat | OpenAI `gpt-4o-mini` (SDK oficial .NET) con streaming · conmutable por configuración |
 | IA — Embeddings | OpenAI `text-embedding-3-small` · alternativo local: Ollama `nomic-embed-text` |
 | IA — Orquestación | Semantic Kernel (prompt templates versionados) |
 | Base de datos | PostgreSQL 16 + pgvector (relacional + vectorial) |

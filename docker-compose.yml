@@ -31,7 +31,7 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__Default: Host=postgres;Database=agentpilot;Username=agentpilot;Password=${POSTGRES_PASSWORD:-agentpilot_dev}
       OpenAI__ApiKey: ${OPENAI_API_KEY:?Define OPENAI_API_KEY en .env}
-      OpenAI__ChatModel: ${OPENAI_CHAT_MODEL:-gpt-5-mini}
+      OpenAI__ChatModel: ${OPENAI_CHAT_MODEL:-gpt-4o-mini}
       Embeddings__Provider: ${EMBEDDINGS_PROVIDER:-openai}
       Embeddings__OllamaBaseUrl: http://ollama:11434
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Define JWT_SIGNING_KEY en .env}

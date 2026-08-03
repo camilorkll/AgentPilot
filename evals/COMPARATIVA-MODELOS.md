@@ -45,6 +45,10 @@ cambio de modelo lo arregla. Ver el análisis en [`README.md`](README.md).
 
 ## Conclusión
 
+> **Aplicado el 03/08/2026**: `gpt-4o-mini` pasa a ser el valor por defecto del proyecto
+> (`.env`, `docker-compose.yml`, `OpenAiOptions`) y de la variable `OpenAI__ChatModel` del
+> despliegue. Ver [ADR-007](../docs/adr/ADR-007-modelo-economico-conmutable.md).
+
 **`gpt-4o-mini`** para el asistente: a igualdad de calidad medida, responde en menos
 de un segundo y cuesta cuatro veces menos. En un contact center la diferencia entre
 0,8 s y 4,4 s no es una cifra en una tabla: es el silencio que el agente tiene que

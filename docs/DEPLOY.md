@@ -14,7 +14,7 @@ El proyecto está preparado para PaaS: si el proveedor inyecta `PORT` o `DATABAS
 | `ConnectionStrings__Default` o `DATABASE_URL` | ✅ | Conexión a PostgreSQL con pgvector |
 | `OpenAI__ApiKey` | ✅ | Clave de la API de OpenAI |
 | `Jwt__SigningKey` | ✅ | Cadena aleatoria de ≥ 32 caracteres |
-| `OpenAI__ChatModel` | — | `gpt-5-mini` (por defecto) o `gpt-5` |
+| `OpenAI__ChatModel` | — | `gpt-4o-mini` (por defecto). Otro valor solo con evals delante |
 | `Embeddings__Provider` | — | `openai` (por defecto). **No usar `ollama` en la nube.** |
 | `Sentry__Dsn` | — | DSN de Sentry; vacío lo desactiva |
 | `ASPNETCORE_ENVIRONMENT` | — | `Production` |
@@ -94,8 +94,9 @@ en lugar de provocar un ciclo de reinicios.
 
 - **Ollama no se despliega**: el modo de embeddings local es para demostración en máquina
   propia. En la nube se usa `openai` (es el valor por defecto).
-- **Coste de OpenAI**: cada consulta ronda los 0,001 $ con `gpt-5-mini`. Conviene mantener
-  ese modelo en el despliegue de demostración.
+- **Coste de OpenAI**: cada consulta ronda los 0,0002 $ con `gpt-4o-mini`. Conviene mantener
+  ese modelo en el despliegue de demostración: además del coste, es el que responde en menos
+  de un segundo.
 - **Los documentos no viajan en la imagen**: la base de conocimiento vive en la base de
   datos, así que tras el primer despliegue hay que subir los documentos desde la interfaz
   (usuario `admin`).

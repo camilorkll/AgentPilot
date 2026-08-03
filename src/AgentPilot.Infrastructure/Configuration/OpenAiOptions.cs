@@ -11,6 +11,10 @@ public class OpenAiOptions
     /// <summary>Modelo de embeddings (1536 dimensiones).</summary>
     public string EmbeddingModel { get; set; } = "text-embedding-3-small";
 
-    /// <summary>Modelo de chat (se usará en la Fase 3).</summary>
-    public string ChatModel { get; set; } = "gpt-5-mini";
+    /// <summary>
+    /// Modelo de chat. Por defecto gpt-4o-mini: a igualdad de calidad medida sobre el set
+    /// dorado, responde en menos de un segundo frente a los ~4 s de gpt-5-mini, que
+    /// razona antes de emitir el primer token (ver evals/COMPARATIVA-MODELOS.md).
+    /// </summary>
+    public string ChatModel { get; set; } = "gpt-4o-mini";
 }
