@@ -22,12 +22,31 @@ public class CampaignGuard(ICampaignRepository campaigns)
     public async Task<Campaña> ExigirEditableAsync(
         Guid campaignId, CancellationToken cancellationToken = default)
     {
-        var campaign = await campaigns.GetByIdAsync(campaignId, cancellationToken)
-            ?? throw new KeyNotFoundException($"La campaña {campaignId} no existe.");
+        var campaign = await BuscarAsync(campaignId, cancellationToken);
 
         if (!campaign.AdmiteCambiosEnDocumentacion)
             throw new CampaignClosedException(campaign.Id, campaign.Name);
 
         return campaign;
     }
+
+    /// <summary>
+    /// Devuelve la campaña si existe y está activa. Lanza
+    /// <see cref="KeyNotFoundException"/> si no existe y
+    /// <see cref="CampaignNotActiveException"/> si no admite consultas.
+    /// </summary>
+    public async Task<Campaña> ExigirActivaAsync(
+        Guid campaignId, CancellationToken cancellationToken = default)
+    {
+        var campaign = await BuscarAsync(campaignId, cancellationToken);
+
+        if (!campaign.AdmiteConsultas)
+            throw new CampaignNotActiveException(campaign.Id, campaign.Name);
+
+        return campaign;
+    }
+
+    private async Task<Campaña> BuscarAsync(Guid campaignId, CancellationToken cancellationToken)
+        => await campaigns.GetByIdAsync(campaignId, cancellationToken)
+            ?? throw new KeyNotFoundException($"La campaña {campaignId} no existe.");
 }

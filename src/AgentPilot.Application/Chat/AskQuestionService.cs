@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
 using AgentPilot.Application.Abstractions;
+using AgentPilot.Application.Campaigns;
 using AgentPilot.Application.Retrieval;
 using AgentPilot.Domain.Conversations;
 
@@ -18,7 +19,8 @@ public class AskQuestionService(
     IChatCompletionService chat,
     IConversationRepository conversations,
     IMetricsRepository metrics,
-    ICurrentUser currentUser) : IAskQuestionService
+    ICurrentUser currentUser,
+    CampaignGuard campaigns) : IAskQuestionService
 {
     private const int TopK = 5;
 
@@ -41,27 +43,40 @@ public class AskQuestionService(
         """;
 
     public async IAsyncEnumerable<AskEvent> AskAsync(
-        string question, Guid? conversationId,
+        string question, Guid campaignId, Guid? conversationId,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        // 1. Cargar o crear la conversación y registrar la pregunta del usuario.
+        // 1. La campaña debe existir y estar activa. Se comprueba en cada pregunta, no
+        //    solo al poblar el selector: una campaña desactivada a media sesión tiene
+        //    que dejar de responder sin esperar a que el agente recargue la página.
+        var campaign = await campaigns.ExigirActivaAsync(campaignId, cancellationToken);
+
+        // 2. Cargar o crear la conversación y registrar la pregunta del usuario.
         Conversation conversation;
         if (conversationId is Guid id)
         {
             conversation = await conversations.GetByIdAsync(id, cancellationToken)
                 ?? throw new KeyNotFoundException($"Conversación {id} no encontrada.");
+
+            // Manda la campaña de la conversación, no la que venga en la petición: el
+            // historial se reenvía al modelo en cada turno, así que responder con otra
+            // campaña filtraría contenido de la anterior.
+            if (conversation.CampaignId != campaign.Id)
+                throw new CampaignMismatchException(
+                    conversation.Id, conversation.CampaignId, campaign.Id);
         }
         else
         {
-            conversation = new Conversation();
+            conversation = new Conversation(campaign.Id);
             await conversations.AddAsync(conversation, cancellationToken);
         }
         conversation.AddUserMessage(question);
         await conversations.SaveChangesAsync(cancellationToken);
 
-        // 2. Recuperación: embeber la pregunta y buscar los chunks más cercanos.
+        // 3. Recuperación: embeber la pregunta y buscar los chunks más cercanos, solo
+        //    dentro de la campaña.
         var queryVector = await embeddings.EmbedAsync(question, cancellationToken);
-        var matches = await search.SearchAsync(queryVector, TopK, cancellationToken);
+        var matches = await search.SearchAsync(queryVector, campaign.Id, TopK, cancellationToken);
 
         var citations = matches
             .Select(m => new Citation(m.DocumentId, m.DocumentTitle, m.ChunkId, m.Content, m.Score))
@@ -107,7 +122,7 @@ public class AskQuestionService(
         await metrics.RecordCallAsync(
             new Domain.Telemetry.LlmCallLog(
                 chat.ModelName, promptTokens, completionTokens, costUsd, latencyMs,
-                conversation.Id, currentUser.UserName),
+                conversation.Id, currentUser.UserName, campaign.Id, campaign.Name),
             cancellationToken);
 
         yield return new DoneEvent(conversation.Id);

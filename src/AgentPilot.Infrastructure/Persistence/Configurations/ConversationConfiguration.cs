@@ -16,6 +16,16 @@ public class ConversationConfiguration : IEntityTypeConfiguration<Conversation>
         builder.Property(c => c.Title).HasMaxLength(200);
         builder.Property(c => c.CreatedAtUtc).IsRequired();
 
+        // Anulable por las conversaciones anteriores a las campañas. Al eliminar una
+        // campaña la conversación NO se borra: no es corpus, es histórico, y perder
+        // las preguntas ya atendidas dejaría los informes sin cuadrar.
+        builder.HasOne<Domain.Campaigns.Campaña>()
+            .WithMany()
+            .HasForeignKey(c => c.CampaignId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasIndex(c => c.CampaignId);
+
         builder.HasMany(c => c.Messages)
             .WithOne()
             .HasForeignKey(m => m.ConversationId)

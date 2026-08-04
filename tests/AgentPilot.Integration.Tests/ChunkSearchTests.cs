@@ -26,14 +26,18 @@ public class ChunkSearchTests(PgVectorFixture fixture, ITestOutputHelper output)
     /// </summary>
     private static readonly Guid Campaña = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
+    /// <summary>Segunda campaña, para comprobar que sus corpus no se mezclan.</summary>
+    private static readonly Guid OtraCampaña = Guid.Parse("44444444-4444-4444-4444-444444444444");
+
     private async Task ResetAsync(AgentPilotDbContext db)
     {
         // Truncar campaigns arrastra documents y chunks por la cascada, pero se
         // enumeran las tres para que quede explícito qué se está vaciando.
         await db.Database.ExecuteSqlRawAsync("TRUNCATE campaigns, documents, chunks CASCADE;");
         await db.Database.ExecuteSqlInterpolatedAsync($@"
-            INSERT INTO campaigns (""Id"", ""Name"", ""Status"", ""CreatedAtUtc"")
-            VALUES ({Campaña}, 'Campaña de pruebas', 1, now());");
+            INSERT INTO campaigns (""Id"", ""Name"", ""Status"", ""CreatedAtUtc"") VALUES
+              ({Campaña},     'Campaña de pruebas', 1, now()),
+              ({OtraCampaña}, 'Otra campaña',       1, now());");
     }
 
     [Fact]
@@ -54,7 +58,7 @@ public class ChunkSearchTests(PgVectorFixture fixture, ITestOutputHelper output)
 
         // La consulta apunta a la dimensión 0: debe recuperar ese chunk primero.
         var search = new ChunkSearchService(db);
-        var results = await search.SearchAsync(UnitVector(0), topK: 2);
+        var results = await search.SearchAsync(UnitVector(0), Campaña, topK: 2);
 
         Assert.Equal(2, results.Count);
         Assert.Equal("fragmento en la dimensión 0", results[0].Content);
@@ -74,7 +78,7 @@ public class ChunkSearchTests(PgVectorFixture fixture, ITestOutputHelper output)
         db.Documentos.Add(enProceso);
         await db.SaveChangesAsync();
 
-        var results = await new ChunkSearchService(db).SearchAsync(UnitVector(0), topK: 5);
+        var results = await new ChunkSearchService(db).SearchAsync(UnitVector(0), Campaña, topK: 5);
 
         Assert.Empty(results);
     }
@@ -99,7 +103,7 @@ public class ChunkSearchTests(PgVectorFixture fixture, ITestOutputHelper output)
         db.Documentos.AddRange(vigente, caducado);
         await db.SaveChangesAsync();
 
-        var results = await new ChunkSearchService(db).SearchAsync(UnitVector(0), topK: 5);
+        var results = await new ChunkSearchService(db).SearchAsync(UnitVector(0), Campaña, topK: 5);
 
         var contenidos = results.Select(r => r.Content).ToList();
         Assert.Contains("tarifa vigente", contenidos);
@@ -109,8 +113,57 @@ public class ChunkSearchTests(PgVectorFixture fixture, ITestOutputHelper output)
         caducado.Activar();
         await db.SaveChangesAsync();
 
-        var afterReactivation = await new ChunkSearchService(db).SearchAsync(UnitVector(0), topK: 5);
+        var afterReactivation = await new ChunkSearchService(db).SearchAsync(UnitVector(0), Campaña, topK: 5);
         Assert.Contains("promoción caducada", afterReactivation.Select(r => r.Content));
+    }
+
+    /// <summary>
+    /// La prueba que justifica todo el bloque de campañas: dos campañas con documentos
+    /// **idénticos en el espacio vectorial** (el mismo vector unitario), de forma que la
+    /// similitud no puede desempatar. Lo único que decide qué se recupera es la campaña.
+    ///
+    /// Se comprueban las dos direcciones a propósito. Sin la segunda, un filtro
+    /// demasiado estricto —o un parámetro mal pasado— aprobaría el aislamiento dejando
+    /// al asistente ciego, y nadie se enteraría: solo se abstendría siempre.
+    /// </summary>
+    [Fact]
+    public async Task Busqueda_NuncaDevuelveFragmentosDeOtraCampaña()
+    {
+        await using var db = fixture.CreateContext();
+        await ResetAsync(db);
+
+        var mia = new Documento(Campaña, "Tarifas de mi campaña", "tarifas.md");
+        mia.MarcarProcesando();
+        mia.MarcarIndexado("test", [new Chunk(0, "precio de MI campaña", UnitVector(0))]);
+
+        // Mismo nombre de fichero y mismo vector, en otra campaña: es el caso peligroso.
+        var ajena = new Documento(OtraCampaña, "Tarifas de otra campaña", "tarifas.md");
+        ajena.MarcarProcesando();
+        ajena.MarcarIndexado("test", [new Chunk(0, "precio de OTRA campaña", UnitVector(0))]);
+
+        db.Documentos.AddRange(mia, ajena);
+        await db.SaveChangesAsync();
+
+        var search = new ChunkSearchService(db);
+
+        // Aislamiento: desde mi campaña, lo ajeno no existe.
+        var mios = await search.SearchAsync(UnitVector(0), Campaña, topK: 10);
+        Assert.Equal(["precio de MI campaña"], mios.Select(r => r.Content));
+
+        // Contraparte: desde la otra campaña se ve lo suyo y solo lo suyo.
+        var ajenos = await search.SearchAsync(UnitVector(0), OtraCampaña, topK: 10);
+        Assert.Equal(["precio de OTRA campaña"], ajenos.Select(r => r.Content));
+    }
+
+    [Fact]
+    public async Task Busqueda_SinCampaña_Falla_EnLugarDeBuscarEnTodas()
+    {
+        await using var db = fixture.CreateContext();
+
+        // Guid.Empty no es "todas las campañas": es un olvido. Y un olvido que devolviera
+        // resultados sería una fuga silenciosa, así que se rechaza.
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => new ChunkSearchService(db).SearchAsync(UnitVector(0), Guid.Empty));
     }
 
     [SkippableFact]
@@ -143,7 +196,7 @@ public class ChunkSearchTests(PgVectorFixture fixture, ITestOutputHelper output)
 
         // La pregunta NO comparte palabras con "cambio de tarifa": prueba semántica.
         var query = await embeddings.EmbedAsync("¿puedo pasarme a un plan más barato?");
-        var results = await new ChunkSearchService(db).SearchAsync(query, topK: 3);
+        var results = await new ChunkSearchService(db).SearchAsync(query, Campaña, topK: 3);
 
         output.WriteLine("Pregunta: ¿puedo pasarme a un plan más barato?");
         foreach (var r in results)

@@ -10,6 +10,17 @@ public class Conversation
     private readonly List<Message> _messages = [];
 
     public Guid Id { get; private set; }
+
+    /// <summary>
+    /// Campaña sobre la que se conversa. Se fija al crear la conversación y no cambia
+    /// nunca: el historial se reenvía al modelo en cada turno, así que cambiarla
+    /// arrastraría contenido de la campaña anterior al contexto de la nueva.
+    ///
+    /// Es anulable solo por las conversaciones anteriores a la existencia de campañas,
+    /// que por eso mismo no se pueden continuar.
+    /// </summary>
+    public Guid? CampaignId { get; private set; }
+
     public string? Title { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
 
@@ -17,9 +28,14 @@ public class Conversation
 
     private Conversation() { } // EF
 
-    public Conversation(string? title = null)
+    public Conversation(Guid campaignId, string? title = null)
     {
+        if (campaignId == Guid.Empty)
+            throw new ArgumentException(
+                "La conversación debe pertenecer a una campaña.", nameof(campaignId));
+
         Id = Guid.NewGuid();
+        CampaignId = campaignId;
         CreatedAtUtc = DateTime.UtcNow;
         Title = title;
     }

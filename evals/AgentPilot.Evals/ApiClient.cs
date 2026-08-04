@@ -26,7 +26,7 @@ public sealed record AskMeasurement(
     double CostUsd);
 
 /// <summary>Cliente HTTP del arnés: login y consumo del stream SSE de /chat/ask.</summary>
-public class ApiClient(string baseUrl)
+public class ApiClient(string baseUrl, Guid campaignId)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private readonly HttpClient _http = new() { BaseAddress = new Uri(baseUrl), Timeout = TimeSpan.FromMinutes(3) };
@@ -47,7 +47,8 @@ public class ApiClient(string baseUrl)
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/chat/ask")
         {
             Content = new StringContent(
-                JsonSerializer.Serialize(new { question }), Encoding.UTF8, "application/json"),
+                JsonSerializer.Serialize(new { question, campaignId }),
+                Encoding.UTF8, "application/json"),
         };
 
         // El cronómetro arranca antes de enviar: mide lo que espera el agente, no lo que tarda el modelo.

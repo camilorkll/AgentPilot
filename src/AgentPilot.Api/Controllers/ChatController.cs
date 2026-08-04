@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AgentPilot.Api.Contracts;
+using AgentPilot.Application.Campaigns;
 using AgentPilot.Application.Chat;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,9 +20,15 @@ public class ChatController(IAskQuestionService ask) : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Question))
         {
-            Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Response.WriteAsJsonAsync(
-                new { code = "validation_error", message = "La pregunta es obligatoria." },
+            await ErrorAsync(StatusCodes.Status400BadRequest,
+                "validation_error", "La pregunta es obligatoria.", cancellationToken);
+            return;
+        }
+
+        if (request.CampaignId is null || request.CampaignId == Guid.Empty)
+        {
+            await ErrorAsync(StatusCodes.Status400BadRequest, "validation_error",
+                "Hay que indicar la campaña sobre la que se pregunta (campaignId).",
                 cancellationToken);
             return;
         }
@@ -29,19 +36,38 @@ public class ChatController(IAskQuestionService ask) : ControllerBase
         var sseStarted = false;
         try
         {
-            await foreach (var evt in ask.AskAsync(request.Question, request.ConversationId, cancellationToken))
+            var events = ask.AskAsync(
+                request.Question, request.CampaignId.Value, request.ConversationId, cancellationToken);
+
+            await foreach (var evt in events)
             {
                 if (!sseStarted) { StartSse(); sseStarted = true; }
                 var (name, payload) = MapEvent(evt);
                 await WriteEventAsync(name, payload, cancellationToken);
             }
         }
-        catch (KeyNotFoundException) when (!Response.HasStarted)
+        // Los errores se traducen solo si el stream no ha empezado: una vez enviado el
+        // primer evento SSE ya no se puede cambiar el código de estado.
+        catch (KeyNotFoundException ex) when (!Response.HasStarted)
         {
-            Response.StatusCode = StatusCodes.Status404NotFound;
-            await Response.WriteAsJsonAsync(
-                new { code = "not_found", message = "Conversación no encontrada." }, cancellationToken);
+            await ErrorAsync(StatusCodes.Status404NotFound, "not_found", ex.Message, cancellationToken);
         }
+        catch (CampaignNotActiveException ex) when (!Response.HasStarted)
+        {
+            await ErrorAsync(StatusCodes.Status409Conflict,
+                "campaign_not_active", ex.Message, cancellationToken);
+        }
+        catch (CampaignMismatchException ex) when (!Response.HasStarted)
+        {
+            await ErrorAsync(StatusCodes.Status409Conflict,
+                "campaign_mismatch", ex.Message, cancellationToken);
+        }
+    }
+
+    private async Task ErrorAsync(int status, string code, string message, CancellationToken ct)
+    {
+        Response.StatusCode = status;
+        await Response.WriteAsJsonAsync(new { code, message }, ct);
     }
 
     private void StartSse()

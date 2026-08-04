@@ -4,10 +4,21 @@ namespace AgentPilot.Domain.Tests;
 
 public class ConversationTests
 {
+    /// <summary>Campaña de la conversación: se fija al crearla y no cambia.</summary>
+    private static readonly Guid Campaña = Guid.NewGuid();
+
+    [Fact]
+    public void UnaConversacionSinCampaña_NoTieneSentido()
+    {
+        // El historial se reenvía al modelo en cada turno; sin campaña no se sabría con
+        // qué corpus se está respondiendo.
+        Assert.Throws<ArgumentException>(() => new Conversation(Guid.Empty));
+    }
+
     [Fact]
     public void AddUserMessage_DerivaElTituloDeLaPrimeraPregunta()
     {
-        var conversation = new Conversation();
+        var conversation = new Conversation(Campaña);
 
         conversation.AddUserMessage("¿Puedo cambiar de tarifa?");
 
@@ -18,7 +29,7 @@ public class ConversationTests
     [Fact]
     public void Titulo_SeTruncaSiLaPreguntaEsMuyLarga()
     {
-        var conversation = new Conversation();
+        var conversation = new Conversation(Campaña);
         var preguntaLarga = new string('a', 200);
 
         conversation.AddUserMessage(preguntaLarga);
@@ -30,7 +41,7 @@ public class ConversationTests
     [Fact]
     public void AddAssistantMessage_GuardaContenidoYCitas()
     {
-        var conversation = new Conversation();
+        var conversation = new Conversation(Campaña);
         conversation.AddUserMessage("¿Cuánto cuesta la tarifa Nova Mini?");
         var citas = new[]
         {
@@ -48,7 +59,7 @@ public class ConversationTests
     [Fact]
     public void MensajeDeUsuario_NoTieneCitas()
     {
-        var conversation = new Conversation();
+        var conversation = new Conversation(Campaña);
 
         var mensaje = conversation.AddUserMessage("hola");
 

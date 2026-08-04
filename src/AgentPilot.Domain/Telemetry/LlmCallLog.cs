@@ -13,6 +13,17 @@ public class LlmCallLog
     /// <summary>Operador que hizo la consulta, para el desglose por agente del dashboard.</summary>
     public string? UserName { get; private set; }
 
+    /// <summary>Campaña en la que se trabajaba. Null en el histórico previo a las campañas.</summary>
+    public Guid? CampaignId { get; private set; }
+
+    /// <summary>
+    /// Nombre de la campaña, desnormalizado a propósito y sin clave foránea: el informe
+    /// de coste por campaña debe seguir leyéndose después de eliminarla. Un registro de
+    /// telemetría cuenta lo que pasó, y lo que pasó no cambia porque hoy ya no exista
+    /// la campaña.
+    /// </summary>
+    public string? CampaignName { get; private set; }
+
     public int PromptTokens { get; private set; }
     public int CompletionTokens { get; private set; }
     public double EstimatedCostUsd { get; private set; }
@@ -23,8 +34,11 @@ public class LlmCallLog
 
     public LlmCallLog(
         string model, int promptTokens, int completionTokens,
-        double estimatedCostUsd, long latencyMs, Guid? conversationId, string? userName = null)
+        double estimatedCostUsd, long latencyMs, Guid? conversationId, string? userName = null,
+        Guid? campaignId = null, string? campaignName = null)
     {
+        CampaignId = campaignId;
+        CampaignName = campaignName;
         Id = Guid.NewGuid();
         Model = model;
         PromptTokens = promptTokens;

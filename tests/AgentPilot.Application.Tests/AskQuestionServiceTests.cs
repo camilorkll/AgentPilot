@@ -1,13 +1,17 @@
 using System.Runtime.CompilerServices;
 using AgentPilot.Application.Abstractions;
+using AgentPilot.Application.Campaigns;
 using AgentPilot.Application.Chat;
 using AgentPilot.Application.Retrieval;
+using AgentPilot.Domain.Campaigns;
 using AgentPilot.Domain.Conversations;
 
 namespace AgentPilot.Application.Tests;
 
 public class AskQuestionServiceTests
 {
+    private static readonly Campaña Activa = new("TeleNova");
+
     [Fact]
     public async Task Ask_RecuperaContexto_GeneraRespuesta_YPersisteLaConversacion()
     {
@@ -26,11 +30,13 @@ public class AskQuestionServiceTests
         var metrics = new FakeMetrics();
 
         var service = new AskQuestionService(
-            embeddings, search, chat, repo, metrics, new FakeCurrentUser("agente"));
+            embeddings, search, chat, repo, metrics, new FakeCurrentUser("agente"),
+            new CampaignGuard(new FakeCampaigns(Activa)));
 
         // Act
         var events = new List<AskEvent>();
-        await foreach (var e in service.AskAsync("¿puedo cambiar de tarifa?", conversationId: null))
+        await foreach (var e in service.AskAsync(
+            "¿puedo cambiar de tarifa?", Activa.Id, conversationId: null))
             events.Add(e);
 
         // Assert: secuencia de eventos (tokens → citas → uso → fin).
@@ -71,14 +77,102 @@ public class AskQuestionServiceTests
         Assert.Equal("El cambio es gratis.", assistant.Content);
         Assert.Equal(2, assistant.Citations.Count);
 
-        // Se registró la llamada al LLM para el dashboard de coste, atribuida al operador.
+        // Se registró la llamada al LLM para el dashboard de coste, atribuida al operador
+        // y a la campaña (el nombre va desnormalizado para que el informe sobreviva a
+        // que la campaña se elimine).
         Assert.NotNull(metrics.Recorded);
         Assert.Equal("gpt-5-mini", metrics.Recorded!.Model);
         Assert.Equal(120, metrics.Recorded.PromptTokens);
         Assert.Equal("agente", metrics.Recorded.UserName);
+        Assert.Equal(Activa.Id, metrics.Recorded.CampaignId);
+        Assert.Equal("TeleNova", metrics.Recorded.CampaignName);
+
+        // La conversación queda atada a la campaña.
+        Assert.Equal(Activa.Id, saved.CampaignId);
     }
 
+    [Fact]
+    public async Task Ask_BuscaSoloEnLaCampañaIndicada()
+    {
+        var search = new FakeSearch([]);
+        var service = Build(search, Activa);
+
+        await foreach (var _ in service.AskAsync("¿cuánto cuesta?", Activa.Id, null)) { }
+
+        // Que la campaña llegue al buscador es la garantía de aislamiento: si se
+        // perdiera aquí, el filtro de la consulta SQL no serviría de nada.
+        Assert.Equal(Activa.Id, search.CampañaRecibida);
+    }
+
+    [Fact]
+    public async Task Ask_EnUnaCampañaNoActiva_SeRechaza()
+    {
+        var inactiva = new Campaña("Campaña en preparación");
+        inactiva.Desactivar();
+        var service = Build(new FakeSearch([]), inactiva);
+
+        // Se comprueba en cada pregunta: una campaña desactivada a media sesión debe
+        // dejar de responder sin esperar a que el agente recargue.
+        await Assert.ThrowsAsync<CampaignNotActiveException>(async () =>
+        {
+            await foreach (var _ in service.AskAsync("¿cuánto cuesta?", inactiva.Id, null)) { }
+        });
+    }
+
+    [Fact]
+    public async Task Ask_ContinuandoUnaConversacionDeOtraCampaña_SeRechaza()
+    {
+        var repo = new FakeConversationRepository();
+        var deOtraCampaña = new Conversation(Guid.NewGuid());
+        await repo.AddAsync(deOtraCampaña);
+
+        var service = Build(new FakeSearch([]), Activa, repo);
+
+        // Cambiar de campaña dentro de una conversación arrastraría el historial de la
+        // anterior al contexto del modelo, así que exige empezar otra.
+        var ex = await Assert.ThrowsAsync<CampaignMismatchException>(async () =>
+        {
+            await foreach (var _ in service.AskAsync("¿cuánto cuesta?", Activa.Id, deOtraCampaña.Id)) { }
+        });
+
+        Assert.Equal(deOtraCampaña.Id, ex.ConversationId);
+    }
+
+    [Fact]
+    public async Task Ask_ContinuandoUnaConversacionSinCampaña_SeRechaza()
+    {
+        // Las conversaciones anteriores a las campañas no se pueden continuar: no se
+        // sabe con qué corpus se respondieron, así que adoptar una campaña ahora podría
+        // mezclar contenidos.
+        var repo = new FakeConversationRepository();
+        var legado = (Conversation)Activator.CreateInstance(typeof(Conversation), nonPublic: true)!;
+        await repo.AddAsync(legado);
+
+        var service = Build(new FakeSearch([]), Activa, repo);
+
+        var ex = await Assert.ThrowsAsync<CampaignMismatchException>(async () =>
+        {
+            await foreach (var _ in service.AskAsync("¿cuánto cuesta?", Activa.Id, legado.Id)) { }
+        });
+
+        Assert.Null(ex.ConversationCampaignId);
+        Assert.Contains("anterior a las campañas", ex.Message);
+    }
+
+    private static AskQuestionService Build(
+        FakeSearch search, Campaña campaña, FakeConversationRepository? repo = null)
+        => new(
+            new FakeEmbeddings(), search, new FakeChat(["ok"]),
+            repo ?? new FakeConversationRepository(), new FakeMetrics(),
+            new FakeCurrentUser("agente"), new CampaignGuard(new FakeCampaigns(campaña)));
+
     // --- Dobles ---
+
+    private sealed class FakeCampaigns(Campaña campaña) : ICampaignRepository
+    {
+        public Task<Campaña?> GetByIdAsync(Guid id, CancellationToken ct = default)
+            => Task.FromResult(campaña.Id == id ? campaña : null);
+    }
 
     private sealed class FakeEmbeddings : IEmbeddingService
     {
@@ -90,8 +184,14 @@ public class AskQuestionServiceTests
 
     private sealed class FakeSearch(IReadOnlyList<ChunkMatch> results) : IChunkSearchService
     {
-        public Task<IReadOnlyList<ChunkMatch>> SearchAsync(float[] q, int topK = 5, CancellationToken ct = default)
-            => Task.FromResult(results);
+        public Guid? CampañaRecibida { get; private set; }
+
+        public Task<IReadOnlyList<ChunkMatch>> SearchAsync(
+            float[] q, Guid campaignId, int topK = 5, CancellationToken ct = default)
+        {
+            CampañaRecibida = campaignId;
+            return Task.FromResult(results);
+        }
     }
 
     private sealed class FakeChat(string[] deltas) : IChatCompletionService

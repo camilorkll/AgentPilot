@@ -13,8 +13,14 @@ namespace AgentPilot.Infrastructure.Persistence;
 public class ChunkSearchService(AgentPilotDbContext db) : IChunkSearchService
 {
     public async Task<IReadOnlyList<ChunkMatch>> SearchAsync(
-        float[] queryEmbedding, int topK = 5, CancellationToken cancellationToken = default)
+        float[] queryEmbedding, Guid campaignId, int topK = 5,
+        CancellationToken cancellationToken = default)
     {
+        if (campaignId == Guid.Empty)
+            throw new ArgumentException(
+                "La búsqueda exige una campaña: sin ella recuperaría documentación de " +
+                "cualquier campaña.", nameof(campaignId));
+
         // pgvector espera el vector como "[f1,f2,...]"; lo casteamos a 'vector'.
         var vectorLiteral =
             "[" + string.Join(",", queryEmbedding.Select(f => f.ToString(CultureInfo.InvariantCulture))) + "]";
@@ -29,7 +35,9 @@ public class ChunkSearchService(AgentPilotDbContext db) : IChunkSearchService
                    1 - (c.""Embedding"" <=> CAST({vectorLiteral} AS vector)) AS ""Score""
             FROM chunks c
             JOIN documents d ON d.""Id"" = c.""DocumentId""
-            WHERE d.""Status"" = 'Ready' AND d.""IsActive"" = true
+            WHERE d.""CampaignId"" = {campaignId}
+              AND d.""Status"" = 'Ready'
+              AND d.""IsActive"" = true
             ORDER BY c.""Embedding"" <=> CAST({vectorLiteral} AS vector)
             LIMIT {topK}";
 

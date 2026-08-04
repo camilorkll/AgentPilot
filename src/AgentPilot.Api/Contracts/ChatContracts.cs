@@ -2,8 +2,12 @@ using AgentPilot.Domain.Conversations;
 
 namespace AgentPilot.Api.Contracts;
 
-/// <summary>Cuerpo de POST /chat/ask.</summary>
-public record AskRequest(string Question, Guid? ConversationId);
+/// <summary>
+/// Cuerpo de POST /chat/ask. <see cref="CampaignId"/> es obligatorio: sin valor por
+/// defecto, para que un olvido del cliente sea un error visible y no una respuesta con
+/// documentación de otra campaña.
+/// </summary>
+public record AskRequest(string Question, Guid? CampaignId, Guid? ConversationId);
 
 /// <summary>Cita emitida en el evento SSE 'citations' (esquema Citation del OpenAPI).</summary>
 public record CitationDto(
@@ -15,7 +19,8 @@ public record UsageDto(
 
 /// <summary>Respuesta de GET /conversations/{id}.</summary>
 public record ConversationResponse(
-    Guid Id, string? Title, IReadOnlyList<MessageResponse> Messages, DateTime CreatedAtUtc);
+    Guid Id, Guid? CampaignId, string? Title,
+    IReadOnlyList<MessageResponse> Messages, DateTime CreatedAtUtc);
 
 public record MessageResponse(
     Guid Id, string Role, string Content, IReadOnlyList<CitationDto> Citations, DateTime CreatedAtUtc);
@@ -28,7 +33,7 @@ public static class ChatMappings
         Math.Round(c.Score, 4));
 
     public static ConversationResponse ToResponse(this Conversation c) => new(
-        c.Id, c.Title,
+        c.Id, c.CampaignId, c.Title,
         c.Messages
             .OrderBy(m => m.CreatedAtUtc)
             .Select(m => new MessageResponse(

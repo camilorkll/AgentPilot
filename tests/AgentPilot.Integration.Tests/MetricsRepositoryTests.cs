@@ -7,11 +7,20 @@ namespace AgentPilot.Integration.Tests;
 
 public class MetricsRepositoryTests(PgVectorFixture fixture) : IClassFixture<PgVectorFixture>
 {
+    /// <summary>
+    /// Campaña de las conversaciones de prueba: hay clave foránea desde conversations,
+    /// así que tiene que existir en la tabla.
+    /// </summary>
+    private static readonly Guid Campaña = Guid.Parse("55555555-5555-5555-5555-555555555555");
+
     private async Task<AgentPilotDbContext> FreshContextAsync()
     {
         var db = fixture.CreateContext();
         await db.Database.ExecuteSqlRawAsync(
-            "TRUNCATE llm_call_logs, feedback, conversations, documents CASCADE;");
+            "TRUNCATE campaigns, llm_call_logs, feedback, conversations, documents CASCADE;");
+        await db.Database.ExecuteSqlInterpolatedAsync($@"
+            INSERT INTO campaigns (""Id"", ""Name"", ""Status"", ""CreatedAtUtc"")
+            VALUES ({Campaña}, 'Campaña de métricas', 1, now());");
         return db;
     }
 
@@ -27,7 +36,7 @@ public class MetricsRepositoryTests(PgVectorFixture fixture) : IClassFixture<PgV
             new LlmCallLog("gpt-5", 200, 80, 0.010, 300, null, "admin"));
 
         // Una conversación con respuesta y un feedback positivo sobre ella.
-        var conversation = new Conversation();
+        var conversation = new Conversation(Campaña);
         conversation.AddUserMessage("¿pregunta?");
         var assistant = conversation.AddAssistantMessage("respuesta", []);
         db.Conversations.Add(conversation);

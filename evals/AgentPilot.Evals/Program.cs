@@ -6,7 +6,7 @@ using AgentPilot.Evals;
 // Arnés de evaluación del RAG: lanza el set dorado contra la API y puntúa
 // recuperación, exactitud de respuesta y abstención correcta.
 //
-// Uso:  dotnet run --project evals/AgentPilot.Evals [-- baseUrl usuario contraseña]
+// Uso:  dotnet run --project evals/AgentPilot.Evals [-- baseUrl usuario contraseña campaña]
 
 Console.OutputEncoding = Encoding.UTF8;
 
@@ -14,15 +14,21 @@ var baseUrl = args.ElementAtOrDefault(0) ?? "http://localhost:8080";
 var username = args.ElementAtOrDefault(1) ?? "agente";
 var password = args.ElementAtOrDefault(2) ?? "agente1234";
 
+// El asistente responde siempre dentro de una campaña, así que el arnés también.
+// Por defecto, la campaña "TeleNova" que crea la migración con Guid fijo: es la que
+// contiene el corpus del set dorado.
+var campaignId = Guid.Parse(
+    args.ElementAtOrDefault(3) ?? "11111111-1111-1111-1111-111111111111");
+
 var goldenPath = LocateGoldenSet();
 var golden = JsonSerializer.Deserialize<GoldenSet>(
     File.ReadAllText(goldenPath),
     new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
 
 Console.WriteLine($"Set dorado: {golden.Cases.Count} casos ({goldenPath})");
-Console.WriteLine($"API: {baseUrl}  ·  usuario: {username}\n");
+Console.WriteLine($"API: {baseUrl}  ·  usuario: {username}  ·  campaña: {campaignId}\n");
 
-var api = new ApiClient(baseUrl);
+var api = new ApiClient(baseUrl, campaignId);
 await api.LoginAsync(username, password);
 
 var results = new List<EvalResult>();
