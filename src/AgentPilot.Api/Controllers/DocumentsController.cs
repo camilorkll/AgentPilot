@@ -13,7 +13,8 @@ namespace AgentPilot.Api.Controllers;
 [Authorize] // cualquier usuario autenticado; la escritura exige rol admin
 public class DocumentsController(
     IDocumentIngestionService ingestion,
-    IDocumentRepository repository) : ControllerBase
+    IDocumentRepository repository,
+    CampaignGuard campaignGuard) : ControllerBase
 {
     /// <summary>Sube un documento; la ingesta se procesa en segundo plano.</summary>
     [HttpPost]
@@ -113,6 +114,15 @@ public class DocumentsController(
         var document = await repository.GetByIdAsync(documentId, cancellationToken);
         if (document is null) return NotFound();
 
+        try
+        {
+            await campaignGuard.ExigirEditableAsync(document.CampaignId, cancellationToken);
+        }
+        catch (CampaignClosedException ex)
+        {
+            return Conflict(new { code = "campaign_closed", message = ex.Message });
+        }
+
         repository.Delete(document); // los chunks se borran en cascada
         await repository.SaveChangesAsync(cancellationToken);
         return NoContent();
@@ -132,13 +142,28 @@ public class DocumentsController(
         if (request.DocumentIds is null || request.DocumentIds.Count == 0)
             return BadRequest(new { code = "validation_error", message = "No se indicó ningún documento." });
 
-        var updated = new List<DocumentResponse>();
-
+        var documents = new List<Domain.Documents.Documento>();
         foreach (var id in request.DocumentIds.Distinct())
         {
             var document = await repository.GetByIdAsync(id, cancellationToken);
-            if (document is null) continue;
+            if (document is not null) documents.Add(document);
+        }
 
+        // Se valida por campaña (no documento a documento) y antes de tocar nada: o se
+        // aplica a todos los seleccionados, o a ninguno.
+        try
+        {
+            foreach (var campaignId in documents.Select(d => d.CampaignId).Distinct())
+                await campaignGuard.ExigirEditableAsync(campaignId, cancellationToken);
+        }
+        catch (CampaignClosedException ex)
+        {
+            return Conflict(new { code = "campaign_closed", message = ex.Message });
+        }
+
+        var updated = new List<DocumentResponse>();
+        foreach (var document in documents)
+        {
             if (request.IsActive) document.Activar();
             else document.Desactivar();
 
@@ -162,18 +187,29 @@ public class DocumentsController(
             return BadRequest(new { code = "validation_error", message = "No se indicó ningún documento." });
 
         var notFound = new List<Guid>();
-        var deleted = 0;
+        var documents = new List<Domain.Documents.Documento>();
 
         foreach (var id in request.DocumentIds.Distinct())
         {
             var document = await repository.GetByIdAsync(id, cancellationToken);
-            if (document is null) { notFound.Add(id); continue; }
-
-            repository.Delete(document);
-            deleted++;
+            if (document is null) notFound.Add(id);
+            else documents.Add(document);
         }
 
+        try
+        {
+            foreach (var campaignId in documents.Select(d => d.CampaignId).Distinct())
+                await campaignGuard.ExigirEditableAsync(campaignId, cancellationToken);
+        }
+        catch (CampaignClosedException ex)
+        {
+            return Conflict(new { code = "campaign_closed", message = ex.Message });
+        }
+
+        foreach (var document in documents)
+            repository.Delete(document);
+
         await repository.SaveChangesAsync(cancellationToken);
-        return new DeleteDocumentsResponse(deleted, notFound);
+        return new DeleteDocumentsResponse(documents.Count, notFound);
     }
 }

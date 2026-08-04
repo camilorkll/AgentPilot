@@ -122,6 +122,19 @@ public class DocumentIngestionServiceTests
     {
         public Task<Campaña?> GetByIdAsync(Guid id, CancellationToken ct = default)
             => Task.FromResult(campaña is not null && campaña.Id == id ? campaña : null);
+
+        // No ejercitados por estas pruebas: la ingesta solo lee una campaña.
+        public Task<IReadOnlyList<CampaignWithCounts>> ListWithCountsAsync(CancellationToken ct = default)
+            => throw new NotSupportedException();
+        public Task<IReadOnlyList<CampaignWithCounts>> ListActiveWithCountsAsync(CancellationToken ct = default)
+            => throw new NotSupportedException();
+        public Task<(int, int)> CountDocumentsAsync(Guid id, CancellationToken ct = default)
+            => throw new NotSupportedException();
+        public Task<bool> ExistsByNameAsync(string name, Guid? excludingId = null, CancellationToken ct = default)
+            => throw new NotSupportedException();
+        public Task AddAsync(Campaña c, CancellationToken ct = default) => throw new NotSupportedException();
+        public void Delete(Campaña c) => throw new NotSupportedException();
+        public Task SaveChangesAsync(CancellationToken ct = default) => throw new NotSupportedException();
     }
 
     private sealed class FakeDocuments(Documento[] existing) : IDocumentRepository

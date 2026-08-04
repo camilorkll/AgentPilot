@@ -19,6 +19,9 @@ public static class DependencyInjection
         // Guarda de campaña: la usan todos los comandos que tocan documentación.
         services.AddScoped<CampaignGuard>();
 
+        // Administración de campañas.
+        services.AddScoped<ICampaignService, CampaignService>();
+
         // Orquestador de ingesta (scoped: usa el repositorio, que usa el DbContext).
         services.AddScoped<IDocumentIngestionService, DocumentIngestionService>();
 
