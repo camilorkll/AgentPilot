@@ -1,0 +1,26 @@
+{
+  "description": "Set dorado de la campaña Luz y Gas Premium (comercializadora ficticia de electricidad y gas). 15 preguntas respondibles (1-15) + 5 fuera del corpus (16-20). Los casos 1 y 2 exigen recuperar información de fragmentos alejados del principio del documento largo (03-catalogo-tarifas.md), para validar la recuperación multi-fragmento.",
+  "cases": [
+    { "id": 1,  "question": "¿Cuánto es el término fijo mensual del piso de 80 m² con potencia 3,45 kW en Tarifa Estable?", "expectedDocument": "03-catalogo-tarifas", "expectedKeywords": ["11,07"], "answerable": true },
+    { "id": 2,  "question": "¿Cuál es la penalización máxima por baja anticipada del chalet con bomba de calor aerotérmica?", "expectedDocument": null, "expectedKeywords": ["150"], "answerable": true },
+    { "id": 3,  "question": "¿Cada cuántos años hay que revisar la instalación interior de gas en una vivienda?", "expectedDocument": "02-contratacion-gas", "expectedKeywords": ["5"], "answerable": true },
+    { "id": 4,  "question": "¿Hasta cuántos cambios de potencia gratuitos al año puede solicitar un cliente de electricidad?", "expectedDocument": "01-contratacion-electricidad", "expectedKeywords": ["2", "dos"], "answerable": true },
+    { "id": 5,  "question": "¿Qué documento acredita el fallecimiento del titular para cambiar la titularidad de un suministro?", "expectedDocument": "04-cambio-titular", "expectedKeywords": ["certificado de defunción"], "answerable": true },
+    { "id": 6,  "question": "¿A qué teléfono hay que llamar ante un olor a gas?", "expectedDocument": "05-averias-y-urgencias", "expectedKeywords": ["900 200 200"], "answerable": true },
+    { "id": 7,  "question": "¿Quién ejecuta el corte de suministro por impago, la distribuidora o la comercializadora?", "expectedDocument": null, "expectedKeywords": ["distribuidora"], "answerable": true },
+    { "id": 8,  "question": "¿A partir de qué día sin pagar se corta el suministro por impago?", "expectedDocument": "06-facturacion-y-pagos", "expectedKeywords": ["30"], "answerable": true },
+    { "id": 9,  "question": "¿Qué condición de pago es obligatoria para acceder a la Tarifa Dúo?", "expectedDocument": null, "expectedKeywords": ["domiciliación"], "answerable": true },
+    { "id": 10, "question": "¿Cuánto cuesta la reconexión del suministro eléctrico tras un corte por impago?", "expectedDocument": "05-averias-y-urgencias", "expectedKeywords": ["25"], "answerable": true },
+    { "id": 11, "question": "¿En cuántos días naturales debe resolverse una reclamación formal?", "expectedDocument": "07-atencion-al-cliente", "expectedKeywords": ["15"], "answerable": true },
+    { "id": 12, "question": "¿Es vinculante el laudo del arbitraje de consumo?", "expectedDocument": "07-atencion-al-cliente", "expectedKeywords": ["vinculante"], "answerable": true },
+    { "id": 13, "question": "¿Qué penalización máxima tiene la instalación gratuita de una caldera de condensación?", "expectedDocument": "08-permanencias-y-penalizaciones", "expectedKeywords": ["130"], "answerable": true },
+    { "id": 14, "question": "¿Cuánto cuesta al mes el servicio de batería virtual?", "expectedDocument": "09-servicios-adicionales", "expectedKeywords": ["5,90"], "answerable": true },
+    { "id": 15, "question": "¿Qué significa CUPS?", "expectedDocument": "10-glosario-y-faq", "expectedKeywords": ["Código Universal del Punto de Suministro"], "answerable": true },
+
+    { "id": 16, "question": "¿Cuál es el horario de la oficina de Luz y Gas Premium en Madrid?", "expectedDocument": null, "expectedKeywords": [], "answerable": false },
+    { "id": 17, "question": "¿Cuántos empleados tiene Luz y Gas Premium?", "expectedDocument": null, "expectedKeywords": [], "answerable": false },
+    { "id": 18, "question": "¿Ofrece Luz y Gas Premium servicio de telefonía móvil?", "expectedDocument": null, "expectedKeywords": [], "answerable": false },
+    { "id": 19, "question": "¿Cuál es la cotización en bolsa de Luz y Gas Premium?", "expectedDocument": null, "expectedKeywords": [], "answerable": false },
+    { "id": 20, "question": "¿Qué tarifas de televisión por cable ofrece Luz y Gas Premium?", "expectedDocument": null, "expectedKeywords": [], "answerable": false }
+  ]
+}

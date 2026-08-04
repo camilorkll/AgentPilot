@@ -49,8 +49,19 @@ dotnet run --project evals/AgentPilot.Evals -- all
 
 Ejecuta cada entrada de [`golden-set/campaigns.json`](golden-set/campaigns.json)
 contra su propia campaña, con una sola sesión, y escribe `RESULTS-<campaña>.md`
-por cada una más un comparado en `RESULTS-CAMPAIGNS.md`. Añadir una campaña (por
-ejemplo, «Luz y Gas Premium») es añadir una línea al manifiesto, sin tocar código.
+por cada una más un comparado en `RESULTS-CAMPAIGNS.md`. Añadir una campaña es
+añadir una línea al manifiesto, sin tocar código.
+
+**Pendiente para «Luz y Gas Premium»**: el corpus
+([`corpus-luz-y-gas/`](../corpus-luz-y-gas/)) y su set dorado
+([`golden-set/golden-set-luzygas.json`](golden-set/golden-set-luzygas.json), 15
+casos respondibles + 5 fuera del corpus) ya están escritos, pero la campaña
+todavía no existe en la aplicación: hay que crearla desde `/campaigns` y subir
+los 10 documentos desde `/documents`, como con TeleNova (nadie lo hace por
+script). En cuanto exista, añadir su `campaignId` real a `campaigns.json`
+habilita el modo `-- all` para las dos campañas, y
+`-- isolation http://localhost:8080 admin admin1234 <esaCampaignId>` prueba el
+aislamiento contra su corpus real en vez de contra una campaña vacía.
 
 ### Aislamiento entre campañas: `-- isolation`
 
