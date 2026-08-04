@@ -1,5 +1,26 @@
 /** Contratos de la API de AgentPilot (espejo de docs/openapi.yaml). */
 
+export type CampaignStatus = 'inactive' | 'active' | 'closed';
+
+/** Proyección reducida para el selector del agente: no incluye configuración. */
+export interface CampaignSummary {
+  id: string;
+  name: string;
+  activeDocumentCount: number;
+}
+
+/** Campaña completa, para el mantenimiento del administrador. */
+export interface Campaign {
+  id: string;
+  name: string;
+  status: CampaignStatus;
+  documentCount: number;
+  activeDocumentCount: number;
+  assistantInstructions: string | null;
+  closedAtUtc: string | null;
+  createdAtUtc: string;
+}
+
 export interface LoginResponse {
   accessToken: string;
   role: 'agent' | 'admin';

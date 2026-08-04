@@ -2,7 +2,16 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from './auth.service';
-import { Citation, DocumentContent, DocumentSummary, MetricsSummary, Usage } from './models';
+import {
+  Campaign,
+  CampaignStatus,
+  CampaignSummary,
+  Citation,
+  DocumentContent,
+  DocumentSummary,
+  MetricsSummary,
+  Usage,
+} from './models';
 
 /** Callbacks del stream de una pregunta. */
 export interface AskHandlers {
@@ -20,21 +29,33 @@ export class ApiService {
   // --- Chat (SSE) ---
 
   /**
-   * Envía una pregunta y procesa el stream de Server-Sent Events.
+   * Envía una pregunta y procesa el stream de Server-Sent Events. La campaña es
+   * obligatoria y sin valor por defecto: es la frontera que impide responder con
+   * documentación de otra campaña.
+   *
    * Usamos fetch (no EventSource) porque necesitamos POST con cabecera Authorization.
    */
-  async ask(question: string, conversationId: string | null, handlers: AskHandlers): Promise<void> {
+  async ask(
+    question: string, campaignId: string, conversationId: string | null, handlers: AskHandlers
+  ): Promise<void> {
     const response = await fetch('/api/v1/chat/ask', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.auth.token()}`,
       },
-      body: JSON.stringify({ question, conversationId }),
+      body: JSON.stringify({ question, campaignId, conversationId }),
     });
 
     if (!response.ok || !response.body) {
-      throw new Error(`La API respondió ${response.status}`);
+      // El error llega como JSON (no como SSE) cuando la petición se rechaza antes de
+      // empezar a responder: campaña inactiva, conversación de otra campaña, etc.
+      let message = `La API respondió ${response.status}`;
+      try {
+        const body = await response.json();
+        if (body?.message) message = body.message;
+      } catch { /* el cuerpo no era JSON; se mantiene el mensaje genérico */ }
+      throw new Error(message);
     }
 
     const reader = response.body.getReader();
@@ -69,6 +90,45 @@ export class ApiService {
     }
   }
 
+  // --- Campañas ---
+
+  /** Todas las campañas, con el volumen de su corpus. Para el administrador. */
+  listCampaigns() {
+    return firstValueFrom(this.http.get<Campaign[]>('/api/v1/campaigns'));
+  }
+
+  /** Solo las activas: alimenta el selector del agente. */
+  listActiveCampaigns() {
+    return firstValueFrom(this.http.get<CampaignSummary[]>('/api/v1/campaigns/active'));
+  }
+
+  createCampaign(name: string, assistantInstructions: string | null) {
+    return firstValueFrom(
+      this.http.post<Campaign>('/api/v1/campaigns', { name, assistantInstructions })
+    );
+  }
+
+  updateCampaign(id: string, name: string, assistantInstructions: string | null) {
+    return firstValueFrom(
+      this.http.put<Campaign>(`/api/v1/campaigns/${id}`, { name, assistantInstructions })
+    );
+  }
+
+  /**
+   * Cambia el estado de una campaña. El servidor decide si la transición es válida
+   * (p. ej. no se puede cerrar una campaña activa) y responde 409 si no lo es.
+   */
+  setCampaignStatus(id: string, status: CampaignStatus) {
+    return firstValueFrom(
+      this.http.post<Campaign>(`/api/v1/campaigns/${id}/status`, { status })
+    );
+  }
+
+  /** Solo permitido si la campaña está cerrada; se lleva su corpus por delante. */
+  deleteCampaign(id: string) {
+    return firstValueFrom(this.http.delete(`/api/v1/campaigns/${id}`));
+  }
+
   // --- Feedback ---
 
   sendFeedback(messageId: string, rating: 'positive' | 'negative', comment?: string) {
@@ -85,17 +145,22 @@ export class ApiService {
 
   // --- Documentos ---
 
-  listDocuments() {
-    return firstValueFrom(this.http.get<DocumentSummary[]>('/api/v1/documents'));
+  /** Documentos de una campaña. Sin ella, los de todas (vista de administración). */
+  listDocuments(campaignId?: string) {
+    let params = new HttpParams();
+    if (campaignId) params = params.set('campaignId', campaignId);
+    return firstValueFrom(this.http.get<DocumentSummary[]>('/api/v1/documents', { params }));
   }
 
   /**
-   * Sube un documento. Si ya existe uno con el mismo nombre, la API responde 409 y
-   * hay que reintentar con `replace = true` para sustituirlo.
+   * Sube un documento a una campaña. Si esa campaña ya tiene un fichero con el mismo
+   * nombre, la API responde 409 y hay que reintentar con `replace = true` para
+   * sustituirlo.
    */
-  uploadDocument(file: File, options?: { title?: string; replace?: boolean }) {
+  uploadDocument(file: File, campaignId: string, options?: { title?: string; replace?: boolean }) {
     const form = new FormData();
     form.append('file', file);
+    form.append('campaignId', campaignId);
     if (options?.title) form.append('title', options.title);
     if (options?.replace) form.append('replace', 'true');
     return firstValueFrom(this.http.post<DocumentSummary>('/api/v1/documents', form));

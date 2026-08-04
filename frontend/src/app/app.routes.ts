@@ -13,6 +13,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/chat/chat').then((m) => m.Chat),
   },
   {
+    path: 'campaigns',
+    canActivate: [adminGuard],
+    loadComponent: () => import('./features/campaigns/campaigns').then((m) => m.Campaigns),
+  },
+  {
     path: 'documents',
     canActivate: [adminGuard],
     loadComponent: () => import('./features/documents/documents').then((m) => m.Documents),

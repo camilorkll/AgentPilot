@@ -1,0 +1,140 @@
+<div class="head">
+  <div>
+    <h1>Campañas</h1>
+    <p class="muted small">
+      Toda la documentación pertenece a una campaña; el asistente solo responde con la
+      del corpus de la campaña seleccionada. Una campaña <strong>cerrada</strong> es de
+      solo lectura y es la única desde la que se puede eliminar.
+    </p>
+  </div>
+  <button (click)="refresh()">Refrescar</button>
+</div>
+
+@if (error()) {
+  <p class="error small">{{ error() }}</p>
+}
+
+<div class="card new-campaign">
+  <h3>Nueva campaña</h3>
+  <form (ngSubmit)="create()">
+    <input name="newName" [(ngModel)]="newName" placeholder="Nombre de la campaña"
+           maxlength="120" [disabled]="creating()" autocomplete="off" />
+    <textarea name="newInstructions" [(ngModel)]="newInstructions" rows="2"
+              placeholder="Instrucciones para el asistente (opcional): tono, avisos obligatorios…"
+              maxlength="2000" [disabled]="creating()"></textarea>
+    <button class="primary" type="submit" [disabled]="creating() || !newName.trim()">
+      {{ creating() ? 'Creando…' : '+ Crear campaña' }}
+    </button>
+  </form>
+</div>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Campaña</th>
+        <th>Estado</th>
+        <th>Documentos</th>
+        <th>Cerrada</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (campaign of campaigns(); track campaign.id) {
+        <tr [class.closed-row]="campaign.status === 'closed'">
+          @if (editingId() === campaign.id) {
+            <td colspan="5">
+              <div class="edit-row">
+                <input name="draftName" [(ngModel)]="draftName" maxlength="120"
+                       [disabled]="savingEdit()" autocomplete="off" />
+                <textarea name="draftInstructions" [(ngModel)]="draftInstructions" rows="2"
+                          maxlength="2000" [disabled]="savingEdit()"
+                          placeholder="Instrucciones para el asistente (opcional)"></textarea>
+                <div class="edit-actions">
+                  <button class="small primary" [disabled]="savingEdit() || !draftName.trim()"
+                          (click)="saveEdit(campaign)">
+                    {{ savingEdit() ? 'Guardando…' : 'Guardar' }}
+                  </button>
+                  <button class="small" [disabled]="savingEdit()" (click)="cancelEdit()">Cancelar</button>
+                </div>
+              </div>
+            </td>
+          } @else {
+            <td>
+              <strong>{{ campaign.name }}</strong>
+              @if (campaign.assistantInstructions) {
+                <p class="small muted instructions">{{ campaign.assistantInstructions }}</p>
+              }
+            </td>
+            <td>
+              <span class="badge status-{{ campaign.status }}">
+                {{ campaign.status === 'active' ? 'Activa'
+                  : campaign.status === 'inactive' ? 'Inactiva' : 'Cerrada' }}
+              </span>
+            </td>
+            <td class="small">
+              {{ campaign.activeDocumentCount }} activos de {{ campaign.documentCount }}
+            </td>
+            <td class="small muted">
+              {{ campaign.closedAtUtc ? (campaign.closedAtUtc | date:'short') : '—' }}
+            </td>
+            <td class="row-actions">
+              <button class="small" [disabled]="campaign.status === 'closed'"
+                      title="Una campaña cerrada es de solo lectura"
+                      (click)="startEdit(campaign)">
+                Editar
+              </button>
+              @for (action of actionsFor(campaign); track action.target) {
+                <button class="small" (click)="setStatus(campaign, action.target)">{{ action.label }}</button>
+              }
+              @if (campaign.status === 'closed') {
+                <button class="small danger" (click)="openDeleteModal(campaign)">Eliminar</button>
+              }
+            </td>
+          }
+        </tr>
+      } @empty {
+        @if (!loading()) {
+          <tr><td colspan="5" class="muted">Todavía no hay campañas.</td></tr>
+        }
+      }
+    </tbody>
+  </table>
+</div>
+
+<!-- Borrado: irreversible, así que exige leer lo que se destruye y escribir el nombre -->
+@if (deleteTarget(); as target) {
+  <div class="overlay" (click)="closeDeleteModal()">
+    <div class="card delete-modal" (click)="$event.stopPropagation()">
+      <h2 class="danger-title">⚠ Eliminar «{{ target.name }}»</h2>
+      <p>
+        Esta acción <strong>no se puede deshacer</strong>. Se eliminará permanentemente:
+      </p>
+      <ul>
+        @if (deleteCounts(); as counts) {
+          <li><strong>{{ counts.documents }}</strong> documento(s)</li>
+          <li><strong>{{ counts.fragments }}</strong> fragmento(s) indexado(s)</li>
+        } @else {
+          <li class="muted">Calculando…</li>
+        }
+      </ul>
+      <p class="small muted">
+        Las conversaciones y las métricas de esta campaña se conservan en los informes.
+      </p>
+
+      <label class="small">
+        Escribe <strong>{{ target.name }}</strong> para confirmar:
+      </label>
+      <input name="deleteConfirmText" [ngModel]="deleteConfirmText()"
+             (ngModelChange)="deleteConfirmText.set($event)" autocomplete="off"
+             [disabled]="deleting()" />
+
+      <div class="modal-actions">
+        <button [disabled]="deleting()" (click)="closeDeleteModal()">Cancelar</button>
+        <button class="danger" [disabled]="!canConfirmDelete() || deleting()" (click)="confirmDelete()">
+          {{ deleting() ? 'Eliminando…' : 'Eliminar definitivamente' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

@@ -1,0 +1,54 @@
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.error { color: var(--err); }
+
+.new-campaign { margin-bottom: 1rem; }
+.new-campaign form {
+  display: flex;
+  gap: .6rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.new-campaign input { flex: 1; min-width: 220px; }
+.new-campaign textarea { flex: 2; min-width: 260px; resize: vertical; }
+
+tr.closed-row { opacity: .65; }
+
+.instructions { margin: .2rem 0 0; max-width: 40ch; }
+
+.badge.status-active { color: var(--ok); border-color: var(--ok); }
+.badge.status-inactive { color: var(--muted); }
+.badge.status-closed { color: var(--err); border-color: var(--err); }
+
+.row-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
+button.danger { border-color: var(--err); color: var(--err); }
+button.danger:hover:not(:disabled) { background: var(--err); color: #fff; }
+
+.edit-row { display: flex; flex-direction: column; gap: .5rem; padding: .3rem 0; }
+.edit-row textarea { resize: vertical; }
+.edit-actions { display: flex; gap: .5rem; }
+
+/* --- Modal de borrado --- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .6);
+  display: grid;
+  place-items: start center;
+  padding: 3rem 1rem;
+  overflow-y: auto;
+  z-index: 50;
+}
+
+.delete-modal { width: 100%; max-width: 480px; }
+.danger-title { color: var(--err); }
+.delete-modal ul { margin: .5rem 0 1rem; padding-left: 1.3rem; }
+.delete-modal label { display: block; margin: .75rem 0 .4rem; }
+.modal-actions { display: flex; justify-content: flex-end; gap: .6rem; margin-top: 1rem; }

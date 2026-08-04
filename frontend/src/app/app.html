@@ -5,6 +5,7 @@
     <nav>
       <a routerLink="/chat" routerLinkActive="active">Chat</a>
       @if (auth.isAdmin()) {
+        <a routerLink="/campaigns" routerLinkActive="active">Campañas</a>
         <a routerLink="/documents" routerLinkActive="active">Documentos</a>
         <a routerLink="/metrics" routerLinkActive="active">Métricas</a>
       }

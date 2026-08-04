@@ -9,17 +9,47 @@
   </div>
 
   <div class="actions">
-    <label class="upload primary" [class.disabled]="uploading()">
+    <label class="upload primary" [class.disabled]="uploading() || !campaignId() || !canEditDocumentation()">
       @if (uploading()) {
         Subiendo {{ uploadDone() + 1 }} de {{ uploadTotal() }}…
       } @else {
         + Subir documentos
       }
       <input type="file" multiple accept=".pdf,.md,.markdown,.txt"
-             (change)="onFilesSelected($event)" [disabled]="uploading()" hidden />
+             (change)="onFilesSelected($event)"
+             [disabled]="uploading() || !campaignId() || !canEditDocumentation()" hidden />
     </label>
     <button (click)="refresh()">Refrescar</button>
   </div>
+</div>
+
+<div class="campaign-bar card">
+  <span class="small muted">Campaña:</span>
+  <select
+    [ngModel]="campaignId()"
+    (ngModelChange)="selectCampaign($event)"
+    [disabled]="campaigns().length === 0"
+  >
+    @if (!campaignId()) {
+      <option [ngValue]="null" disabled>Selecciona una campaña…</option>
+    }
+    @for (campaign of campaigns(); track campaign.id) {
+      <option [ngValue]="campaign.id">
+        {{ campaign.name }} ({{ campaign.status === 'closed' ? 'cerrada' : campaign.documentCount + ' docs' }})
+      </option>
+    }
+  </select>
+
+  @if (campaignsLoaded() && campaigns().length === 0) {
+    <span class="small error">No hay campañas: crea una desde «Campañas».</span>
+  } @else if (!campaignId()) {
+    <span class="small muted">Elige una campaña para ver y subir su documentación.</span>
+  } @else if (!canEditDocumentation()) {
+    <span class="small muted">
+      Esta campaña está cerrada: su documentación es de solo lectura. Reábrela desde
+      «Campañas» para poder modificarla.
+    </span>
+  }
 </div>
 
 @if (error()) {
@@ -29,9 +59,9 @@
 @if (selectedCount() > 0) {
   <div class="card bulkbar">
     <span class="small">{{ selectedCount() }} seleccionado(s)</span>
-    <button class="small" (click)="setSelectedActive(true)">Activar</button>
-    <button class="small" (click)="setSelectedActive(false)">Desactivar</button>
-    <button class="small danger" (click)="deleteSelected()">Eliminar seleccionados</button>
+    <button class="small" [disabled]="!canEditDocumentation()" (click)="setSelectedActive(true)">Activar</button>
+    <button class="small" [disabled]="!canEditDocumentation()" (click)="setSelectedActive(false)">Desactivar</button>
+    <button class="small danger" [disabled]="!canEditDocumentation()" (click)="deleteSelected()">Eliminar seleccionados</button>
   </div>
 }
 
@@ -63,6 +93,7 @@
           <td><span class="badge {{ document.status }}">{{ document.status }}</span></td>
           <td>
             <button class="small toggle" [class.on]="document.isActive"
+                    [disabled]="!canEditDocumentation()"
                     (click)="toggleActive(document)"
                     [title]="document.isActive
                       ? 'En uso: el asistente puede citarlo. Pulsa para retirarlo.'
@@ -82,7 +113,15 @@
           </td>
         </tr>
       } @empty {
-        <tr><td colspan="8" class="muted">Todavía no hay documentos indexados.</td></tr>
+        <tr>
+          <td colspan="8" class="muted">
+            @if (!campaignId()) {
+              Selecciona una campaña para ver su documentación.
+            } @else {
+              Todavía no hay documentos indexados en esta campaña.
+            }
+          </td>
+        </tr>
       }
     </tbody>
   </table>

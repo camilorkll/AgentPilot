@@ -1,17 +1,49 @@
 <div class="chat">
+  <div class="campaign-bar card">
+    <span class="small muted">Campaña:</span>
+    <select
+      [ngModel]="campaignId()"
+      (ngModelChange)="selectCampaign($event)"
+      [disabled]="campaigns().length === 0"
+    >
+      @if (!campaignId()) {
+        <option [ngValue]="null" disabled>Selecciona una campaña…</option>
+      }
+      @for (campaign of campaigns(); track campaign.id) {
+        <option [ngValue]="campaign.id">
+          {{ campaign.name }} ({{ campaign.activeDocumentCount }} documentos)
+        </option>
+      }
+    </select>
+
+    @if (campaignsLoaded() && campaigns().length === 0) {
+      <span class="small error">No hay campañas activas: pide a un administrador que active una.</span>
+    } @else if (selectedCampaign() && selectedCampaign()!.activeDocumentCount === 0) {
+      <span class="small muted">
+        Esta campaña no tiene documentación indexada: el asistente solo podrá abstenerse.
+      </span>
+    }
+  </div>
+
   <div class="messages" #scroller>
     @if (messages().length === 0) {
       <div class="empty">
-        <h2>¿En qué te ayudo?</h2>
-        <p class="muted">
-          Pregunta en lenguaje natural sobre la base de conocimiento.
-          Cada respuesta incluye las fuentes utilizadas.
-        </p>
-        <div class="examples">
-          @for (example of examples; track example) {
-            <button class="small" (click)="useExample(example)">{{ example }}</button>
-          }
-        </div>
+        @if (campaignId()) {
+          <h2>¿En qué te ayudo?</h2>
+          <p class="muted">
+            Pregunta en lenguaje natural sobre la base de conocimiento de
+            <strong>{{ selectedCampaign()?.name }}</strong>. Cada respuesta incluye las
+            fuentes utilizadas.
+          </p>
+          <div class="examples">
+            @for (example of examples; track example) {
+              <button class="small" (click)="useExample(example)">{{ example }}</button>
+            }
+          </div>
+        } @else if (campaignsLoaded()) {
+          <h2>Selecciona una campaña para empezar</h2>
+          <p class="muted">El asistente solo responde con la documentación de la campaña elegida.</p>
+        }
       </div>
     }
 
@@ -84,9 +116,10 @@
   </div>
 
   <form class="composer" (ngSubmit)="send()">
-    <input name="question" [(ngModel)]="question" [disabled]="sending()"
-           placeholder="Escribe la pregunta del cliente…" autocomplete="off" />
-    <button class="primary" type="submit" [disabled]="sending() || !question.trim()">
+    <input name="question" [(ngModel)]="question" [disabled]="sending() || !campaignId()"
+           [placeholder]="campaignId() ? 'Escribe la pregunta del cliente…' : 'Selecciona una campaña para empezar'"
+           autocomplete="off" />
+    <button class="primary" type="submit" [disabled]="sending() || !campaignId() || !question.trim()">
       {{ sending() ? '…' : 'Enviar' }}
     </button>
   </form>

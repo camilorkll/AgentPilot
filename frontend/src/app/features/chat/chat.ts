@@ -1,8 +1,10 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, ElementRef, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
-import { ChatMessage } from '../../core/models';
+import { CampaignSummary, ChatMessage } from '../../core/models';
+
+const CAMPAIGN_KEY = 'agentpilot.chat.campaignId';
 
 @Component({
   selector: 'app-chat',
@@ -20,12 +22,65 @@ export class Chat {
   readonly error = signal<string | null>(null);
   private conversationId: string | null = null;
 
+  /** Campañas activas: solo sobre ellas se puede preguntar. */
+  readonly campaigns = signal<CampaignSummary[]>([]);
+  readonly campaignsLoaded = signal(false);
+  readonly campaignId = signal<string | null>(localStorage.getItem(CAMPAIGN_KEY));
+  readonly selectedCampaign = computed(() =>
+    this.campaigns().find((c) => c.id === this.campaignId()) ?? null
+  );
+
   /** Sugerencias para arrancar la demo sin escribir. */
   readonly examples = [
     '¿Puedo cambiar de tarifa y tiene algún coste?',
     '¿Cuánto cuesta el Bono Viaje de 10 GB?',
     '¿Qué hago si la luz LOS del router está en rojo?',
   ];
+
+  constructor() {
+    this.loadCampaigns();
+  }
+
+  private async loadCampaigns(): Promise<void> {
+    try {
+      const campaigns = await this.api.listActiveCampaigns();
+      this.campaigns.set(campaigns);
+
+      // La campaña recordada puede haberse desactivado entre sesiones: si ya no está
+      // entre las activas, no se puede seguir preguntando con ella.
+      if (this.campaignId() && !campaigns.some((c) => c.id === this.campaignId())) {
+        this.campaignId.set(null);
+        localStorage.removeItem(CAMPAIGN_KEY);
+      }
+    } catch {
+      this.error.set('No se pudieron cargar las campañas.');
+    } finally {
+      this.campaignsLoaded.set(true);
+    }
+  }
+
+  /**
+   * Cambia la campaña de trabajo. Si hay una conversación abierta, cambiar de campaña
+   * exige empezar otra: el historial se reenvía al modelo en cada turno, así que
+   * seguir la conversación arrastraría contenido de la campaña anterior.
+   */
+  selectCampaign(id: string): void {
+    if (id === this.campaignId()) return;
+
+    if (this.messages().length > 0) {
+      const confirmado = confirm(
+        'Cambiar de campaña empieza una conversación nueva; se perderá el historial ' +
+        'de esta pantalla (queda guardado). ¿Continuar?'
+      );
+      if (!confirmado) return;
+
+      this.messages.set([]);
+      this.conversationId = null;
+    }
+
+    this.campaignId.set(id);
+    localStorage.setItem(CAMPAIGN_KEY, id);
+  }
 
   useExample(text: string): void {
     this.question = text;
@@ -34,7 +89,8 @@ export class Chat {
 
   async send(): Promise<void> {
     const question = this.question.trim();
-    if (!question || this.sending()) return;
+    const campaignId = this.campaignId();
+    if (!question || !campaignId || this.sending()) return;
 
     this.question = '';
     this.error.set(null);
@@ -54,7 +110,7 @@ export class Chat {
       );
 
     try {
-      await this.api.ask(question, this.conversationId, {
+      await this.api.ask(question, campaignId, this.conversationId, {
         onToken: (text) => {
           this.messages.update((all) =>
             all.map((m, i) => (i === all.length - 1 ? { ...m, content: m.content + text } : m))
@@ -69,8 +125,8 @@ export class Chat {
           await this.attachMessageId(conversationId);
         },
       });
-    } catch (e) {
-      this.error.set('No se pudo obtener la respuesta. Revisa que la API esté disponible.');
+    } catch (e: any) {
+      this.error.set(e?.message ?? 'No se pudo obtener la respuesta. Revisa que la API esté disponible.');
       patchLast({ streaming: false });
     } finally {
       this.sending.set(false);

@@ -5,6 +5,15 @@
   height: calc(100vh - 100px);
 }
 
+.campaign-bar {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .6rem .9rem;
+  flex-wrap: wrap;
+}
+.campaign-bar select { width: auto; min-width: 220px; }
+
 .messages {
   flex: 1;
   overflow-y: auto;

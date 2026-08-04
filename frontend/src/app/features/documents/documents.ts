@@ -1,11 +1,14 @@
 import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
-import { DocumentContent, DocumentSummary } from '../../core/models';
+import { Campaign, DocumentContent, DocumentSummary } from '../../core/models';
+
+const CAMPAIGN_KEY = 'agentpilot.documents.campaignId';
 
 @Component({
   selector: 'app-documents',
-  imports: [DatePipe],
+  imports: [DatePipe, FormsModule],
   templateUrl: './documents.html',
   styleUrl: './documents.css',
 })
@@ -14,6 +17,16 @@ export class Documents {
 
   readonly documents = signal<DocumentSummary[]>([]);
   readonly error = signal<string | null>(null);
+
+  /** Campaña sobre la que se trabaja: filtra la tabla y es el destino de la subida. */
+  readonly campaigns = signal<Campaign[]>([]);
+  readonly campaignsLoaded = signal(false);
+  readonly campaignId = signal<string | null>(localStorage.getItem(CAMPAIGN_KEY));
+  readonly selectedCampaign = computed(() =>
+    this.campaigns().find((c) => c.id === this.campaignId()) ?? null
+  );
+  /** Una campaña cerrada es de solo lectura: se puede consultar, no subir ni borrar. */
+  readonly canEditDocumentation = computed(() => this.selectedCampaign()?.status !== 'closed');
 
   /** Progreso de la subida múltiple: "subiendo 3 de 12". */
   readonly uploadTotal = signal(0);
@@ -32,12 +45,42 @@ export class Documents {
   readonly loadingContent = signal(false);
 
   constructor() {
+    this.loadCampaigns();
+  }
+
+  private async loadCampaigns(): Promise<void> {
+    try {
+      const campaigns = await this.api.listCampaigns();
+      this.campaigns.set(campaigns);
+
+      // La campaña recordada puede haber sido eliminada entre sesiones.
+      if (this.campaignId() && !campaigns.some((c) => c.id === this.campaignId())) {
+        this.campaignId.set(null);
+        localStorage.removeItem(CAMPAIGN_KEY);
+      }
+    } catch {
+      this.error.set('No se pudieron cargar las campañas.');
+    } finally {
+      this.campaignsLoaded.set(true);
+      await this.refresh();
+    }
+  }
+
+  selectCampaign(id: string): void {
+    this.campaignId.set(id);
+    localStorage.setItem(CAMPAIGN_KEY, id);
+    this.selected.set(new Set());
     this.refresh();
   }
 
   async refresh(): Promise<void> {
+    const campaignId = this.campaignId();
+    if (!campaignId) {
+      this.documents.set([]);
+      return;
+    }
     try {
-      const documents = await this.api.listDocuments();
+      const documents = await this.api.listDocuments(campaignId);
       this.documents.set(documents);
       // Descarta de la selección lo que ya no exista.
       const ids = new Set(documents.map((d) => d.id));
@@ -57,7 +100,8 @@ export class Documents {
     const input = event.target as HTMLInputElement;
     const files = Array.from(input.files ?? []);
     input.value = '';
-    if (files.length === 0) return;
+    const campaignId = this.campaignId();
+    if (files.length === 0 || !campaignId) return;
 
     this.error.set(null);
     this.uploadTotal.set(files.length);
@@ -65,13 +109,13 @@ export class Documents {
 
     const duplicates: File[] = [];
     const failed: string[] = [];
-    // El motivo lo da la API (falta la campaña, formato no admitido, campaña
-    // cerrada…). Mostrar uno inventado manda a buscar el problema donde no está.
+    // El motivo lo da la API (formato no admitido, campaña cerrada…). Mostrar uno
+    // inventado manda a buscar el problema donde no está.
     const reasons = new Set<string>();
 
     for (const file of files) {
       try {
-        await this.api.uploadDocument(file);
+        await this.api.uploadDocument(file, campaignId);
       } catch (e: any) {
         if (e?.status === 409 && e?.error?.code === 'duplicate_document') duplicates.push(file);
         else {
@@ -87,7 +131,7 @@ export class Documents {
     if (duplicates.length > 0) {
       const names = duplicates.map((f) => `• ${f.name}`).join('\n');
       const replace = confirm(
-        `${duplicates.length} documento(s) ya están en la base de conocimiento:\n\n${names}\n\n` +
+        `${duplicates.length} documento(s) ya están en «${this.selectedCampaign()?.name}»:\n\n${names}\n\n` +
         `¿Quieres reemplazarlos? Se eliminarán las versiones anteriores y se volverán a indexar.`
       );
       if (replace) {
@@ -95,7 +139,7 @@ export class Documents {
         this.uploadDone.set(0);
         for (const file of duplicates) {
           try {
-            await this.api.uploadDocument(file, { replace: true });
+            await this.api.uploadDocument(file, campaignId, { replace: true });
           } catch (e: any) {
             failed.push(file.name);
             reasons.add(e?.error?.message ?? 'Error inesperado al subir el fichero.');
@@ -124,6 +168,8 @@ export class Documents {
       if (!pending) return;
       await new Promise((r) => setTimeout(r, 2000));
     }
+    // El recuento de la campaña (nº de documentos activos) puede haber cambiado.
+    await this.loadCampaigns();
   }
 
   // --- Selección y borrado múltiple ---
@@ -166,11 +212,12 @@ export class Documents {
     try {
       await this.api.setDocumentsActive(ids, isActive);
       await this.refresh();
-    } catch {
+    } catch (e: any) {
       this.error.set(
-        isActive
+        e?.error?.message ??
+        (isActive
           ? 'No se pudieron activar los documentos.'
-          : 'No se pudieron desactivar los documentos.'
+          : 'No se pudieron desactivar los documentos.')
       );
     }
   }
@@ -194,8 +241,8 @@ export class Documents {
       await this.api.deleteDocuments(ids);
       this.selected.set(new Set());
       await this.refresh();
-    } catch {
-      this.error.set('No se pudieron eliminar los documentos seleccionados.');
+    } catch (e: any) {
+      this.error.set(e?.error?.message ?? 'No se pudieron eliminar los documentos seleccionados.');
     }
   }
 
