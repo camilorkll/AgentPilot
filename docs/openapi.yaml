@@ -13,14 +13,6 @@ info:
     documentos: es un cambio incompatible respecto a la 1.0.0, deliberado, porque
     un valor por defecto silencioso convertiría un olvido del cliente en una fuga
     de información entre campañas.
-
-
-    **Estado:** en Spec Driven Development el contrato se escribe antes del código,
-    así que en este momento las operaciones de `campaigns`, las ampliaciones de
-    `metrics` (`monthFrom`/`monthTo`, `campaignId`, `dailyByOperator`,
-    `export.csv`) y el `campaignId` de `chat/ask` y de la subida de documentos
-    describen el objetivo y **todavía no están desplegadas**. Esta nota se
-    retirará al completarlas.
   version: 1.1.0
   contact:
     name: Camilo Rodríguez

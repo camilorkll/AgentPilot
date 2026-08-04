@@ -236,10 +236,19 @@ public class AskQuestionServiceTests
         public Task RecordCallAsync(Domain.Telemetry.LlmCallLog log, CancellationToken ct = default)
         { Recorded = log; return Task.CompletedTask; }
         public Task<Metrics.MetricsSummary> GetSummaryAsync(
-            DateTime? f, DateTime? t, IReadOnlyList<string>? ops = null, CancellationToken ct = default)
+            DateTime? f, DateTime? t, IReadOnlyList<string>? ops = null,
+            Metrics.CampaignFilter campaignFilter = default,
+            string? monthFromLabel = null, string? monthToLabel = null, CancellationToken ct = default)
             => Task.FromResult(new Metrics.MetricsSummary());
         public Task<IReadOnlyList<string>> GetOperatorsAsync(CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<string>>([]);
+        public Task<Metrics.MonthRange> ResolveMonthRangeAsync(
+            string? monthFrom, string? monthTo, CancellationToken ct = default)
+            => throw new NotSupportedException();
+        public Task<IReadOnlyList<Metrics.DailyOperatorUsage>> GetDailyByOperatorAsync(
+            DateTime? f, DateTime? t, IReadOnlyList<string>? ops = null,
+            Metrics.CampaignFilter campaignFilter = default, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<Metrics.DailyOperatorUsage>>([]);
     }
 
     private sealed class FakeConversationRepository : IConversationRepository
