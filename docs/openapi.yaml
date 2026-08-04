@@ -54,6 +54,10 @@ paths:
       tags: [auth]
       operationId: login
       summary: Autentica a un usuario y devuelve un JWT
+      description: >
+        Único endpoint anónimo junto a los de estado. Devuelve un JWT firmado
+        (HMAC-SHA256) con el rol en el claim `role`, válido 8 horas. El resto de la
+        API espera ese token en la cabecera `Authorization: Bearer`.
       security: []
       requestBody:
         required: true
@@ -397,6 +401,10 @@ paths:
       tags: [documents]
       operationId: getDocument
       summary: Consulta un documento y el estado de su ingesta
+      description: >
+        Es la forma de seguir una ingesta asíncrona: el documento pasa por
+        `pending` → `processing` → `ready`, o a `failed` con el motivo en
+        `errorMessage`.
       parameters:
         - $ref: "#/components/parameters/DocumentId"
       responses:
@@ -612,6 +620,10 @@ paths:
       tags: [chat]
       operationId: getConversation
       summary: Recupera el historial de una conversación
+      description: >
+        Devuelve los mensajes con las citas de cada respuesta del asistente, para
+        poder reconstruir la conversación al recargar la página. Incluye la campaña
+        a la que está ligada, que no cambia.
       parameters:
         - name: conversationId
           in: path
@@ -636,6 +648,10 @@ paths:
       tags: [feedback]
       operationId: submitFeedback
       summary: Valora una respuesta del asistente (👍/👎 + comentario opcional)
+      description: >
+        La valoración se asocia al mensaje y al operador que la envía, y alimenta el
+        indicador de respuestas útiles del panel de métricas. Es la única señal de
+        calidad que viene de quien usa el copiloto, no de una medición automática.
       requestBody:
         required: true
         content:
@@ -813,6 +829,11 @@ paths:
       tags: [health]
       operationId: getHealth
       summary: Healthcheck del servicio
+      description: >
+        Sonda que usa la plataforma de despliegue para decidir si la réplica está
+        viva. Responde en cuanto la aplicación arranca, sin esperar a la base de
+        datos: la migración corre en segundo plano y bloquear aquí impediría
+        diagnosticar un problema de conexión.
       security: []
       responses:
         "200":

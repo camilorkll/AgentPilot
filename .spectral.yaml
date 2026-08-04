@@ -1,5 +1,21 @@
 extends: ["spectral:oas"]
+
+functionsDir: "./tools/spectral"
+functions: [requiredPropsExist]
+
 rules:
   operation-tags: error
   operation-operationId: error
   oas3-api-servers: error
+
+  # Toda operación documentada: el contrato es la referencia pública de la API,
+  # y una operación sin descripción obliga a leer el código para entenderla.
+  operation-description: error
+
+  required-props-exist:
+    description: Todo campo declarado en required debe existir entre las properties.
+    message: "{{error}}"
+    severity: error
+    given: "$..[?(@.required)]"
+    then:
+      function: requiredPropsExist
