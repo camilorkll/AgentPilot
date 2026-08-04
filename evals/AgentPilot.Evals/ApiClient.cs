@@ -25,8 +25,13 @@ public sealed record AskMeasurement(
     long FirstTokenMs,
     double CostUsd);
 
-/// <summary>Cliente HTTP del arnés: login y consumo del stream SSE de /chat/ask.</summary>
-public class ApiClient(string baseUrl, Guid campaignId)
+/// <summary>
+/// Cliente HTTP del arnés: login, chat por SSE y las operaciones de administración de
+/// campañas que necesita la comprobación de aislamiento (crear, cambiar de estado,
+/// eliminar). La campaña es parámetro de cada pregunta y no del cliente: la comprobación
+/// de fuga cruzada pregunta contra dos campañas distintas con la misma sesión.
+/// </summary>
+public class ApiClient(string baseUrl)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private readonly HttpClient _http = new() { BaseAddress = new Uri(baseUrl), Timeout = TimeSpan.FromMinutes(3) };
@@ -41,8 +46,8 @@ public class ApiClient(string baseUrl, Guid campaignId)
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
     }
 
-    /// <summary>Lanza una pregunta y agrega el stream SSE en un único resultado.</summary>
-    public async Task<AskMeasurement> AskAsync(string question)
+    /// <summary>Lanza una pregunta contra una campaña y agrega el stream SSE en un único resultado.</summary>
+    public async Task<AskMeasurement> AskAsync(string question, Guid campaignId)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/chat/ask")
         {
@@ -99,5 +104,30 @@ public class ApiClient(string baseUrl, Guid campaignId)
         return new AskMeasurement(
             answer.ToString(), documents.Distinct().ToArray(), model,
             latency, citationsMs, firstTokenMs, cost);
+    }
+
+    // --- Administración de campañas (solo para la comprobación de aislamiento) ---
+
+    public async Task<Guid> CreateCampaignAsync(string name)
+    {
+        var response = await _http.PostAsJsonAsync(
+            "/api/v1/campaigns", new { name, assistantInstructions = (string?)null });
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        return body.GetProperty("id").GetGuid();
+    }
+
+    public async Task SetCampaignStatusAsync(Guid campaignId, string status)
+    {
+        var response = await _http.PostAsJsonAsync(
+            $"/api/v1/campaigns/{campaignId}/status", new { status });
+        response.EnsureSuccessStatusCode();
+    }
+
+    /// <summary>Solo funciona si la campaña está cerrada; lo exige el propio dominio.</summary>
+    public async Task DeleteCampaignAsync(Guid campaignId)
+    {
+        var response = await _http.DeleteAsync($"/api/v1/campaigns/{campaignId}");
+        response.EnsureSuccessStatusCode();
     }
 }

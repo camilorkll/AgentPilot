@@ -24,6 +24,18 @@ public record GoldenSet
     public List<EvalCase> Cases { get; init; } = [];
 }
 
+/// <summary>
+/// Una entrada de <c>evals/golden-set/campaigns.json</c>: qué set dorado se ejecuta
+/// contra qué campaña. Permite correr varias campañas en una sola pasada (modo
+/// <c>--all</c>) sin tocar código: añadir una campaña es añadir una línea al manifiesto.
+/// </summary>
+public record CampaignEntry
+{
+    public string Label { get; init; } = string.Empty;
+    public Guid CampaignId { get; init; }
+    public string GoldenSet { get; init; } = string.Empty;
+}
+
 /// <summary>Resultado de evaluar un caso.</summary>
 public record EvalResult
 {

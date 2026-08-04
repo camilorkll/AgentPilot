@@ -30,15 +30,49 @@ Con el stack levantado (`docker compose up -d`) y el corpus ingerido:
 dotnet run --project evals/AgentPilot.Evals
 ```
 
-Parámetros opcionales (URL, usuario, contraseña):
+Parámetros opcionales (URL, usuario, contraseña, campaña):
 
 ```bash
 dotnet run --project evals/AgentPilot.Evals -- http://localhost:8080 agente agente1234
 ```
 
-El arnés autentica, lanza cada pregunta consumiendo el stream SSE, puntúa los
-resultados y escribe el informe en [`RESULTS.md`](RESULTS.md). Devuelve código de
-salida 0 si todos los casos pasan (útil para integrarlo en CI).
+El arnés autentica, lanza cada pregunta consumiendo el stream SSE dentro de una
+campaña (por defecto, TeleNova), puntúa los resultados y escribe el informe en
+[`RESULTS.md`](RESULTS.md). Devuelve código de salida 0 si todos los casos pasan
+(útil para integrarlo en CI).
+
+### Varias campañas en una pasada: `-- all`
+
+```bash
+dotnet run --project evals/AgentPilot.Evals -- all
+```
+
+Ejecuta cada entrada de [`golden-set/campaigns.json`](golden-set/campaigns.json)
+contra su propia campaña, con una sola sesión, y escribe `RESULTS-<campaña>.md`
+por cada una más un comparado en `RESULTS-CAMPAIGNS.md`. Añadir una campaña (por
+ejemplo, «Luz y Gas Premium») es añadir una línea al manifiesto, sin tocar código.
+
+### Aislamiento entre campañas: `-- isolation`
+
+```bash
+dotnet run --project evals/AgentPilot.Evals -- isolation
+```
+
+Comprobación automatizada de la garantía central de la fase de campañas: toma un
+puñado de preguntas **respondibles de TeleNova ancladas a un nombre de producto**
+(Nova Mini, NovaMesh, Nova Infinita, Bono Viaje — nunca un concepto genérico que
+otra campaña pudiera compartir por casualidad) y las formula en **otra** campaña.
+Deben abstenerse ahí, y responder con cita solo en TeleNova.
+
+Requiere rol `admin`. Sin un cuarto argumento, crea una campaña vacía y la destruye
+al terminar (incluso si alguna aserción falla); con un id de campaña real como
+cuarto argumento, prueba contra ella en vez de crear una efímera — útil una vez
+exista «Luz y Gas Premium», con la misma cautela sobre datos exclusivos. Escribe
+[`ISOLATION-RESULTS.md`](ISOLATION-RESULTS.md) y devuelve 0 solo si no hubo fugas.
+
+Es la contraparte automatizada, repetible y con código de salida para CI, de dos
+comprobaciones ya hechas a mano en los pasos 8.3 y 8.5 (contra la API real) y de
+`ChunkSearchTests.Busqueda_NuncaDevuelveFragmentosDeOtraCampaña` (contra la SQL).
 
 ## Comparar modelos
 
