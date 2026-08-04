@@ -1,3 +1,4 @@
+using AgentPilot.Domain.Campaigns;
 using AgentPilot.Domain.Conversations;
 using AgentPilot.Domain.Documents;
 using AgentPilot.Domain.Telemetry;
@@ -21,6 +22,7 @@ public class AgentPilotDbContext(DbContextOptions<AgentPilotDbContext> options)
     /// </summary>
     public const int EmbeddingDimensions = 1536;
 
+    public DbSet<Campaña> Campañas => Set<Campaña>();
     public DbSet<Documento> Documentos => Set<Documento>();
     public DbSet<Chunk> Chunks => Set<Chunk>();
     public DbSet<Conversation> Conversations => Set<Conversation>();

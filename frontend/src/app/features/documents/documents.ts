@@ -65,13 +65,19 @@ export class Documents {
 
     const duplicates: File[] = [];
     const failed: string[] = [];
+    // El motivo lo da la API (falta la campaña, formato no admitido, campaña
+    // cerrada…). Mostrar uno inventado manda a buscar el problema donde no está.
+    const reasons = new Set<string>();
 
     for (const file of files) {
       try {
         await this.api.uploadDocument(file);
       } catch (e: any) {
-        if (e?.status === 409) duplicates.push(file);
-        else failed.push(file.name);
+        if (e?.status === 409 && e?.error?.code === 'duplicate_document') duplicates.push(file);
+        else {
+          failed.push(file.name);
+          reasons.add(e?.error?.message ?? 'Error inesperado al subir el fichero.');
+        }
       } finally {
         this.uploadDone.update((n) => n + 1);
       }
@@ -90,8 +96,9 @@ export class Documents {
         for (const file of duplicates) {
           try {
             await this.api.uploadDocument(file, { replace: true });
-          } catch {
+          } catch (e: any) {
             failed.push(file.name);
+            reasons.add(e?.error?.message ?? 'Error inesperado al subir el fichero.');
           } finally {
             this.uploadDone.update((n) => n + 1);
           }
@@ -100,7 +107,7 @@ export class Documents {
     }
 
     if (failed.length > 0)
-      this.error.set(`No se pudieron subir: ${failed.join(', ')} (¿formato admitido? PDF o Markdown).`);
+      this.error.set(`No se pudieron subir: ${failed.join(', ')}. ${[...reasons].join(' ')}`);
 
     this.uploadTotal.set(0);
     this.uploadDone.set(0);

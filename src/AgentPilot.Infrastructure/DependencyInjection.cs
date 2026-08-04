@@ -48,6 +48,9 @@ public static class DependencyInjection
         // --- Extracción de texto de documentos (PDF / Markdown) ---
         services.AddSingleton<IDocumentTextExtractor, DocumentTextExtractor>();
 
+        // --- Campañas: organizan el corpus y aíslan lo que puede ver el asistente ---
+        services.AddScoped<ICampaignRepository, CampaignRepository>();
+
         // --- Ingesta: repositorio, cola en memoria y worker en segundo plano ---
         services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddSingleton<IIngestionQueue, InMemoryIngestionQueue>();

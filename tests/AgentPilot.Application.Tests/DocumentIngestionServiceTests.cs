@@ -1,7 +1,9 @@
 using System.Runtime.CompilerServices;
 using System.Text;
 using AgentPilot.Application.Abstractions;
+using AgentPilot.Application.Campaigns;
 using AgentPilot.Application.Ingestion;
+using AgentPilot.Domain.Campaigns;
 using AgentPilot.Domain.Documents;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -9,30 +11,36 @@ namespace AgentPilot.Application.Tests;
 
 /// <summary>
 /// Reingerir el mismo fichero duplicaría sus fragmentos en el índice vectorial, así que
-/// la ingesta avisa del duplicado y solo lo sustituye si se pide explícitamente.
+/// la ingesta avisa del duplicado y solo lo sustituye si se pide explícitamente. Además
+/// no acepta nada sin una campaña válida y editable.
 /// </summary>
 public class DocumentIngestionServiceTests
 {
+    private static readonly Campaña Activa = new("TeleNova");
+
     private static Stream Content(string text = "contenido de prueba")
         => new MemoryStream(Encoding.UTF8.GetBytes(text));
 
-    private static (DocumentIngestionService Service, FakeDocuments Repo) Build(params Documento[] existing)
+    private static (DocumentIngestionService Service, FakeDocuments Repo) Build(
+        Campaña? campaña = null, params Documento[] existing)
     {
         var repo = new FakeDocuments(existing);
         var service = new DocumentIngestionService(
             repo, new FakeExtractor(), new FakeChunker(), new FakeEmbeddings(),
-            new FakeQueue(), NullLogger<DocumentIngestionService>.Instance);
+            new FakeQueue(), new CampaignGuard(new FakeCampaigns(campaña ?? Activa)),
+            NullLogger<DocumentIngestionService>.Instance);
         return (service, repo);
     }
 
     [Fact]
-    public async Task Submit_DeUnFicheroNuevo_LoEncola()
+    public async Task Submit_DeUnFicheroNuevo_LoEncolaEnLaCampaña()
     {
         var (service, repo) = Build();
 
-        var document = await service.SubmitAsync("tarifas.md", null, Content());
+        var document = await service.SubmitAsync(Activa.Id, "tarifas.md", null, Content());
 
         Assert.Equal("tarifas.md", document.FileName);
+        Assert.Equal(Activa.Id, document.CampaignId);
         Assert.Single(repo.Documents);
         Assert.Empty(repo.Deleted);
     }
@@ -40,11 +48,11 @@ public class DocumentIngestionServiceTests
     [Fact]
     public async Task Submit_DeUnFicheroYaExistente_AvisaDelDuplicado()
     {
-        var existing = new Documento("Tarifas", "tarifas.md");
-        var (service, repo) = Build(existing);
+        var existing = new Documento(Activa.Id, "Tarifas", "tarifas.md");
+        var (service, repo) = Build(Activa, existing);
 
         var ex = await Assert.ThrowsAsync<DuplicateDocumentException>(
-            () => service.SubmitAsync("tarifas.md", null, Content()));
+            () => service.SubmitAsync(Activa.Id, "tarifas.md", null, Content()));
 
         Assert.Equal(existing.Id, ex.ExistingDocumentId);
         Assert.Equal("tarifas.md", ex.FileName);
@@ -54,17 +62,67 @@ public class DocumentIngestionServiceTests
     [Fact]
     public async Task Submit_ConReemplazo_BorraElAnteriorYEncolaElNuevo()
     {
-        var existing = new Documento("Tarifas", "tarifas.md");
-        var (service, repo) = Build(existing);
+        var existing = new Documento(Activa.Id, "Tarifas", "tarifas.md");
+        var (service, repo) = Build(Activa, existing);
 
         var document = await service.SubmitAsync(
-            "tarifas.md", null, Content(), replaceExisting: true);
+            Activa.Id, "tarifas.md", null, Content(), replaceExisting: true);
 
         Assert.Contains(existing, repo.Deleted);       // el anterior se elimina
         Assert.NotEqual(existing.Id, document.Id);      // y se crea uno nuevo
     }
 
+    [Fact]
+    public async Task Submit_ElMismoFicheroEnOtraCampaña_NoEsDuplicado()
+    {
+        // El duplicado se mira dentro de la campaña: dos campañas pueden tener su
+        // propio "tarifas.md" con contenido distinto, y son corpus independientes.
+        var deOtraCampaña = new Documento(Guid.NewGuid(), "Tarifas", "tarifas.md");
+        var (service, _) = Build(Activa, deOtraCampaña);
+
+        var document = await service.SubmitAsync(Activa.Id, "tarifas.md", null, Content());
+
+        Assert.Equal(Activa.Id, document.CampaignId);
+    }
+
+    [Fact]
+    public async Task Submit_EnUnaCampañaCerrada_SeRechaza()
+    {
+        var cerrada = new Campaña("Campaña del año pasado");
+        cerrada.Desactivar();
+        cerrada.Cerrar();
+        var (service, repo) = Build(cerrada);
+
+        var ex = await Assert.ThrowsAsync<CampaignClosedException>(
+            () => service.SubmitAsync(cerrada.Id, "tarifas.md", null, Content()));
+
+        Assert.Equal(cerrada.Id, ex.CampaignId);
+        // Y no se acepta a medias: nada llega al repositorio ni a la cola.
+        Assert.Empty(repo.Documents);
+    }
+
+    [Fact]
+    public async Task Submit_EnUnaCampañaQueNoExiste_SeRechaza()
+    {
+        var repo = new FakeDocuments([]);
+        var service = new DocumentIngestionService(
+            repo, new FakeExtractor(), new FakeChunker(), new FakeEmbeddings(),
+            new FakeQueue(), new CampaignGuard(new FakeCampaigns(null)),
+            NullLogger<DocumentIngestionService>.Instance);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => service.SubmitAsync(Guid.NewGuid(), "tarifas.md", null, Content()));
+
+        Assert.Empty(repo.Documents);
+    }
+
     // --- Dobles ---
+
+    private sealed class FakeCampaigns(Campaña? campaña) : ICampaignRepository
+    {
+        public Task<Campaña?> GetByIdAsync(Guid id, CancellationToken ct = default)
+            => Task.FromResult(campaña is not null && campaña.Id == id ? campaña : null);
+    }
 
     private sealed class FakeDocuments(Documento[] existing) : IDocumentRepository
     {
@@ -74,9 +132,11 @@ public class DocumentIngestionServiceTests
         public Task AddAsync(Documento d, CancellationToken ct = default) { Documents.Add(d); return Task.CompletedTask; }
         public Task<Documento?> GetByIdAsync(Guid id, CancellationToken ct = default)
             => Task.FromResult(Documents.Concat(existing).FirstOrDefault(d => d.Id == id));
-        public Task<Documento?> GetByFileNameAsync(string fileName, CancellationToken ct = default)
-            => Task.FromResult(existing.Except(Deleted).FirstOrDefault(d => d.FileName == fileName));
-        public Task<IReadOnlyList<Documento>> ListAsync(EstadoIngesta? s = null, CancellationToken ct = default)
+        public Task<Documento?> GetByFileNameAsync(Guid campaignId, string fileName, CancellationToken ct = default)
+            => Task.FromResult(existing.Except(Deleted)
+                .FirstOrDefault(d => d.CampaignId == campaignId && d.FileName == fileName));
+        public Task<IReadOnlyList<Documento>> ListAsync(
+            Guid? campaignId = null, EstadoIngesta? s = null, CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<Documento>>(Documents);
         public void Delete(Documento d) => Deleted.Add(d);
         public Task SaveChangesAsync(CancellationToken ct = default) => Task.CompletedTask;

@@ -1,5 +1,6 @@
 using AgentPilot.Api.Contracts;
 using AgentPilot.Application.Abstractions;
+using AgentPilot.Application.Campaigns;
 using AgentPilot.Application.Ingestion;
 using AgentPilot.Domain.Documents;
 using Microsoft.AspNetCore.Authorization;
@@ -18,17 +19,26 @@ public class DocumentsController(
     [HttpPost]
     [Authorize(Roles = "admin")]
     public async Task<IActionResult> Upload(
-        IFormFile file, [FromForm] string? title, [FromForm] bool replace,
-        CancellationToken cancellationToken)
+        IFormFile file, [FromForm] Guid? campaignId, [FromForm] string? title,
+        [FromForm] bool replace, CancellationToken cancellationToken)
     {
         if (file is null || file.Length == 0)
             return BadRequest(new { code = "validation_error", message = "El fichero está vacío." });
+
+        // Sin campaña no se ingiere: el documento quedaría fuera del alcance de
+        // cualquier consulta, o peor, habría que elegirle una por defecto.
+        if (campaignId is null || campaignId == Guid.Empty)
+            return BadRequest(new
+            {
+                code = "validation_error",
+                message = "Hay que indicar la campaña de destino (campaignId).",
+            });
 
         try
         {
             await using var stream = file.OpenReadStream();
             var document = await ingestion.SubmitAsync(
-                file.FileName, title, stream, replace, cancellationToken);
+                campaignId.Value, file.FileName, title, stream, replace, cancellationToken);
 
             // 202 Accepted: aceptado y en proceso. Location apunta a la consulta de estado.
             return AcceptedAtAction(
@@ -37,6 +47,14 @@ public class DocumentsController(
         catch (NotSupportedException ex)
         {
             return BadRequest(new { code = "unsupported_format", message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { code = "campaign_not_found", message = ex.Message });
+        }
+        catch (CampaignClosedException ex)
+        {
+            return Conflict(new { code = "campaign_closed", message = ex.Message });
         }
         catch (DuplicateDocumentException ex)
         {
@@ -51,12 +69,19 @@ public class DocumentsController(
         }
     }
 
+    /// <summary>
+    /// Listado de administración. Sin <paramref name="campaignId"/> devuelve los
+    /// documentos de todas las campañas: aquí el filtro es una comodidad, no una
+    /// frontera. El aislamiento se aplica en la recuperación, donde no existe la
+    /// opción de buscar en todas.
+    /// </summary>
     [HttpGet]
     public async Task<IReadOnlyList<DocumentResponse>> List(
-        [FromQuery] string? status, CancellationToken cancellationToken)
+        [FromQuery] Guid? campaignId, [FromQuery] string? status,
+        CancellationToken cancellationToken)
     {
         EstadoIngesta? filter = Enum.TryParse<EstadoIngesta>(status, ignoreCase: true, out var s) ? s : null;
-        var documents = await repository.ListAsync(filter, cancellationToken);
+        var documents = await repository.ListAsync(campaignId, filter, cancellationToken);
         return documents.Select(d => d.ToResponse()).ToList();
     }
 

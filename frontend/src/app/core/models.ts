@@ -24,6 +24,8 @@ export interface Usage {
 
 export interface DocumentSummary {
   id: string;
+  /** Campaña a la que pertenece; el asistente solo usa el corpus de la suya. */
+  campaignId: string;
   title: string;
   fileName: string;
   status: 'pending' | 'processing' | 'ready' | 'failed';

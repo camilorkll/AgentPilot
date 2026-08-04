@@ -20,8 +20,21 @@ public class ChunkSearchTests(PgVectorFixture fixture, ITestOutputHelper output)
         return v;
     }
 
-    private async Task ResetAsync(AgentPilotDbContext db) =>
-        await db.Database.ExecuteSqlRawAsync("TRUNCATE documents CASCADE;");
+    /// <summary>
+    /// Campaña de las pruebas. Guid fijo porque los documentos tienen clave foránea a
+    /// campaigns: sin una campaña real en la tabla, el INSERT del documento falla.
+    /// </summary>
+    private static readonly Guid Campaña = Guid.Parse("22222222-2222-2222-2222-222222222222");
+
+    private async Task ResetAsync(AgentPilotDbContext db)
+    {
+        // Truncar campaigns arrastra documents y chunks por la cascada, pero se
+        // enumeran las tres para que quede explícito qué se está vaciando.
+        await db.Database.ExecuteSqlRawAsync("TRUNCATE campaigns, documents, chunks CASCADE;");
+        await db.Database.ExecuteSqlInterpolatedAsync($@"
+            INSERT INTO campaigns (""Id"", ""Name"", ""Status"", ""CreatedAtUtc"")
+            VALUES ({Campaña}, 'Campaña de pruebas', 1, now());");
+    }
 
     [Fact]
     public async Task Busqueda_DevuelvePrimeroElChunkMasCercano()
@@ -30,7 +43,7 @@ public class ChunkSearchTests(PgVectorFixture fixture, ITestOutputHelper output)
         await ResetAsync(db);
 
         // Dos chunks "ortogonales": uno apunta a la dimensión 0, otro a la 1.
-        var doc = new Documento("Doc", "doc.md");
+        var doc = new Documento(Campaña, "Doc", "doc.md");
         doc.MarcarProcesando();
         doc.MarcarIndexado("test", [
             new Chunk(0, "fragmento en la dimensión 0", UnitVector(0)),
@@ -56,7 +69,7 @@ public class ChunkSearchTests(PgVectorFixture fixture, ITestOutputHelper output)
         await ResetAsync(db);
 
         // Documento en Processing (sin indexar): no debe aparecer en resultados.
-        var enProceso = new Documento("Pendiente", "p.md");
+        var enProceso = new Documento(Campaña, "Pendiente", "p.md");
         enProceso.MarcarProcesando();
         db.Documentos.Add(enProceso);
         await db.SaveChangesAsync();
@@ -74,11 +87,11 @@ public class ChunkSearchTests(PgVectorFixture fixture, ITestOutputHelper output)
 
         // Dos documentos indexados con el mismo vector; uno se desactiva (p. ej. una
         // promoción caducada): su contenido debe desaparecer de los resultados.
-        var vigente = new Documento("Tarifas vigentes", "tarifas.md");
+        var vigente = new Documento(Campaña, "Tarifas vigentes", "tarifas.md");
         vigente.MarcarProcesando();
         vigente.MarcarIndexado("test", [new Chunk(0, "tarifa vigente", UnitVector(0))]);
 
-        var caducado = new Documento("Promoción caducada", "promos.md");
+        var caducado = new Documento(Campaña, "Promoción caducada", "promos.md");
         caducado.MarcarProcesando();
         caducado.MarcarIndexado("test", [new Chunk(0, "promoción caducada", UnitVector(0))]);
         caducado.Desactivar();
@@ -121,7 +134,7 @@ public class ChunkSearchTests(PgVectorFixture fixture, ITestOutputHelper output)
         };
         var vectors = await embeddings.EmbedBatchAsync(textos);
 
-        var doc = new Documento("Base de conocimiento", "kb.md");
+        var doc = new Documento(Campaña, "Base de conocimiento", "kb.md");
         doc.MarcarProcesando();
         doc.MarcarIndexado(embeddings.ModelName,
             textos.Select((t, i) => new Chunk(i, t, vectors[i])).ToList());

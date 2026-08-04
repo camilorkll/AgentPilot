@@ -1,5 +1,6 @@
 using AgentPilot.Application.Abstractions;
 using AgentPilot.Application.Auth;
+using AgentPilot.Application.Campaigns;
 using AgentPilot.Application.Chat;
 using AgentPilot.Application.Feedback;
 using AgentPilot.Application.Ingestion;
@@ -14,6 +15,9 @@ public static class DependencyInjection
     {
         // Chunker con tamaño 1000 / solapamiento 200 (valores por defecto).
         services.AddSingleton<ITextChunker>(_ => new SlidingWindowChunker());
+
+        // Guarda de campaña: la usan todos los comandos que tocan documentación.
+        services.AddScoped<CampaignGuard>();
 
         // Orquestador de ingesta (scoped: usa el repositorio, que usa el DbContext).
         services.AddScoped<IDocumentIngestionService, DocumentIngestionService>();

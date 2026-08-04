@@ -1,4 +1,5 @@
 using AgentPilot.Application.Abstractions;
+using AgentPilot.Application.Campaigns;
 using AgentPilot.Domain.Documents;
 using Microsoft.Extensions.Logging;
 
@@ -14,19 +15,26 @@ public class DocumentIngestionService(
     ITextChunker chunker,
     IEmbeddingService embeddings,
     IIngestionQueue queue,
+    CampaignGuard campaigns,
     ILogger<DocumentIngestionService> logger) : IDocumentIngestionService
 {
     public async Task<Documento> SubmitAsync(
-        string fileName, string? title, Stream content,
+        Guid campaignId, string fileName, string? title, Stream content,
         bool replaceExisting = false, CancellationToken cancellationToken = default)
     {
         if (!extractor.Supports(fileName))
             throw new NotSupportedException(
                 $"Formato de fichero no soportado: '{Path.GetExtension(fileName)}'.");
 
+        // La campaña debe existir y admitir cambios antes de tocar nada: si no, se
+        // aceptaría el fichero y el fallo aparecería después, en el worker.
+        var campaign = await campaigns.ExigirEditableAsync(campaignId, cancellationToken);
+
         // Un mismo fichero ingerido dos veces duplicaría sus fragmentos en el índice
-        // vectorial: o se avisa al cliente, o se sustituye el documento anterior.
-        var existing = await repository.GetByFileNameAsync(fileName, cancellationToken);
+        // vectorial: o se avisa al cliente, o se sustituye el documento anterior. El
+        // duplicado se busca solo dentro de la campaña: el mismo nombre en otra es
+        // legítimo, son corpus independientes.
+        var existing = await repository.GetByFileNameAsync(campaignId, fileName, cancellationToken);
         if (existing is not null)
         {
             if (!replaceExisting)
@@ -43,14 +51,16 @@ public class DocumentIngestionService(
         using var buffer = new MemoryStream();
         await content.CopyToAsync(buffer, cancellationToken);
 
-        var document = new Documento(title ?? fileName, fileName);
+        var document = new Documento(campaign.Id, title ?? fileName, fileName);
         await repository.AddAsync(document, cancellationToken);
         await repository.SaveChangesAsync(cancellationToken);
 
         await queue.EnqueueAsync(
             new IngestionJob(document.Id, fileName, buffer.ToArray()), cancellationToken);
 
-        logger.LogInformation("Documento {Id} encolado para ingesta ({File}).", document.Id, fileName);
+        logger.LogInformation(
+            "Documento {Id} encolado para ingesta ({File}) en la campaña {Campaign}.",
+            document.Id, fileName, campaign.Name);
         return document;
     }
 

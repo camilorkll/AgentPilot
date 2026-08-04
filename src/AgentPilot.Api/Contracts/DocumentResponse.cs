@@ -5,6 +5,7 @@ namespace AgentPilot.Api.Contracts;
 /// <summary>DTO de salida de un documento (coincide con el esquema Document del OpenAPI).</summary>
 public record DocumentResponse(
     Guid Id,
+    Guid CampaignId,
     string Title,
     string FileName,
     string Status,
@@ -38,6 +39,7 @@ public static class DocumentMappings
 {
     public static DocumentResponse ToResponse(this Documento d) => new(
         d.Id,
+        d.CampaignId,
         d.Title,
         d.FileName,
         d.Status.ToString().ToLowerInvariant(), // pending/processing/ready/failed

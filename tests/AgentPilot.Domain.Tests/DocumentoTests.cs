@@ -4,20 +4,33 @@ namespace AgentPilot.Domain.Tests;
 
 public class DocumentoTests
 {
+    /// <summary>Campaña a la que pertenecen los documentos de estas pruebas.</summary>
+    private static readonly Guid Campaña = Guid.NewGuid();
+
     [Fact]
     public void NuevoDocumento_ArrancaEnPending()
     {
-        var doc = new Documento("Tarifas móviles", "01-tarifas.md");
+        var doc = new Documento(Campaña, "Tarifas móviles", "01-tarifas.md");
 
         Assert.Equal(EstadoIngesta.Pending, doc.Status);
+        Assert.Equal(Campaña, doc.CampaignId);
         Assert.Null(doc.ChunkCount);
         Assert.Empty(doc.Chunks);
     }
 
     [Fact]
+    public void UnDocumentoSinCampaña_NoTieneSentido()
+    {
+        // Un documento sin campaña quedaría fuera del alcance de cualquier consulta:
+        // indexado, pagado y invisible.
+        Assert.Throws<ArgumentException>(
+            () => new Documento(Guid.Empty, "Tarifas", "01-tarifas.md"));
+    }
+
+    [Fact]
     public void SinTitulo_UsaElNombreDeFichero()
     {
-        var doc = new Documento("", "01-tarifas.md");
+        var doc = new Documento(Campaña, "", "01-tarifas.md");
 
         Assert.Equal("01-tarifas.md", doc.Title);
     }
@@ -25,7 +38,7 @@ public class DocumentoTests
     [Fact]
     public void FlujoCompleto_PendingProcesandoIndexado()
     {
-        var doc = new Documento("Doc", "doc.md");
+        var doc = new Documento(Campaña, "Doc", "doc.md");
         var chunks = new[]
         {
             new Chunk(0, "primer fragmento", [0.1f, 0.2f]),
@@ -43,7 +56,7 @@ public class DocumentoTests
     [Fact]
     public void Indexar_SinPasarPorProcesando_Falla()
     {
-        var doc = new Documento("Doc", "doc.md");
+        var doc = new Documento(Campaña, "Doc", "doc.md");
         var chunks = new[] { new Chunk(0, "x", [0.1f]) };
 
         // No se puede saltar de Pending directamente a Ready
@@ -54,7 +67,7 @@ public class DocumentoTests
     [Fact]
     public void Fallo_RegistraElMotivo_YPermiteReintento()
     {
-        var doc = new Documento("Doc", "doc.md");
+        var doc = new Documento(Campaña, "Doc", "doc.md");
         doc.MarcarProcesando();
 
         doc.MarcarFallido("El PDF está corrupto");
@@ -71,7 +84,7 @@ public class DocumentoTests
     [Fact]
     public void NuevoDocumento_NaceActivo()
     {
-        var doc = new Documento("Promociones", "promos.md");
+        var doc = new Documento(Campaña, "Promociones", "promos.md");
 
         Assert.True(doc.IsActive);
     }
@@ -81,7 +94,7 @@ public class DocumentoTests
     {
         // Caso de uso: una promoción caduca y se retira; más adelante vuelve a estar
         // vigente y se reactiva sin volver a vectorizar el documento.
-        var doc = new Documento("Promociones de julio", "promos.md");
+        var doc = new Documento(Campaña, "Promociones de julio", "promos.md");
         doc.MarcarProcesando();
         doc.MarcarIndexado("text-embedding-3-small", [new Chunk(0, "oferta", [0.1f])]);
 

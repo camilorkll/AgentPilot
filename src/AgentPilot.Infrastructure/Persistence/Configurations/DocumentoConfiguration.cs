@@ -15,6 +15,7 @@ public class DocumentoConfiguration : IEntityTypeConfiguration<Documento>
         // El Id lo genera el dominio, no la BD (coherencia con Chunk).
         builder.Property(d => d.Id).ValueGeneratedNever();
 
+        builder.Property(d => d.CampaignId).IsRequired();
         builder.Property(d => d.Title).IsRequired().HasMaxLength(300);
         builder.Property(d => d.FileName).IsRequired().HasMaxLength(300);
 
@@ -28,6 +29,24 @@ public class DocumentoConfiguration : IEntityTypeConfiguration<Documento>
 
         // Los documentos existentes siguen activos tras la migración.
         builder.Property(d => d.IsActive).IsRequired().HasDefaultValue(true);
+
+        // La campaña se referencia por clave foránea sin navegación: son agregados
+        // distintos y Documento no debe arrastrar la campaña al cargarse. En cascada
+        // porque eliminar una campaña se lleva su corpus; que solo se pueda eliminar
+        // estando cerrada es una regla de negocio y vive en el dominio, no aquí: la
+        // base de datos protege de estados imposibles, el dominio de decisiones
+        // indebidas.
+        builder.HasOne<Domain.Campaigns.Campaña>()
+            .WithMany()
+            .HasForeignKey(d => d.CampaignId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasIndex(d => d.CampaignId);
+
+        // Un mismo fichero no puede repetirse dentro de una campaña (duplicaría sus
+        // fragmentos y ensuciaría las citas), pero sí puede existir en otra: son
+        // corpus independientes.
+        builder.HasIndex(d => new { d.CampaignId, d.FileName }).IsUnique();
 
         // Relación 1-a-N: un documento tiene muchos chunks. Al borrar el
         // documento, se borran sus chunks en cascada.

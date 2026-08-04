@@ -12,6 +12,14 @@ public class Documento
     private readonly List<Chunk> _chunks = [];
 
     public Guid Id { get; private set; }
+
+    /// <summary>
+    /// Campaña a la que pertenece. Se fija al crear el documento y no cambia: mover
+    /// un documento de campaña alteraría en silencio lo que el asistente puede
+    /// responder en dos campañas a la vez.
+    /// </summary>
+    public Guid CampaignId { get; private set; }
+
     public string Title { get; private set; } = string.Empty;
     public string FileName { get; private set; } = string.Empty;
     public EstadoIngesta Status { get; private set; }
@@ -42,12 +50,15 @@ public class Documento
 
     private Documento() { } // EF Core
 
-    public Documento(string title, string fileName)
+    public Documento(Guid campaignId, string title, string fileName)
     {
+        if (campaignId == Guid.Empty)
+            throw new ArgumentException("El documento debe pertenecer a una campaña.", nameof(campaignId));
         if (string.IsNullOrWhiteSpace(fileName))
             throw new ArgumentException("El nombre de fichero es obligatorio.", nameof(fileName));
 
         Id = Guid.NewGuid();
+        CampaignId = campaignId;
         FileName = fileName;
         Title = string.IsNullOrWhiteSpace(title) ? fileName : title;
         Status = EstadoIngesta.Pending;
