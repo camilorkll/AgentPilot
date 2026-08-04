@@ -5,7 +5,23 @@ info:
     Copiloto de conocimiento RAG para agentes de Contact Center.
     Contrato diseñado contract-first (Spec Driven Development): este fichero
     es la fuente de verdad de la API; el código se implementa contra él.
-  version: 1.0.0
+
+
+    **Campañas (v1.1.0):** toda la documentación pertenece a una campaña y el
+    asistente responde **únicamente** con el corpus de la campaña seleccionada.
+    Por eso `campaignId` es obligatorio en `POST /chat/ask` y en la subida de
+    documentos: es un cambio incompatible respecto a la 1.0.0, deliberado, porque
+    un valor por defecto silencioso convertiría un olvido del cliente en una fuga
+    de información entre campañas.
+
+
+    **Estado:** en Spec Driven Development el contrato se escribe antes del código,
+    así que en este momento las operaciones de `campaigns`, las ampliaciones de
+    `metrics` (`monthFrom`/`monthTo`, `campaignId`, `dailyByOperator`,
+    `export.csv`) y el `campaignId` de `chat/ask` y de la subida de documentos
+    describen el objetivo y **todavía no están desplegadas**. Esta nota se
+    retirará al completarlas.
+  version: 1.1.0
   contact:
     name: Camilo Rodríguez
     url: https://github.com/camilorkll/AgentPilot
@@ -13,12 +29,14 @@ info:
 servers:
   - url: http://localhost:8080/api/v1
     description: Desarrollo local (Docker Compose)
-  - url: https://agentpilot.example.com/api/v1
-    description: Producción (URL definitiva en el README)
+  - url: https://agentpilot-production-5634.up.railway.app/api/v1
+    description: Producción (Railway)
 
 tags:
   - name: auth
     description: Autenticación y sesión
+  - name: campaigns
+    description: Campañas; agrupan la documentación y aíslan el corpus
   - name: documents
     description: Ingesta y gestión de la base de conocimiento
   - name: chat
@@ -28,7 +46,7 @@ tags:
   - name: metrics
     description: Telemetría de uso y coste (LLMOps)
   - name: health
-    description: Estado del servicio
+    description: Estado del servicio y diagnóstico de configuración
 
 paths:
   /auth/login:
@@ -53,31 +71,255 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /campaigns:
+    get:
+      tags: [campaigns]
+      operationId: listCampaigns
+      summary: Lista todas las campañas con su estado y volumen de documentación
+      description: Requiere rol `admin`.
+      responses:
+        "200":
+          description: Listado de campañas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Campaign"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [campaigns]
+      operationId: createCampaign
+      summary: Crea una campaña
+      description: >
+        Requiere rol `admin`. La campaña nace **activa**. El nombre es único
+        (sin distinguir mayúsculas).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignRequest"
+      responses:
+        "201":
+          description: Campaña creada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Ya existe una campaña con ese nombre
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /campaigns/active:
+    get:
+      tags: [campaigns]
+      operationId: listActiveCampaigns
+      summary: Campañas activas sobre las que un agente puede trabajar
+      description: >
+        Alimenta el selector de campaña del agente. Devuelve **solo** las
+        campañas en estado `active`, con una proyección reducida: el agente no
+        necesita (ni debe ver) las instrucciones del asistente.
+      responses:
+        "200":
+          description: Campañas disponibles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CampaignSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /campaigns/{campaignId}:
+    get:
+      tags: [campaigns]
+      operationId: getCampaign
+      summary: Consulta una campaña
+      description: Requiere rol `admin`.
+      parameters:
+        - $ref: "#/components/parameters/CampaignIdPath"
+      responses:
+        "200":
+          description: Campaña
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [campaigns]
+      operationId: updateCampaign
+      summary: Modifica el nombre y las instrucciones del asistente
+      description: >
+        Requiere rol `admin`. **No cambia el estado**: para eso está
+        `POST /campaigns/{campaignId}/status`, porque cerrar una campaña la
+        congela y no debe poder ocurrir como efecto secundario de renombrarla.
+        Una campaña `closed` es de solo lectura y responde 409.
+      parameters:
+        - $ref: "#/components/parameters/CampaignIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignRequest"
+      responses:
+        "200":
+          description: Campaña actualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: La campaña está cerrada, o el nombre ya existe
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [campaigns]
+      operationId: deleteCampaign
+      summary: Elimina una campaña y todo su corpus
+      description: >
+        Requiere rol `admin`. **Solo se permite si la campaña está `closed`**;
+        en cualquier otro estado responde 409. Borra en cascada sus documentos y
+        fragmentos indexados. Las conversaciones y la telemetría se conservan
+        (dejan de apuntar a la campaña pero mantienen su nombre para los
+        informes). Es irreversible.
+      parameters:
+        - $ref: "#/components/parameters/CampaignIdPath"
+      responses:
+        "204":
+          description: Campaña y corpus eliminados
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: La campaña no está cerrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /campaigns/{campaignId}/status:
+    post:
+      tags: [campaigns]
+      operationId: setCampaignStatus
+      summary: Cambia el estado de una campaña
+      description: >
+        Requiere rol `admin`. Las transiciones válidas son:
+
+
+        - `active` ⇄ `inactive`
+
+        - `inactive` → `closed` (solo se cierra una campaña ya inactiva)
+
+        - `closed` → `inactive` (reapertura)
+
+
+        Cualquier otra transición responde 409. Una campaña `closed` conserva
+        todo y sus informes siguen consultables, pero no admite cambios en su
+        documentación.
+      parameters:
+        - $ref: "#/components/parameters/CampaignIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignStatusRequest"
+      responses:
+        "200":
+          description: Estado actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Transición no permitida desde el estado actual
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /documents:
     post:
       tags: [documents]
       operationId: uploadDocument
-      summary: Sube un documento (PDF o Markdown) a la base de conocimiento
+      summary: Sube un documento (PDF o Markdown) a una campaña
       description: >
-        La ingesta es asíncrona: la respuesta devuelve el documento en estado
-        `pending`. El pipeline (parseo → chunking → embeddings → indexado)
-        se ejecuta en background; el estado se consulta con GET /documents/{id}.
-        Requiere rol `admin`.
+        Requiere rol `admin`. La ingesta es asíncrona: la respuesta devuelve el
+        documento en estado `pending`. El pipeline
+        (parseo → troceado → embeddings → indexado) se ejecuta en segundo plano y
+        el estado se consulta con `GET /documents/{documentId}`.
+
+
+        El documento queda asociado **exclusivamente** a `campaignId`. Si esa
+        campaña ya tiene un fichero con el mismo nombre responde **409**: hay que
+        reintentar con `replace=true` para sustituirlo (se elimina el anterior y
+        sus fragmentos). El mismo nombre de fichero en **otra** campaña no es
+        duplicado.
       requestBody:
         required: true
         content:
           multipart/form-data:
             schema:
               type: object
-              required: [file]
+              required: [file, campaignId]
               properties:
                 file:
                   type: string
                   format: binary
                   description: Fichero .pdf o .md (máx. 20 MB)
+                campaignId:
+                  type: string
+                  format: uuid
+                  description: Campaña destino; debe estar `active` o `inactive`
                 title:
                   type: string
                   maxLength: 200
+                replace:
+                  type: boolean
+                  default: false
+                  description: Sustituye el documento existente con el mismo nombre
       responses:
         "202":
           description: Documento aceptado, ingesta en curso
@@ -91,8 +333,28 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "404":
+          description: La campaña indicada no existe
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: >
+            Ya existe ese fichero en la campaña (`code: duplicate_document`), o la
+            campaña está cerrada (`code: campaign_closed`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "413":
           description: Fichero demasiado grande
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "415":
+          description: Formato de fichero no soportado
           content:
             application/json:
               schema:
@@ -101,7 +363,16 @@ paths:
       tags: [documents]
       operationId: listDocuments
       summary: Lista los documentos de la base de conocimiento
+      description: >
+        Requiere rol `admin`. Sin `campaignId` devuelve los documentos de todas
+        las campañas: es una vista de administración, no de consulta del
+        asistente. El aislamiento por campaña se aplica en la **recuperación**
+        (`POST /chat/ask`), donde no existe la opción de buscar en todas.
       parameters:
+        - name: campaignId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
         - name: status
           in: query
           required: false
@@ -118,6 +389,8 @@ paths:
                   $ref: "#/components/schemas/Document"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 
   /documents/{documentId}:
     get:
@@ -140,8 +413,8 @@ paths:
     delete:
       tags: [documents]
       operationId: deleteDocument
-      summary: Elimina un documento y sus chunks indexados
-      description: Requiere rol `admin`.
+      summary: Elimina un documento y sus fragmentos indexados
+      description: Requiere rol `admin`. Responde 409 si su campaña está cerrada.
       parameters:
         - $ref: "#/components/parameters/DocumentId"
       responses:
@@ -153,6 +426,106 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/CampaignClosed"
+
+  /documents/{documentId}/content:
+    get:
+      tags: [documents]
+      operationId: getDocumentContent
+      summary: Fragmentos indexados de un documento
+      description: >
+        Requiere rol `admin`. Devuelve los fragmentos tal como los usa la
+        búsqueda, que es lo que el asistente puede recuperar y citar. Los
+        fragmentos consecutivos se solapan a propósito para no partir ideas por
+        la mitad, así que el solapamiento aparece repetido.
+      parameters:
+        - $ref: "#/components/parameters/DocumentId"
+      responses:
+        "200":
+          description: Documento con sus fragmentos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentContent"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /documents/delete:
+    post:
+      tags: [documents]
+      operationId: deleteDocuments
+      summary: Elimina varios documentos en una sola operación
+      description: >
+        Requiere rol `admin`. Se modela como POST y no como DELETE porque lleva
+        cuerpo con la lista de identificadores. Los documentos inexistentes se
+        devuelven en `notFound` en lugar de fallar: la operación es idempotente.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentIdsRequest"
+      responses:
+        "200":
+          description: Resultado del borrado
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [deleted, notFound]
+                properties:
+                  deleted: { type: integer }
+                  notFound:
+                    type: array
+                    items: { type: string, format: uuid }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/CampaignClosed"
+
+  /documents/active:
+    post:
+      tags: [documents]
+      operationId: setDocumentsActive
+      summary: Activa o desactiva documentos en la base de conocimiento
+      description: >
+        Requiere rol `admin`. Un documento inactivo **conserva sus fragmentos**
+        pero queda fuera de las búsquedas: el asistente no puede recuperarlo ni
+        citarlo. Sirve para retirar información con vigencia (una promoción
+        caducada) sin perder lo indexado, de modo que reactivarla sea inmediato y
+        sin coste de embeddings.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetActiveRequest"
+      responses:
+        "200":
+          description: Documentos actualizados
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Document"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/CampaignClosed"
 
   /chat/ask:
     post:
@@ -160,16 +533,51 @@ paths:
       operationId: ask
       summary: Hace una pregunta y recibe la respuesta RAG en streaming (SSE)
       description: >
-        Devuelve `text/event-stream`. Eventos emitidos:
-        `token` (delta de texto), `citations` (fragmentos fuente usados,
-        emitido una vez al final), `usage` (tokens y coste de la llamada)
-        y `done`. Si `conversationId` es null se crea una conversación nueva.
+        Devuelve `text/event-stream`. Eventos emitidos, en este orden:
+        `citations` (fragmentos fuente recuperados, **antes** de generar, para que
+        el agente vea de inmediato en qué se va a basar la respuesta),
+        `token` (deltas de texto), `usage` (tokens, coste y latencia) y `done`.
+
+
+        La respuesta se construye **únicamente** con el corpus de `campaignId`.
+        Si `conversationId` es null se crea una conversación nueva ligada a esa
+        campaña; si se envía uno existente, **manda la campaña de la
+        conversación** y un `campaignId` distinto responde 409: cambiar de
+        campaña exige empezar otra conversación, porque el historial se reenvía
+        al modelo en cada turno y arrastraría contenido de la campaña anterior.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/AskRequest"
+      # OpenAPI 3.0 no puede tipar los eventos de un text/event-stream, así que el
+      # cuerpo se declara como cadena y los payloads de cada evento quedan
+      # descritos aquí, referenciando los esquemas reales en lugar de nombrarlos
+      # solo en prosa.
+      x-sse-events:
+        citations:
+          description: Fuentes recuperadas, antes de generar la respuesta
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/Citation"
+        token:
+          description: Delta de texto según lo genera el modelo
+          schema:
+            type: object
+            properties:
+              text: { type: string }
+        usage:
+          description: Tokens, coste y latencia de la llamada
+          schema:
+            $ref: "#/components/schemas/LlmUsage"
+        done:
+          description: Fin del stream; devuelve la conversación para el siguiente turno
+          schema:
+            type: object
+            properties:
+              conversationId: { type: string, format: uuid }
       responses:
         "200":
           description: Stream de eventos SSE
@@ -178,13 +586,26 @@ paths:
               schema:
                 type: string
                 description: >
-                  Eventos `token`, `citations`, `usage`, `done` en formato SSE.
-                  Los payloads JSON de `citations` y `usage` siguen los esquemas
-                  Citation[] y LlmUsage respectivamente.
+                  Eventos `citations`, `token`, `usage` y `done` en formato SSE.
+                  El payload JSON de cada uno está descrito en `x-sse-events`.
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: La campaña o la conversación no existen
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: >
+            La campaña no está activa (`code: campaign_not_active`), o no coincide
+            con la de la conversación (`code: campaign_mismatch`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   /conversations/{conversationId}:
     get:
@@ -236,15 +657,65 @@ paths:
       tags: [metrics]
       operationId: getMetricsSummary
       summary: Métricas agregadas de uso, calidad y coste
-      description: Requiere rol `admin`.
+      description: >
+        Requiere rol `admin`. Devuelve los agregados y **una matriz
+        `(día, operador)`** en `dailyByOperator`: las dos vistas del panel
+        (Agente → Días y Día → Agentes) son la misma matriz agrupada de dos
+        maneras, así que se calcula una vez y se pivota en el cliente.
+
+
+        Los totales mensuales vienen del servidor y no se calculan sumando la
+        matriz: las preguntas y el coste son aditivos, pero la latencia media y el
+        porcentaje de respuestas útiles no lo son, y promediar promedios da un
+        número equivocado.
+
+
+        Los días y los meses se agrupan en hora de **Europe/Madrid**, no en UTC:
+        una consulta de las 00:30 pertenece al día que el supervisor espera.
       parameters:
+        - name: monthFrom
+          in: query
+          required: false
+          description: >
+            Mes inicial `YYYY-MM`. Si se omiten ambos meses se devuelve el mes en
+            curso; si solo se indica este, desde él hasta el mes actual.
+          schema:
+            $ref: "#/components/schemas/Month"
+        - name: monthTo
+          in: query
+          required: false
+          description: Mes final `YYYY-MM`, inclusive. No puede ser anterior a `monthFrom`.
+          schema:
+            $ref: "#/components/schemas/Month"
+        - name: operator
+          in: query
+          required: false
+          description: >
+            Operador a incluir. Se repite para filtrar por varios
+            (`?operator=agente&operator=supervisor`). Omitido = todos.
+          schema:
+            type: array
+            items: { type: string }
+          style: form
+          explode: true
+        - name: campaignId
+          in: query
+          required: false
+          description: >
+            Campaña a la que limitar el informe. El valor especial `none` devuelve
+            la actividad anterior a la existencia de campañas, que no tiene
+            ninguna asignada; sin este parámetro se incluye todo.
+          schema: { type: string }
         - name: from
           in: query
           required: false
+          deprecated: true
+          description: Rango por fecha exacta. Sustituido por `monthFrom`/`monthTo`.
           schema: { type: string, format: date }
         - name: to
           in: query
           required: false
+          deprecated: true
           schema: { type: string, format: date }
       responses:
         "200":
@@ -253,6 +724,85 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MetricsSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /metrics/operators:
+    get:
+      tags: [metrics]
+      operationId: getMetricsOperators
+      summary: Operadores que han usado el copiloto
+      description: Requiere rol `admin`. Alimenta el filtro de multiselección.
+      responses:
+        "200":
+          description: Nombres de operador, ordenados alfabéticamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: string }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /metrics/export.csv:
+    get:
+      tags: [metrics]
+      operationId: exportMetricsCsv
+      summary: Exporta a CSV la actividad diaria por operador
+      description: >
+        Requiere rol `admin`. Acepta **exactamente los mismos parámetros** que
+        `/metrics/summary` y reutiliza su consulta, de modo que «respetar los
+        filtros aplicados» es cierto por construcción y no algo que haya que
+        mantener sincronizado en dos sitios.
+
+
+        Formato pensado para abrirse en Excel en español: **UTF-8 con BOM**,
+        separador `;` y coma decimal. Contiene **solo filas de detalle**, sin
+        subtotales: los totales se ven en pantalla, y un CSV con líneas de total
+        intercaladas es hostil para una tabla dinámica.
+      parameters:
+        - name: monthFrom
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/Month"
+        - name: monthTo
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/Month"
+        - name: operator
+          in: query
+          required: false
+          schema:
+            type: array
+            items: { type: string }
+          style: form
+          explode: true
+        - name: campaignId
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: >
+            Fichero CSV con las columnas
+            `Mes;Fecha;Operador;Preguntas;Coste USD;Latencia media ms;% útiles`
+          headers:
+            Content-Disposition:
+              description: 'attachment; filename="metricas-2026-08.csv"'
+              schema: { type: string }
+          content:
+            text/csv:
+              schema: { type: string }
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -262,7 +812,7 @@ paths:
     get:
       tags: [health]
       operationId: getHealth
-      summary: Healthcheck (BD y dependencias)
+      summary: Healthcheck del servicio
       security: []
       responses:
         "200":
@@ -274,6 +824,56 @@ paths:
                 properties:
                   status: { type: string, example: Healthy }
 
+  /health/database:
+    get:
+      tags: [health]
+      operationId: getDatabaseHealth
+      summary: Diagnóstico de la conexión y del esquema
+      description: >
+        Anónimo a propósito, para poder diagnosticar un despliegue que aún no
+        permite autenticarse. **No revela valores de configuración.**
+      security: []
+      responses:
+        "200":
+          description: Estado de la base de datos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  canConnect: { type: boolean }
+                  pendingMigrations:
+                    type: array
+                    items: { type: string }
+                  error: { type: string, nullable: true }
+
+  /health/config:
+    get:
+      tags: [health]
+      operationId: getConfigHealth
+      summary: Diagnóstico de la configuración presente
+      description: >
+        Anónimo a propósito. Indica **si** cada valor está configurado, nunca su
+        contenido: de los secretos solo se expone un booleano o su longitud.
+      security: []
+      responses:
+        "200":
+          description: Configuración detectada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  openAiApiKey: { type: boolean }
+                  jwtSigningKey: { type: boolean }
+                  jwtSigningKeyBytes: { type: integer }
+                  connectionString: { type: boolean }
+                  chatModel: { type: string }
+                  chatModelLooksValid: { type: boolean }
+                  embeddingsProvider: { type: string }
+                  sentryEnabled: { type: boolean }
+                  seededUsers: { type: integer }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -284,6 +884,13 @@ components:
   parameters:
     DocumentId:
       name: documentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CampaignIdPath:
+      name: campaignId
       in: path
       required: true
       schema:
@@ -315,6 +922,14 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+    CampaignClosed:
+      description: >
+        La campaña está cerrada y su documentación es de solo lectura
+        (`code: campaign_closed`)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
 
   schemas:
     LoginRequest:
@@ -334,19 +949,101 @@ components:
           enum: [agent, admin]
         expiresAtUtc: { type: string, format: date-time }
 
+    CampaignStatus:
+      type: string
+      description: >
+        Ciclo de vida de una campaña. Se persiste como entero
+        (`inactive` = 0, `active` = 1, `closed` = 2) y se expone con nombre para
+        que el contrato se lea sin tabla de conversión.
+
+
+        - `active`: visible para los agentes y respondiendo consultas.
+
+        - `inactive`: retirada del selector; su documentación aún se puede editar.
+
+        - `closed`: solo lectura. Conserva todo y sus informes siguen
+        consultables, pero no admite cambios; es el único estado desde el que se
+        puede eliminar.
+      enum: [inactive, active, closed]
+
+    Campaign:
+      type: object
+      required: [id, name, status, documentCount, createdAtUtc]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, maxLength: 120 }
+        status:
+          $ref: "#/components/schemas/CampaignStatus"
+        documentCount:
+          type: integer
+          description: Documentos de la campaña, en cualquier estado de ingesta
+        activeDocumentCount:
+          type: integer
+          description: Documentos indexados y activos, es decir consultables por el asistente
+        assistantInstructions:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: >
+            Instrucciones propias de la campaña (tono, avisos obligatorios,
+            vocabulario) que se añaden al prompt del sistema. **No pueden anular
+            las reglas del núcleo**: responder solo con el contexto, citar las
+            fuentes y no obedecer instrucciones incrustadas. A null, el asistente
+            se comporta solo con esas reglas.
+        closedAtUtc: { type: string, format: date-time, nullable: true }
+        createdAtUtc: { type: string, format: date-time }
+
+    CampaignSummary:
+      type: object
+      description: Proyección para el selector del agente, sin datos de configuración.
+      required: [id, name, activeDocumentCount]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        activeDocumentCount:
+          type: integer
+          description: >
+            Documentos consultables. A cero, el asistente solo podrá abstenerse,
+            y conviene que el agente lo sepa antes de preguntar.
+
+    CampaignRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        assistantInstructions:
+          type: string
+          maxLength: 2000
+          nullable: true
+
+    CampaignStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: "#/components/schemas/CampaignStatus"
+
     IngestStatus:
       type: string
       enum: [pending, processing, ready, failed]
 
     Document:
       type: object
-      required: [id, title, fileName, status, createdAtUtc]
+      required: [id, campaignId, title, fileName, status, isActive, createdAtUtc]
       properties:
         id: { type: string, format: uuid }
+        campaignId:
+          type: string
+          format: uuid
+          description: Campaña a la que pertenece; no cambia una vez creado
         title: { type: string }
         fileName: { type: string }
         status:
           $ref: "#/components/schemas/IngestStatus"
+        isActive:
+          type: boolean
+          description: >
+            Si es false, conserva sus fragmentos pero queda fuera de las búsquedas
         chunkCount: { type: integer, nullable: true }
         embeddingModel:
           type: string
@@ -355,14 +1052,60 @@ components:
         errorMessage: { type: string, nullable: true }
         createdAtUtc: { type: string, format: date-time }
 
+    DocumentChunk:
+      type: object
+      required: [ordinal, content, charCount]
+      properties:
+        ordinal: { type: integer }
+        content: { type: string }
+        charCount: { type: integer }
+
+    DocumentContent:
+      type: object
+      required: [id, title, fileName, chunks]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        fileName: { type: string }
+        embeddingModel: { type: string, nullable: true }
+        chunks:
+          type: array
+          items:
+            $ref: "#/components/schemas/DocumentChunk"
+
+    DocumentIdsRequest:
+      type: object
+      required: [documentIds]
+      properties:
+        documentIds:
+          type: array
+          minItems: 1
+          items: { type: string, format: uuid }
+
+    SetActiveRequest:
+      type: object
+      required: [documentIds, isActive]
+      properties:
+        documentIds:
+          type: array
+          minItems: 1
+          items: { type: string, format: uuid }
+        isActive: { type: boolean }
+
     AskRequest:
       type: object
-      required: [question]
+      required: [question, campaignId]
       properties:
         question:
           type: string
           minLength: 3
           maxLength: 2000
+        campaignId:
+          type: string
+          format: uuid
+          description: >
+            Campaña sobre la que se responde. Obligatorio y sin valor por
+            defecto: es la frontera que impide usar documentación de otra campaña.
         conversationId:
           type: string
           format: uuid
@@ -387,7 +1130,7 @@ components:
       type: object
       required: [model, promptTokens, completionTokens, latencyMs]
       properties:
-        model: { type: string, example: gpt-5 }
+        model: { type: string, example: gpt-4o-mini }
         promptTokens: { type: integer }
         cachedPromptTokens: { type: integer }
         completionTokens: { type: integer }
@@ -414,6 +1157,13 @@ components:
       required: [id, messages, createdAtUtc]
       properties:
         id: { type: string, format: uuid }
+        campaignId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            Campaña de la conversación, fijada al crearla e inmutable. Null en las
+            conversaciones anteriores a la existencia de campañas.
         title: { type: string, nullable: true }
         messages:
           type: array
@@ -434,6 +1184,54 @@ components:
           maxLength: 1000
           nullable: true
 
+    Month:
+      type: string
+      pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+      example: 2026-08
+      description: Mes en formato `YYYY-MM`; sin día, porque el filtro es mensual.
+
+    OperatorUsage:
+      type: object
+      required: [userName, questions, totalCostUsd, avgLatencyMs]
+      properties:
+        userName: { type: string }
+        questions: { type: integer }
+        totalCostUsd: { type: number, format: double }
+        avgLatencyMs: { type: number, format: double }
+        positiveFeedbackRate:
+          type: number
+          format: double
+          nullable: true
+          description: Ratio 0..1; null si ese operador aún no tiene valoraciones
+
+    DailyOperatorUsage:
+      type: object
+      description: Actividad de un operador en un día concreto (hora de Europe/Madrid).
+      required: [date, userName, questions, costUsd, avgLatencyMs]
+      properties:
+        date: { type: string, format: date }
+        userName: { type: string }
+        questions: { type: integer }
+        costUsd: { type: number, format: double }
+        avgLatencyMs: { type: number, format: double }
+        positiveFeedbackRate: { type: number, format: double, nullable: true }
+
+    MonthlyTotal:
+      type: object
+      description: >
+        Total de un mes. Con `userName` es el total de ese operador en el mes
+        (vista Agente → Días); con `userName` a null es el total de todos los
+        operadores incluidos en el filtro (vista Día → Agentes).
+      required: [month, questions, costUsd, avgLatencyMs]
+      properties:
+        month:
+          $ref: "#/components/schemas/Month"
+        userName: { type: string, nullable: true }
+        questions: { type: integer }
+        costUsd: { type: number, format: double }
+        avgLatencyMs: { type: number, format: double }
+        positiveFeedbackRate: { type: number, format: double, nullable: true }
+
     MetricsSummary:
       type: object
       properties:
@@ -445,6 +1243,13 @@ components:
         costByModel:
           type: object
           additionalProperties: { type: number, format: double }
+        costByCampaign:
+          type: object
+          additionalProperties: { type: number, format: double }
+          description: >
+            Coste por nombre de campaña. El nombre va desnormalizado en la
+            telemetría, así que el informe sigue leyéndose después de eliminar una
+            campaña.
         questionsPerDay:
           type: array
           items:
@@ -452,6 +1257,34 @@ components:
             properties:
               date: { type: string, format: date }
               count: { type: integer }
+        byOperator:
+          type: array
+          description: Desglose por operador, de mayor a menor uso
+          items:
+            $ref: "#/components/schemas/OperatorUsage"
+        dailyByOperator:
+          type: array
+          description: >
+            Matriz (día, operador) que alimenta las dos vistas del panel. Solo
+            incluye las combinaciones con actividad: los días sin uso no aparecen.
+          items:
+            $ref: "#/components/schemas/DailyOperatorUsage"
+        monthlyTotals:
+          type: array
+          items:
+            $ref: "#/components/schemas/MonthlyTotal"
+        filteredOperators:
+          type: array
+          description: Operadores incluidos; vacío significa todos
+          items: { type: string }
+        monthFrom:
+          $ref: "#/components/schemas/Month"
+        monthTo:
+          $ref: "#/components/schemas/Month"
+        campaignId:
+          type: string
+          nullable: true
+          description: Campaña aplicada al informe; null si no se filtró
 
     Error:
       type: object
