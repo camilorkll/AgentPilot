@@ -96,6 +96,27 @@ public class CampaignRepositoryTests(PgVectorFixture fixture) : IClassFixture<Pg
         Assert.Equal(1, zulu.ActiveDocumentCount); // solo el activo e indexado
     }
 
+    /// <summary>
+    /// Regresión de un bug real: el campo AssistantPrompt se inicializaba con el
+    /// singleton AssistantPromptSettings.Vacío, así que dos campañas nuevas en el
+    /// mismo DbContext compartían el MISMO objeto owned. EF Core identifica una
+    /// entidad owned por referencia, no por valor, y el change tracker rompía con
+    /// "AssistantPromptSettings.CampañaId is part of a key and so cannot be modified"
+    /// al añadir la segunda. Un doble en memoria (CampaignServiceTests) no lo detecta:
+    /// no hay change tracker que confundir. Fix: Campaña.AssistantPrompt se inicializa
+    /// con una instancia propia, nunca con el singleton.
+    /// </summary>
+    [Fact]
+    public async Task DosCampañasNuevasEnElMismoContexto_NoComparenElMismoAssistantPrompt()
+    {
+        await using var db = fixture.CreateContext();
+        await ResetAsync(db);
+
+        db.Campañas.AddRange(new Campaña("Campaña Uno"), new Campaña("Campaña Dos"));
+
+        await db.SaveChangesAsync(); // no debe lanzar
+    }
+
     [Fact]
     public async Task EliminarLaCampaña_DejaLaConversacionConCampaignIdANull()
     {

@@ -47,6 +47,21 @@ public class CampaignRepository(AgentPilotDbContext db) : ICampaignRepository
 
     public void Delete(Campaña campaign) => db.Campañas.Remove(campaign);
 
+    public async Task AddPromptVersionAsync(PromptVersion version, CancellationToken cancellationToken = default)
+        => await db.PromptVersions.AddAsync(version, cancellationToken);
+
+    public async Task<IReadOnlyList<PromptVersion>> ListPromptVersionsAsync(
+        Guid campaignId, CancellationToken cancellationToken = default)
+        => await db.PromptVersions
+            .Where(v => v.CampaignId == campaignId)
+            .OrderByDescending(v => v.CreatedAtUtc)
+            .ToListAsync(cancellationToken);
+
+    public Task<PromptVersion?> GetPromptVersionAsync(
+        Guid campaignId, Guid versionId, CancellationToken cancellationToken = default)
+        => db.PromptVersions.FirstOrDefaultAsync(
+            v => v.CampaignId == campaignId && v.Id == versionId, cancellationToken);
+
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)
         => db.SaveChangesAsync(cancellationToken);
 

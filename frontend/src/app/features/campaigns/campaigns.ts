@@ -1,8 +1,8 @@
 import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ApiService } from '../../core/api.service';
-import { Campaign, CampaignStatus } from '../../core/models';
+import { ApiService, PromptFormValue } from '../../core/api.service';
+import { AssistantPromptSettings, Campaign, CampaignStatus, PromptPreviewResult, PromptVersion } from '../../core/models';
 
 /** Estados desde los que tiene sentido cada acción, para no mostrar botones que fallarían. */
 const ACCIONES_POR_ESTADO: Record<CampaignStatus, { label: string; target: CampaignStatus }[]> = {
@@ -12,6 +12,10 @@ const ACCIONES_POR_ESTADO: Record<CampaignStatus, { label: string; target: Campa
     { label: 'Cerrar', target: 'closed' },
   ],
   closed: [{ label: 'Reabrir', target: 'inactive' }],
+};
+
+const VACÍO: AssistantPromptSettings = {
+  tone: null, detailLevel: null, mandatoryNotice: null, avoidWords: [], extraInstructions: null, isEmpty: true,
 };
 
 @Component({
@@ -29,13 +33,12 @@ export class Campaigns {
 
   // --- Alta ---
   newName = '';
-  newInstructions = '';
   readonly creating = signal(false);
 
-  // --- Edición en línea (una fila a la vez) ---
+  // --- Edición en línea (una fila a la vez): solo el nombre, las instrucciones
+  //     del asistente se gestionan aparte en el panel de prompt ---
   readonly editingId = signal<string | null>(null);
   draftName = '';
-  draftInstructions = '';
   readonly savingEdit = signal(false);
 
   // --- Borrado con confirmación reforzada ---
@@ -48,6 +51,26 @@ export class Campaigns {
   readonly canConfirmDelete = computed(() =>
     this.deleteTarget() !== null && this.deleteConfirmText().trim() === this.deleteTarget()!.name
   );
+
+  // --- Panel de prompt: formulario, historial y preview ---
+  readonly promptTarget = signal<Campaign | null>(null);
+  readonly promptLoading = signal(false);
+  readonly promptSaving = signal(false);
+  readonly promptError = signal<string | null>(null);
+  readonly promptVersions = signal<PromptVersion[]>([]);
+  readonly promptWarnings = signal<string[]>([]);
+  readonly promptEditable = computed(() => this.promptTarget()?.status !== 'closed');
+
+  tone: '' | 'cercano' | 'neutro' | 'formal' = '';
+  detailLevel: '' | 'breve' | 'normal' | 'detallado' = '';
+  mandatoryNotice = '';
+  avoidWordsText = '';
+  extraInstructions = '';
+
+  previewQuestion = '';
+  readonly previewLoading = signal(false);
+  readonly previewError = signal<string | null>(null);
+  readonly previewResult = signal<PromptPreviewResult | null>(null);
 
   constructor() {
     this.refresh();
@@ -77,10 +100,9 @@ export class Campaigns {
     this.creating.set(true);
     this.error.set(null);
     try {
-      const created = await this.api.createCampaign(name, this.newInstructions.trim() || null);
+      const created = await this.api.createCampaign(name);
       this.campaigns.update((all) => [...all, created].sort((a, b) => a.name.localeCompare(b.name)));
       this.newName = '';
-      this.newInstructions = '';
     } catch (e: any) {
       this.error.set(e?.error?.message ?? 'No se pudo crear la campaña.');
     } finally {
@@ -88,12 +110,11 @@ export class Campaigns {
     }
   }
 
-  // --- Edición en línea ---
+  // --- Edición en línea (nombre) ---
 
   startEdit(campaign: Campaign): void {
     this.editingId.set(campaign.id);
     this.draftName = campaign.name;
-    this.draftInstructions = campaign.assistantInstructions ?? '';
   }
 
   cancelEdit(): void {
@@ -107,9 +128,7 @@ export class Campaigns {
     this.savingEdit.set(true);
     this.error.set(null);
     try {
-      const updated = await this.api.updateCampaign(
-        campaign.id, name, this.draftInstructions.trim() || null
-      );
+      const updated = await this.api.updateCampaign(campaign.id, name);
       this.replace(updated);
       this.editingId.set(null);
     } catch (e: any) {
@@ -176,5 +195,121 @@ export class Campaigns {
     } finally {
       this.deleting.set(false);
     }
+  }
+
+  // --- Panel de prompt ---
+
+  async openPrompt(campaign: Campaign): Promise<void> {
+    this.promptTarget.set(campaign);
+    this.promptError.set(null);
+    this.promptWarnings.set([]);
+    this.previewQuestion = '';
+    this.previewResult.set(null);
+    this.previewError.set(null);
+    this.applySettings(VACÍO);
+
+    this.promptLoading.set(true);
+    try {
+      const [settings, versions] = await Promise.all([
+        this.api.getCampaignPrompt(campaign.id),
+        this.api.listCampaignPromptVersions(campaign.id),
+      ]);
+      this.applySettings(settings);
+      this.promptVersions.set(versions);
+    } catch (e: any) {
+      this.promptError.set(e?.error?.message ?? 'No se pudieron cargar las instrucciones.');
+    } finally {
+      this.promptLoading.set(false);
+    }
+  }
+
+  closePrompt(): void {
+    this.promptTarget.set(null);
+  }
+
+  async savePrompt(): Promise<void> {
+    const campaign = this.promptTarget();
+    if (!campaign || this.promptSaving() || !this.promptEditable()) return;
+
+    this.promptSaving.set(true);
+    this.promptError.set(null);
+    try {
+      const result = await this.api.updateCampaignPrompt(campaign.id, this.formValue());
+      this.applySettings(result.prompt);
+      this.promptWarnings.set(result.warnings);
+      this.promptVersions.update((all) => [
+        { id: result.versionId, prompt: result.prompt, publishedBy: '', createdAtUtc: result.createdAtUtc },
+        ...all,
+      ]);
+      // El publishedBy exacto (usuario autenticado) lo decide el servidor; se refresca
+      // el historial para mostrarlo sin inventarlo en el cliente.
+      this.promptVersions.set(await this.api.listCampaignPromptVersions(campaign.id));
+    } catch (e: any) {
+      this.promptError.set(e?.error?.message ?? 'No se pudieron guardar las instrucciones.');
+    } finally {
+      this.promptSaving.set(false);
+    }
+  }
+
+  async restoreVersion(version: PromptVersion): Promise<void> {
+    const campaign = this.promptTarget();
+    if (!campaign || this.promptSaving() || !this.promptEditable()) return;
+
+    this.promptSaving.set(true);
+    this.promptError.set(null);
+    try {
+      const result = await this.api.restoreCampaignPromptVersion(campaign.id, version.id);
+      this.applySettings(result.prompt);
+      this.promptWarnings.set(result.warnings);
+      this.promptVersions.set(await this.api.listCampaignPromptVersions(campaign.id));
+    } catch (e: any) {
+      this.promptError.set(e?.error?.message ?? 'No se pudo restaurar esta versión.');
+    } finally {
+      this.promptSaving.set(false);
+    }
+  }
+
+  async runPreview(): Promise<void> {
+    const campaign = this.promptTarget();
+    const question = this.previewQuestion.trim();
+    if (!campaign || !question || this.previewLoading()) return;
+
+    this.previewLoading.set(true);
+    this.previewError.set(null);
+    try {
+      this.previewResult.set(await this.api.previewCampaignPrompt(campaign.id, question, this.formValue()));
+    } catch (e: any) {
+      this.previewError.set(e?.error?.message ?? 'No se pudo generar la vista previa.');
+    } finally {
+      this.previewLoading.set(false);
+    }
+  }
+
+  /** Resumen de una entrada del historial para la lista (sin arrow functions: el parser de plantillas de Angular no las admite). */
+  versionSummary(version: PromptVersion): string {
+    const p = version.prompt;
+    if (p.isEmpty) return '(sin instrucciones propias)';
+    const partes: string[] = [];
+    if (p.tone) partes.push(p.tone);
+    if (p.detailLevel) partes.push(p.detailLevel);
+    return partes.length > 0 ? partes.join(' · ') : 'instrucciones propias';
+  }
+
+  private applySettings(settings: AssistantPromptSettings): void {
+    this.tone = settings.tone ?? '';
+    this.detailLevel = settings.detailLevel ?? '';
+    this.mandatoryNotice = settings.mandatoryNotice ?? '';
+    this.avoidWordsText = settings.avoidWords.join(', ');
+    this.extraInstructions = settings.extraInstructions ?? '';
+  }
+
+  private formValue(): PromptFormValue {
+    return {
+      tone: this.tone || null,
+      detailLevel: this.detailLevel || null,
+      mandatoryNotice: this.mandatoryNotice.trim() || null,
+      avoidWords: this.avoidWordsText.split(',').map((w) => w.trim()).filter((w) => w.length > 0),
+      extraInstructions: this.extraInstructions.trim() || null,
+    };
   }
 }

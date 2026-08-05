@@ -3,6 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from './auth.service';
 import {
+  AssistantPromptSettings,
   Campaign,
   CampaignStatus,
   CampaignSummary,
@@ -10,8 +11,20 @@ import {
   DocumentContent,
   DocumentSummary,
   MetricsSummary,
+  PromptPreviewResult,
+  PromptUpdateResult,
+  PromptVersion,
   Usage,
 } from './models';
+
+/** Cuerpo de PUT /prompt y de la parte "candidato" de POST /prompt/preview. */
+export interface PromptFormValue {
+  tone: string | null;
+  detailLevel: string | null;
+  mandatoryNotice: string | null;
+  avoidWords: string[];
+  extraInstructions: string | null;
+}
 
 /** Filtros del informe de métricas; los mismos para el resumen y para el CSV. */
 export interface MetricsFilter {
@@ -111,16 +124,12 @@ export class ApiService {
     return firstValueFrom(this.http.get<CampaignSummary[]>('/api/v1/campaigns/active'));
   }
 
-  createCampaign(name: string, assistantInstructions: string | null) {
-    return firstValueFrom(
-      this.http.post<Campaign>('/api/v1/campaigns', { name, assistantInstructions })
-    );
+  createCampaign(name: string) {
+    return firstValueFrom(this.http.post<Campaign>('/api/v1/campaigns', { name }));
   }
 
-  updateCampaign(id: string, name: string, assistantInstructions: string | null) {
-    return firstValueFrom(
-      this.http.put<Campaign>(`/api/v1/campaigns/${id}`, { name, assistantInstructions })
-    );
+  updateCampaign(id: string, name: string) {
+    return firstValueFrom(this.http.put<Campaign>(`/api/v1/campaigns/${id}`, { name }));
   }
 
   /**
@@ -136,6 +145,50 @@ export class ApiService {
   /** Solo permitido si la campaña está cerrada; se lleva su corpus por delante. */
   deleteCampaign(id: string) {
     return firstValueFrom(this.http.delete(`/api/v1/campaigns/${id}`));
+  }
+
+  // --- Prompt por capas ---
+
+  /** Instrucciones vigentes; isEmpty=true significa "solo el núcleo". */
+  getCampaignPrompt(campaignId: string) {
+    return firstValueFrom(
+      this.http.get<AssistantPromptSettings>(`/api/v1/campaigns/${campaignId}/prompt`)
+    );
+  }
+
+  /** Publica unas instrucciones nuevas. Un formulario vacío restaura el comportamiento por defecto. */
+  updateCampaignPrompt(campaignId: string, settings: PromptFormValue) {
+    return firstValueFrom(
+      this.http.put<PromptUpdateResult>(`/api/v1/campaigns/${campaignId}/prompt`, settings)
+    );
+  }
+
+  /** Historial de instrucciones, más reciente primero. */
+  listCampaignPromptVersions(campaignId: string) {
+    return firstValueFrom(
+      this.http.get<PromptVersion[]>(`/api/v1/campaigns/${campaignId}/prompt/versions`)
+    );
+  }
+
+  /** Restaurar crea una entrada de historial propia; no reescribe la que restaura. */
+  restoreCampaignPromptVersion(campaignId: string, versionId: string) {
+    return firstValueFrom(
+      this.http.post<PromptUpdateResult>(
+        `/api/v1/campaigns/${campaignId}/prompt/versions/${versionId}/restore`, {}
+      )
+    );
+  }
+
+  /**
+   * Compara, para la misma pregunta de prueba, la respuesta con lo publicado y con un
+   * candidato sin guardar. No crea conversación ni telemetría.
+   */
+  previewCampaignPrompt(campaignId: string, question: string, candidate: PromptFormValue) {
+    return firstValueFrom(
+      this.http.post<PromptPreviewResult>(
+        `/api/v1/campaigns/${campaignId}/prompt/preview`, { question, ...candidate }
+      )
+    );
   }
 
   // --- Feedback ---

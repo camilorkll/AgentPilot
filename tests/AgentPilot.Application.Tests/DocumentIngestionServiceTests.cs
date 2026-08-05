@@ -134,6 +134,11 @@ public class DocumentIngestionServiceTests
             => throw new NotSupportedException();
         public Task AddAsync(Campaña c, CancellationToken ct = default) => throw new NotSupportedException();
         public void Delete(Campaña c) => throw new NotSupportedException();
+        public Task AddPromptVersionAsync(PromptVersion v, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<PromptVersion>> ListPromptVersionsAsync(Guid campaignId, CancellationToken ct = default)
+            => throw new NotSupportedException();
+        public Task<PromptVersion?> GetPromptVersionAsync(Guid campaignId, Guid versionId, CancellationToken ct = default)
+            => throw new NotSupportedException();
         public Task SaveChangesAsync(CancellationToken ct = default) => throw new NotSupportedException();
     }
 

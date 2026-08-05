@@ -13,7 +13,18 @@ info:
     documentos: es un cambio incompatible respecto a la 1.0.0, deliberado, porque
     un valor por defecto silencioso convertiría un olvido del cliente en una fuga
     de información entre campañas.
-  version: 1.1.0
+
+
+    **Prompt por capas (v1.2.0):** las instrucciones propias de una campaña se
+    gestionan aparte, en `/campaigns/{campaignId}/prompt`, y ya no viajan dentro
+    de `Campaign`/`CampaignRequest` (cambio incompatible respecto a la 1.1.0).
+    El asistente compone siempre tres capas — núcleo inmutable (código) + bloque
+    de campaña (dato) + reafirmación del núcleo (código) — y esa composición es
+    la misma tanto para el chat real como para `POST .../prompt/preview`, para
+    que lo que se previsualiza sea exactamente lo que se publica. Cada cambio
+    (incluida una restauración) añade una entrada a `/prompt/versions`; ninguna
+    se sobrescribe ni se borra.
+  version: 1.2.0
   contact:
     name: Camilo Rodríguez
     url: https://github.com/camilorkll/AgentPilot
@@ -275,6 +286,162 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+
+  /campaigns/{campaignId}/prompt:
+    get:
+      tags: [campaigns]
+      operationId: getCampaignPrompt
+      summary: Instrucciones vigentes de la campaña para el asistente
+      description: >
+        Requiere rol `admin`. Un objeto con todos los campos vacíos
+        (`isEmpty: true`) significa que la campaña no tiene instrucciones
+        propias: el asistente responde solo con el núcleo.
+      parameters:
+        - $ref: "#/components/parameters/CampaignIdPath"
+      responses:
+        "200":
+          description: Instrucciones vigentes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssistantPromptSettings"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [campaigns]
+      operationId: updateCampaignPrompt
+      summary: Publica unas instrucciones nuevas y añade una entrada al historial
+      description: >
+        Requiere rol `admin`. Enviar el formulario completamente vacío equivale
+        a restaurar el comportamiento por defecto (solo el núcleo). Cada
+        llamada crea una entrada nueva en `/prompt/versions`; ninguna entrada
+        anterior se sobrescribe ni se borra. Una campaña `closed` es de solo
+        lectura y responde 409.
+      parameters:
+        - $ref: "#/components/parameters/CampaignIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssistantPromptRequest"
+      responses:
+        "200":
+          description: Instrucciones publicadas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptUpdateResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/CampaignClosed"
+
+  /campaigns/{campaignId}/prompt/versions:
+    get:
+      tags: [campaigns]
+      operationId: listCampaignPromptVersions
+      summary: Historial de instrucciones de la campaña, más reciente primero
+      description: >
+        Requiere rol `admin`. Registro de auditoría de solo lectura: incluye
+        también las restauraciones, cada una como su propia entrada.
+      parameters:
+        - $ref: "#/components/parameters/CampaignIdPath"
+      responses:
+        "200":
+          description: Historial de la campaña
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PromptVersion"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /campaigns/{campaignId}/prompt/versions/{versionId}/restore:
+    post:
+      tags: [campaigns]
+      operationId: restoreCampaignPromptVersion
+      summary: Vuelve a aplicar una versión pasada del historial
+      description: >
+        Requiere rol `admin`. Restaurar es publicar de nuevo: crea una entrada
+        de historial propia, no reescribe ni borra la versión de la que parte.
+        Una campaña `closed` es de solo lectura y responde 409.
+      parameters:
+        - $ref: "#/components/parameters/CampaignIdPath"
+        - $ref: "#/components/parameters/VersionIdPath"
+      responses:
+        "200":
+          description: Instrucciones restauradas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptUpdateResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: >
+            La campaña no existe, o la versión no existe o no pertenece a
+            esta campaña
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          $ref: "#/components/responses/CampaignClosed"
+
+  /campaigns/{campaignId}/prompt/preview:
+    post:
+      tags: [campaigns]
+      operationId: previewCampaignPrompt
+      summary: Compara la respuesta con las instrucciones publicadas y con un candidato sin guardar
+      description: >
+        Requiere rol `admin`. Recupera el contexto **una sola vez** para la
+        pregunta de prueba y genera dos respuestas sobre él, para que la
+        comparación sea justa. No exige que la campaña esté activa (es de
+        solo lectura) y, a propósito, **no crea conversación ni telemetría**:
+        no es tráfico real, es una herramienta de administración y no debe
+        aparecer en el dashboard de coste ni en el historial de un agente.
+      parameters:
+        - $ref: "#/components/parameters/CampaignIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromptPreviewRequest"
+      responses:
+        "200":
+          description: Respuestas comparadas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptPreviewResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /documents:
     post:
@@ -909,6 +1076,13 @@ components:
       schema:
         type: string
         format: uuid
+    VersionIdPath:
+      name: versionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
 
   responses:
     BadRequest:
@@ -993,16 +1167,6 @@ components:
         activeDocumentCount:
           type: integer
           description: Documentos indexados y activos, es decir consultables por el asistente
-        assistantInstructions:
-          type: string
-          nullable: true
-          maxLength: 2000
-          description: >
-            Instrucciones propias de la campaña (tono, avisos obligatorios,
-            vocabulario) que se añaden al prompt del sistema. **No pueden anular
-            las reglas del núcleo**: responder solo con el contexto, citar las
-            fuentes y no obedecer instrucciones incrustadas. A null, el asistente
-            se comporta solo con esas reglas.
         closedAtUtc: { type: string, format: date-time, nullable: true }
         createdAtUtc: { type: string, format: date-time }
 
@@ -1021,13 +1185,12 @@ components:
 
     CampaignRequest:
       type: object
+      description: >
+        Solo el nombre: las instrucciones del asistente se gestionan aparte,
+        en `/campaigns/{campaignId}/prompt`.
       required: [name]
       properties:
         name: { type: string, minLength: 1, maxLength: 120 }
-        assistantInstructions:
-          type: string
-          maxLength: 2000
-          nullable: true
 
     CampaignStatusRequest:
       type: object
@@ -1035,6 +1198,132 @@ components:
       properties:
         status:
           $ref: "#/components/schemas/CampaignStatus"
+
+    AssistantPromptRequest:
+      type: object
+      description: >
+        Instrucciones propias de una campaña para el asistente: negocio (tono,
+        avisos, vocabulario), nunca reglas del sistema. Todos los campos son
+        opcionales; un objeto completamente vacío equivale a restaurar el
+        comportamiento por defecto (solo el núcleo).
+      properties:
+        tone:
+          type: string
+          enum: [cercano, neutro, formal]
+          nullable: true
+        detailLevel:
+          type: string
+          enum: [breve, normal, detallado]
+          nullable: true
+        mandatoryNotice:
+          type: string
+          maxLength: 300
+          nullable: true
+          description: Aviso que el asistente debe recordar siempre (p. ej. verificar identidad)
+        avoidWords:
+          type: array
+          maxItems: 20
+          items: { type: string, maxLength: 60 }
+        extraInstructions:
+          type: string
+          maxLength: 2000
+          nullable: true
+          description: Texto libre acotado; único campo sin estructura del formulario
+
+    AssistantPromptSettings:
+      description: >
+        Instrucciones vigentes de la campaña, tal como las devuelve la API
+        (a diferencia de AssistantPromptRequest, aquí avoidWords e isEmpty
+        siempre están presentes).
+      type: object
+      required: [avoidWords, isEmpty]
+      properties:
+        tone:
+          type: string
+          enum: [cercano, neutro, formal]
+          nullable: true
+        detailLevel:
+          type: string
+          enum: [breve, normal, detallado]
+          nullable: true
+        mandatoryNotice:
+          type: string
+          maxLength: 300
+          nullable: true
+        avoidWords:
+          type: array
+          maxItems: 20
+          items: { type: string, maxLength: 60 }
+        extraInstructions:
+          type: string
+          maxLength: 2000
+          nullable: true
+        isEmpty:
+          type: boolean
+          description: >
+            True si ningún campo está informado: el asistente responde
+            solo con el núcleo, igual que antes de que existiera esta función.
+
+    PromptUpdateResponse:
+      type: object
+      required: [prompt, warnings, versionId, createdAtUtc]
+      properties:
+        prompt:
+          $ref: "#/components/schemas/AssistantPromptSettings"
+        warnings:
+          type: array
+          items: { type: string }
+          description: >
+            Avisos de lint no bloqueantes: patrones en el texto libre o el
+            aviso que sugieren un intento de anular el núcleo (p. ej.
+            "ignora", "responde siempre"). Se publica igualmente: el núcleo
+            se reafirma después de este bloque de todos modos.
+        versionId: { type: string, format: uuid }
+        createdAtUtc: { type: string, format: date-time }
+
+    PromptVersion:
+      type: object
+      required: [id, prompt, publishedBy, createdAtUtc]
+      properties:
+        id: { type: string, format: uuid }
+        prompt:
+          $ref: "#/components/schemas/AssistantPromptSettings"
+        publishedBy:
+          type: string
+          description: Usuario autenticado que publicó este cambio (o restauración)
+        createdAtUtc: { type: string, format: date-time }
+
+    PromptPreviewRequest:
+      allOf:
+        - $ref: "#/components/schemas/AssistantPromptRequest"
+        - type: object
+          required: [question]
+          properties:
+            question:
+              type: string
+              minLength: 1
+              description: Pregunta de prueba, resuelta contra el corpus real de la campaña
+
+    PromptPreviewResponse:
+      type: object
+      required: [currentAnswer, candidateAnswer, citations, warnings]
+      properties:
+        currentAnswer:
+          type: string
+          description: Respuesta con las instrucciones publicadas actualmente
+        candidateAnswer:
+          type: string
+          description: Respuesta con el candidato del cuerpo de la petición, sin guardar
+        citations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Citation"
+          description: >
+            Mismo contexto recuperado para ambas respuestas: la comparación es
+            sobre el prompt, no sobre qué encontró la búsqueda
+        warnings:
+          type: array
+          items: { type: string }
 
     IngestStatus:
       type: string

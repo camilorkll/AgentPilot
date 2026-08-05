@@ -23,6 +23,7 @@ public class AgentPilotDbContext(DbContextOptions<AgentPilotDbContext> options)
     public const int EmbeddingDimensions = 1536;
 
     public DbSet<Campaña> Campañas => Set<Campaña>();
+    public DbSet<PromptVersion> PromptVersions => Set<PromptVersion>();
     public DbSet<Documento> Documentos => Set<Documento>();
     public DbSet<Chunk> Chunks => Set<Chunk>();
     public DbSet<Conversation> Conversations => Set<Conversation>();

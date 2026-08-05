@@ -28,6 +28,9 @@ public static class DependencyInjection
         // Orquestador RAG de preguntas (scoped: usa el repositorio de conversaciones).
         services.AddScoped<IAskQuestionService, AskQuestionService>();
 
+        // Vista previa de prompts: mismo orquestador RAG, sin persistir nada.
+        services.AddScoped<IPromptPreviewService, PromptPreviewService>();
+
         // Autenticación.
         services.AddScoped<IAuthService, AuthService>();
 

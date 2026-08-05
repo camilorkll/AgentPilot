@@ -16,9 +16,48 @@ export interface Campaign {
   status: CampaignStatus;
   documentCount: number;
   activeDocumentCount: number;
-  assistantInstructions: string | null;
   closedAtUtc: string | null;
   createdAtUtc: string;
+}
+
+/**
+ * Instrucciones propias de una campaña para el asistente: negocio (tono, avisos,
+ * vocabulario), nunca reglas del sistema — esas viven en el núcleo del prompt, en
+ * código, y se gestionan aparte de la campaña (ver /campaigns/{id}/prompt).
+ */
+export interface AssistantPromptSettings {
+  tone: 'cercano' | 'neutro' | 'formal' | null;
+  detailLevel: 'breve' | 'normal' | 'detallado' | null;
+  mandatoryNotice: string | null;
+  avoidWords: string[];
+  extraInstructions: string | null;
+  /** True si ningún campo está informado: el asistente responde solo con el núcleo. */
+  isEmpty: boolean;
+}
+
+/** Respuesta de publicar (o restaurar) unas instrucciones de campaña. */
+export interface PromptUpdateResult {
+  prompt: AssistantPromptSettings;
+  /** Avisos de lint no bloqueantes: se publica igualmente, el núcleo se reafirma después. */
+  warnings: string[];
+  versionId: string;
+  createdAtUtc: string;
+}
+
+/** Una entrada del historial de instrucciones de una campaña. */
+export interface PromptVersion {
+  id: string;
+  prompt: AssistantPromptSettings;
+  publishedBy: string;
+  createdAtUtc: string;
+}
+
+/** Comparación de una pregunta de prueba con lo publicado y con un candidato sin guardar. */
+export interface PromptPreviewResult {
+  currentAnswer: string;
+  candidateAnswer: string;
+  citations: Citation[];
+  warnings: string[];
 }
 
 export interface LoginResponse {

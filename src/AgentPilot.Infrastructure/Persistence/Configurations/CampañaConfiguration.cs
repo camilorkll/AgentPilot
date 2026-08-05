@@ -21,8 +21,11 @@ public class CampañaConfiguration : IEntityTypeConfiguration<Campaña>
         // OpenAPI lo expone con nombre para que la API siga siendo legible.
         builder.Property(c => c.Status).HasConversion<int>().IsRequired();
 
-        builder.Property(c => c.AssistantInstructions)
-            .HasMaxLength(Campaña.MaxLongitudInstrucciones);
+        // Las instrucciones de campaña para el asistente son un único objeto de
+        // configuración que siempre se lee y se escribe entero (nunca se filtra ni se
+        // ordena por un campo suyo), así que se guarda como columna jsonb en vez de
+        // columnas sueltas.
+        builder.OwnsOne(c => c.AssistantPrompt, prompt => prompt.ToJson());
 
         builder.Property(c => c.ClosedAtUtc);
         builder.Property(c => c.CreatedAtUtc).IsRequired();

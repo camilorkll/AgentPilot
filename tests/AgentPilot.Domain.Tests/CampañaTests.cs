@@ -67,8 +67,10 @@ public class CampañaTests
         Assert.False(campaña.AdmiteConsultas);
         Assert.False(campaña.AdmiteCambiosEnDocumentacion);
 
+        var instrucciones = new AssistantPromptSettings("cercano", null, null, null, null);
+
         Assert.Throws<InvalidOperationException>(() => campaña.Renombrar("Otro nombre"));
-        Assert.Throws<InvalidOperationException>(() => campaña.CambiarInstrucciones("Sé breve"));
+        Assert.Throws<InvalidOperationException>(() => campaña.CambiarInstruccionesDelAsistente(instrucciones));
         Assert.Throws<InvalidOperationException>(() => campaña.Activar());
         Assert.Throws<InvalidOperationException>(() => campaña.Desactivar());
     }
@@ -108,15 +110,24 @@ public class CampañaTests
     }
 
     [Fact]
-    public void Instrucciones_SeNormalizanYSeLimitan()
+    public void NuevaCampaña_NaceSinInstruccionesPropias()
     {
-        var campaña = new Campaña("TeleNova", "   ");
-        Assert.Null(campaña.AssistantInstructions); // en blanco equivale a no tener
+        var campaña = new Campaña("TeleNova");
 
-        campaña.CambiarInstrucciones("  Recuerda verificar la identidad.  ");
-        Assert.Equal("Recuerda verificar la identidad.", campaña.AssistantInstructions);
+        Assert.True(campaña.AssistantPrompt.EstáVacío);
+    }
 
-        Assert.Throws<ArgumentException>(() => campaña.CambiarInstrucciones(new string('x', 2001)));
+    [Fact]
+    public void CambiarInstruccionesDelAsistente_SustituyeElBloqueDeCampaña()
+    {
+        var campaña = new Campaña("TeleNova");
+        var instrucciones = new AssistantPromptSettings(
+            "cercano", "breve", "Recuerda verificar la identidad.", ["garantizado"], "Sé conciso.");
+
+        campaña.CambiarInstruccionesDelAsistente(instrucciones);
+
+        Assert.Same(instrucciones, campaña.AssistantPrompt);
+        Assert.False(campaña.AssistantPrompt.EstáVacío);
     }
 
     private static Campaña Cerrada()

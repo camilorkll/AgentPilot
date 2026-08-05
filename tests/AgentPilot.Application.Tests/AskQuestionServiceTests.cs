@@ -92,6 +92,29 @@ public class AskQuestionServiceTests
     }
 
     [Fact]
+    public async Task Ask_ComponeElPromptConLasInstruccionesDeLaCampaña()
+    {
+        // El chat real usa el mismo SystemPromptBuilder que la vista previa: si la
+        // campaña tiene instrucciones propias, tienen que llegar al LLM junto al
+        // núcleo, no en su lugar.
+        var campaña = new Campaña("Luz y Gas Premium");
+        campaña.CambiarInstruccionesDelAsistente(
+            new AssistantPromptSettings("cercano", null, "Verifica la identidad.", null, null));
+
+        var chat = new FakeChat(["ok"]);
+        var service = new AskQuestionService(
+            new FakeEmbeddings(), new FakeSearch([]), chat, new FakeConversationRepository(),
+            new FakeMetrics(), new FakeCurrentUser("agente"), new CampaignGuard(new FakeCampaigns(campaña)));
+
+        await foreach (var _ in service.AskAsync("¿cuánto cuesta?", campaña.Id, null)) { }
+
+        var system = chat.CapturedMessages.First(m => m.Role == PromptRole.System).Content;
+        Assert.Contains("ÚNICAMENTE", system); // el núcleo sigue presente
+        Assert.Contains("cercano", system);
+        Assert.Contains("Verifica la identidad.", system);
+    }
+
+    [Fact]
     public async Task Ask_BuscaSoloEnLaCampañaIndicada()
     {
         var search = new FakeSearch([]);
@@ -184,6 +207,11 @@ public class AskQuestionServiceTests
             => throw new NotSupportedException();
         public Task AddAsync(Campaña c, CancellationToken ct = default) => throw new NotSupportedException();
         public void Delete(Campaña c) => throw new NotSupportedException();
+        public Task AddPromptVersionAsync(PromptVersion v, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<PromptVersion>> ListPromptVersionsAsync(Guid campaignId, CancellationToken ct = default)
+            => throw new NotSupportedException();
+        public Task<PromptVersion?> GetPromptVersionAsync(Guid campaignId, Guid versionId, CancellationToken ct = default)
+            => throw new NotSupportedException();
         public Task SaveChangesAsync(CancellationToken ct = default) => throw new NotSupportedException();
     }
 

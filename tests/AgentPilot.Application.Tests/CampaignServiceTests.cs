@@ -8,7 +8,7 @@ namespace AgentPilot.Application.Tests;
 /// CampaignService traduce "a qué estado se quiere ir" a "qué método de intención
 /// llamar", y comprueba la unicidad del nombre antes de escribir. Las reglas de qué
 /// transición es válida ya están probadas en el dominio (CampañaTests); aquí se prueba
-/// el mapeo y el manejo de duplicados.
+/// el mapeo, el manejo de duplicados y la orquestación del historial de prompts.
 /// </summary>
 public class CampaignServiceTests
 {
@@ -20,19 +20,20 @@ public class CampaignServiceTests
 
         // Sin distinguir mayúsculas: es la misma regla que el índice de la base de datos.
         await Assert.ThrowsAsync<DuplicateCampaignNameException>(
-            () => service.CreateAsync("telenova", null));
+            () => service.CreateAsync("telenova"));
     }
 
     [Fact]
-    public async Task CreateAsync_NaceActivaYSinDocumentos()
+    public async Task CreateAsync_NaceActivaSinDocumentosNiInstruccionesPropias()
     {
         var service = new CampaignService(new FakeCampaigns());
 
-        var created = await service.CreateAsync("Luz y Gas Premium", "Sé breve.");
+        var created = await service.CreateAsync("Luz y Gas Premium");
 
         Assert.Equal(EstadoCampaña.Activa, created.Campaign.Status);
         Assert.Equal(0, created.DocumentCount);
         Assert.Equal(0, created.ActiveDocumentCount);
+        Assert.True(created.Campaign.AssistantPrompt.EstáVacío);
     }
 
     [Fact]
@@ -44,21 +45,105 @@ public class CampaignServiceTests
         var service = new CampaignService(repo);
 
         await Assert.ThrowsAsync<DuplicateCampaignNameException>(
-            () => service.UpdateAsync(propia.Id, "TeleNova", null));
+            () => service.UpdateAsync(propia.Id, "TeleNova"));
     }
 
     [Fact]
     public async Task UpdateAsync_RenombrandoseAsiMisma_NoSeConfundeConDuplicado()
     {
-        // Guardar el mismo nombre (o cambiar solo las instrucciones) no debe chocar
-        // contra el propio registro: por eso ExistsByNameAsync excluye su Id.
+        // Guardar el mismo nombre no debe chocar contra el propio registro: por eso
+        // ExistsByNameAsync excluye su Id.
         var repo = new FakeCampaigns();
         var propia = await repo.CrearAsync("TeleNova");
         var service = new CampaignService(repo);
 
-        var updated = await service.UpdateAsync(propia.Id, "TeleNova", "Nuevo tono.");
+        var updated = await service.UpdateAsync(propia.Id, "TeleNova");
 
-        Assert.Equal("Nuevo tono.", updated.Campaign.AssistantInstructions);
+        Assert.Equal("TeleNova", updated.Campaign.Name);
+    }
+
+    [Fact]
+    public async Task GetPromptAsync_PorDefecto_EstaVacio()
+    {
+        var repo = new FakeCampaigns();
+        var propia = await repo.CrearAsync("TeleNova");
+        var service = new CampaignService(repo);
+
+        var prompt = await service.GetPromptAsync(propia.Id);
+
+        Assert.True(prompt.EstáVacío);
+    }
+
+    [Fact]
+    public async Task UpdatePromptAsync_AplicaLosCambiosYAñadeUnaEntradaAlHistorial()
+    {
+        var repo = new FakeCampaigns();
+        var propia = await repo.CrearAsync("TeleNova");
+        var service = new CampaignService(repo);
+        var settings = new AssistantPromptSettings("cercano", "breve", null, null, null);
+
+        var result = await service.UpdatePromptAsync(propia.Id, settings, "ana");
+
+        Assert.Same(settings, result.Settings);
+        Assert.Equal("cercano", propia.AssistantPrompt.Tone);
+
+        var historial = await service.ListPromptVersionsAsync(propia.Id);
+        Assert.Single(historial);
+        Assert.Equal("ana", historial[0].PublishedBy);
+        Assert.Equal(result.VersionId, historial[0].Id);
+    }
+
+    [Fact]
+    public async Task UpdatePromptAsync_EnCampañaCerrada_SeRechazaYNoAñadeHistorial()
+    {
+        var campaña = new Campaña("TeleNova");
+        campaña.Desactivar();
+        campaña.Cerrar();
+        var repo = new FakeCampaigns(campaña);
+        var service = new CampaignService(repo);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.UpdatePromptAsync(
+                campaña.Id, new AssistantPromptSettings("formal", null, null, null, null), "ana"));
+
+        Assert.Empty(await service.ListPromptVersionsAsync(campaña.Id));
+    }
+
+    [Fact]
+    public async Task RestorePromptVersionAsync_VuelveAAplicarLaVersionYCreaUnaNueva()
+    {
+        var repo = new FakeCampaigns();
+        var propia = await repo.CrearAsync("TeleNova");
+        var service = new CampaignService(repo);
+
+        var primera = await service.UpdatePromptAsync(
+            propia.Id, new AssistantPromptSettings("cercano", null, null, null, null), "ana");
+        await service.UpdatePromptAsync(
+            propia.Id, new AssistantPromptSettings("formal", null, null, null, null), "ana");
+        Assert.Equal("formal", propia.AssistantPrompt.Tone);
+
+        var restaurada = await service.RestorePromptVersionAsync(propia.Id, primera.VersionId, "luis");
+
+        // El tono vuelve a ser "cercano", pero la restauración es una versión nueva
+        // (tres entradas en total), no una que reescriba o borre las anteriores.
+        Assert.Equal("cercano", propia.AssistantPrompt.Tone);
+        Assert.NotEqual(primera.VersionId, restaurada.VersionId);
+        Assert.Equal(3, (await service.ListPromptVersionsAsync(propia.Id)).Count);
+    }
+
+    [Fact]
+    public async Task RestorePromptVersionAsync_ConVersionDeOtraCampaña_LanzaKeyNotFound()
+    {
+        var repo = new FakeCampaigns();
+        var campañaA = await repo.CrearAsync("TeleNova");
+        var campañaB = await repo.CrearAsync("Luz y Gas Premium");
+        var service = new CampaignService(repo);
+
+        var versionDeA = await service.UpdatePromptAsync(
+            campañaA.Id, new AssistantPromptSettings("cercano", null, null, null, null), "ana");
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => service.RestorePromptVersionAsync(campañaB.Id, versionDeA.VersionId, "luis"));
     }
 
     [Theory]
@@ -145,6 +230,7 @@ public class CampaignServiceTests
     private sealed class FakeCampaigns : ICampaignRepository
     {
         private readonly List<Campaña> _campañas;
+        private readonly List<PromptVersion> _versiones = [];
         public bool Eliminada { get; private set; }
 
         public FakeCampaigns(params Campaña[] existentes) => _campañas = existentes.ToList();
@@ -180,6 +266,21 @@ public class CampaignServiceTests
 
         public Task AddAsync(Campaña c, CancellationToken ct = default) { _campañas.Add(c); return Task.CompletedTask; }
         public void Delete(Campaña c) { Eliminada = true; _campañas.Remove(c); }
+
+        public Task AddPromptVersionAsync(PromptVersion version, CancellationToken ct = default)
+        {
+            _versiones.Add(version);
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<PromptVersion>> ListPromptVersionsAsync(Guid campaignId, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<PromptVersion>>(
+                _versiones.Where(v => v.CampaignId == campaignId)
+                    .OrderByDescending(v => v.CreatedAtUtc).ToList());
+
+        public Task<PromptVersion?> GetPromptVersionAsync(Guid campaignId, Guid versionId, CancellationToken ct = default)
+            => Task.FromResult(_versiones.FirstOrDefault(v => v.CampaignId == campaignId && v.Id == versionId));
+
         public Task SaveChangesAsync(CancellationToken ct = default) => Task.CompletedTask;
     }
 }

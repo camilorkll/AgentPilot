@@ -52,3 +52,40 @@ button.danger:hover:not(:disabled) { background: var(--err); color: #fff; }
 .delete-modal ul { margin: .5rem 0 1rem; padding-left: 1.3rem; }
 .delete-modal label { display: block; margin: .75rem 0 .4rem; }
 .modal-actions { display: flex; justify-content: flex-end; gap: .6rem; margin-top: 1rem; }
+
+/* --- Panel de prompt por capas --- */
+.prompt-modal { width: 100%; max-width: 900px; }
+.prompt-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.prompt-head h2 { margin: 0; }
+
+.warning { color: var(--warn); }
+
+.prompt-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+  margin-top: .75rem;
+}
+.prompt-form label { display: block; margin: .6rem 0 .25rem; }
+.prompt-form select,
+.prompt-form input,
+.prompt-form textarea { width: 100%; }
+.prompt-form textarea { resize: vertical; }
+
+.prompt-history { border-left: 1px solid var(--border); padding-left: 1rem; }
+.version-list { list-style: none; margin: .5rem 0 0; padding: 0; display: flex; flex-direction: column; gap: .75rem; }
+.version-list li { border: 1px solid var(--border); border-radius: 8px; padding: .5rem .6rem; }
+.version-summary { margin: .2rem 0 .4rem; }
+
+.prompt-preview { margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem; }
+.preview-ask { display: flex; gap: .5rem; margin: .5rem 0; }
+.preview-ask input { flex: 1; }
+.preview-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: .5rem; }
+.preview-columns > div { border: 1px solid var(--border); border-radius: 8px; padding: .6rem; }
+.preview-columns h4 { margin: 0 0 .4rem; color: var(--muted); }
+
+@media (max-width: 700px) {
+  .prompt-grid { grid-template-columns: 1fr; }
+  .prompt-history { border-left: none; padding-left: 0; border-top: 1px solid var(--border); padding-top: 1rem; }
+  .preview-columns { grid-template-columns: 1fr; }
+}

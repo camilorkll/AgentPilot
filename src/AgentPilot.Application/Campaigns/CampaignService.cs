@@ -21,12 +21,12 @@ public class CampaignService(ICampaignRepository campaigns) : ICampaignService
         => await ConCuentaAsync(await BuscarAsync(id, cancellationToken), cancellationToken);
 
     public async Task<CampaignWithCounts> CreateAsync(
-        string name, string? assistantInstructions, CancellationToken cancellationToken = default)
+        string name, CancellationToken cancellationToken = default)
     {
         if (await campaigns.ExistsByNameAsync(name, cancellationToken: cancellationToken))
             throw new DuplicateCampaignNameException(name);
 
-        var campaign = new Campaña(name, assistantInstructions);
+        var campaign = new Campaña(name);
         await campaigns.AddAsync(campaign, cancellationToken);
         await campaigns.SaveChangesAsync(cancellationToken);
 
@@ -35,17 +35,15 @@ public class CampaignService(ICampaignRepository campaigns) : ICampaignService
     }
 
     public async Task<CampaignWithCounts> UpdateAsync(
-        Guid id, string name, string? assistantInstructions, CancellationToken cancellationToken = default)
+        Guid id, string name, CancellationToken cancellationToken = default)
     {
         var campaign = await BuscarAsync(id, cancellationToken);
 
         if (await campaigns.ExistsByNameAsync(name, id, cancellationToken))
             throw new DuplicateCampaignNameException(name);
 
-        // Renombrar() y CambiarInstrucciones() ya rechazan una campaña cerrada; no se
-        // duplica esa comprobación aquí.
+        // Renombrar() ya rechaza una campaña cerrada; no se duplica esa comprobación aquí.
         campaign.Renombrar(name);
-        campaign.CambiarInstrucciones(assistantInstructions);
 
         await campaigns.SaveChangesAsync(cancellationToken);
         return await ConCuentaAsync(campaign, cancellationToken);
@@ -90,6 +88,52 @@ public class CampaignService(ICampaignRepository campaigns) : ICampaignService
 
         campaigns.Delete(campaign); // se lleva documentos y fragmentos por la cascada
         await campaigns.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<AssistantPromptSettings> GetPromptAsync(Guid id, CancellationToken cancellationToken = default)
+        => (await BuscarAsync(id, cancellationToken)).AssistantPrompt;
+
+    public async Task<PromptUpdateResult> UpdatePromptAsync(
+        Guid id, AssistantPromptSettings settings, string publishedBy,
+        CancellationToken cancellationToken = default)
+    {
+        var campaign = await BuscarAsync(id, cancellationToken);
+        return await AplicarPromptAsync(campaign, settings, publishedBy, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<PromptVersion>> ListPromptVersionsAsync(
+        Guid id, CancellationToken cancellationToken = default)
+    {
+        await BuscarAsync(id, cancellationToken); // 404 legible si la campaña no existe
+        return await campaigns.ListPromptVersionsAsync(id, cancellationToken);
+    }
+
+    public async Task<PromptUpdateResult> RestorePromptVersionAsync(
+        Guid id, Guid versionId, string publishedBy, CancellationToken cancellationToken = default)
+    {
+        var campaign = await BuscarAsync(id, cancellationToken);
+
+        var version = await campaigns.GetPromptVersionAsync(id, versionId, cancellationToken)
+            ?? throw new KeyNotFoundException(
+                $"La versión {versionId} no existe o no pertenece a la campaña {id}.");
+
+        // Restaurar es publicar de nuevo: crea una entrada de historial propia, no
+        // reescribe ni borra la versión de la que parte.
+        return await AplicarPromptAsync(campaign, version.ToSettings(), publishedBy, cancellationToken);
+    }
+
+    private async Task<PromptUpdateResult> AplicarPromptAsync(
+        Campaña campaign, AssistantPromptSettings settings, string publishedBy,
+        CancellationToken cancellationToken)
+    {
+        // CambiarInstruccionesDelAsistente ya rechaza una campaña cerrada.
+        campaign.CambiarInstruccionesDelAsistente(settings);
+
+        var version = new PromptVersion(campaign.Id, settings, publishedBy);
+        await campaigns.AddPromptVersionAsync(version, cancellationToken);
+        await campaigns.SaveChangesAsync(cancellationToken);
+
+        return new PromptUpdateResult(settings, settings.AdviertePatronesSospechosos(), version.Id, version.CreatedAtUtc);
     }
 
     private async Task<Campaña> BuscarAsync(Guid id, CancellationToken cancellationToken)

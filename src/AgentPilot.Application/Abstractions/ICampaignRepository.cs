@@ -38,5 +38,16 @@ public interface ICampaignRepository
 
     void Delete(Campaña campaign);
 
+    /// <summary>Añade una entrada al historial de prompts. Nunca se actualiza ni se borra una ya guardada.</summary>
+    Task AddPromptVersionAsync(PromptVersion version, CancellationToken cancellationToken = default);
+
+    /// <summary>Historial de una campaña, más reciente primero.</summary>
+    Task<IReadOnlyList<PromptVersion>> ListPromptVersionsAsync(
+        Guid campaignId, CancellationToken cancellationToken = default);
+
+    /// <summary>Una versión concreta, o null si no existe o pertenece a otra campaña.</summary>
+    Task<PromptVersion?> GetPromptVersionAsync(
+        Guid campaignId, Guid versionId, CancellationToken cancellationToken = default);
+
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

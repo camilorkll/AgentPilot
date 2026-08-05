@@ -19,13 +19,13 @@
   <form (ngSubmit)="create()">
     <input name="newName" [(ngModel)]="newName" placeholder="Nombre de la campaña"
            maxlength="120" [disabled]="creating()" autocomplete="off" />
-    <textarea name="newInstructions" [(ngModel)]="newInstructions" rows="2"
-              placeholder="Instrucciones para el asistente (opcional): tono, avisos obligatorios…"
-              maxlength="2000" [disabled]="creating()"></textarea>
     <button class="primary" type="submit" [disabled]="creating() || !newName.trim()">
       {{ creating() ? 'Creando…' : '+ Crear campaña' }}
     </button>
   </form>
+  <p class="small muted">
+    Las instrucciones del asistente se configuran después, desde «Prompt» en cada fila.
+  </p>
 </div>
 
 <div class="card">
@@ -47,9 +47,6 @@
               <div class="edit-row">
                 <input name="draftName" [(ngModel)]="draftName" maxlength="120"
                        [disabled]="savingEdit()" autocomplete="off" />
-                <textarea name="draftInstructions" [(ngModel)]="draftInstructions" rows="2"
-                          maxlength="2000" [disabled]="savingEdit()"
-                          placeholder="Instrucciones para el asistente (opcional)"></textarea>
                 <div class="edit-actions">
                   <button class="small primary" [disabled]="savingEdit() || !draftName.trim()"
                           (click)="saveEdit(campaign)">
@@ -62,9 +59,6 @@
           } @else {
             <td>
               <strong>{{ campaign.name }}</strong>
-              @if (campaign.assistantInstructions) {
-                <p class="small muted instructions">{{ campaign.assistantInstructions }}</p>
-              }
             </td>
             <td>
               <span class="badge status-{{ campaign.status }}">
@@ -84,6 +78,7 @@
                       (click)="startEdit(campaign)">
                 Editar
               </button>
+              <button class="small" (click)="openPrompt(campaign)">Prompt</button>
               @for (action of actionsFor(campaign); track action.target) {
                 <button class="small" (click)="setStatus(campaign, action.target)">{{ action.label }}</button>
               }
@@ -135,6 +130,146 @@
           {{ deleting() ? 'Eliminando…' : 'Eliminar definitivamente' }}
         </button>
       </div>
+    </div>
+  </div>
+}
+
+<!--
+  Prompt por capas: núcleo inmutable (código) + este bloque de negocio (dato) +
+  reafirmación del núcleo (código, después). Por eso el formulario no es un
+  textarea en blanco y por eso el preview compara contra lo ya publicado.
+-->
+@if (promptTarget(); as target) {
+  <div class="overlay" (click)="closePrompt()">
+    <div class="card prompt-modal" (click)="$event.stopPropagation()">
+      <div class="prompt-head">
+        <h2>Prompt de «{{ target.name }}»</h2>
+        <button class="small" (click)="closePrompt()">Cerrar</button>
+      </div>
+
+      @if (!promptEditable()) {
+        <p class="small muted">
+          Campaña cerrada: de solo lectura. Puedes ver el historial y probar la vista
+          previa, pero no guardar ni restaurar.
+        </p>
+      }
+      @if (promptError()) {
+        <p class="error small">{{ promptError() }}</p>
+      }
+
+      @if (promptLoading()) {
+        <p class="muted small">Cargando…</p>
+      } @else {
+        <div class="prompt-grid">
+          <section class="prompt-form">
+            <h3 class="small">Instrucciones de negocio</h3>
+            <p class="small muted">
+              No son reglas del sistema: nunca pueden anular el grounding, las citas ni
+              la protección anti-inyección del núcleo, que se reafirma después de este bloque.
+            </p>
+
+            <label class="small">Tono</label>
+            <select name="tone" [(ngModel)]="tone" [disabled]="!promptEditable() || promptSaving()">
+              <option value="">(sin definir)</option>
+              <option value="cercano">Cercano</option>
+              <option value="neutro">Neutro</option>
+              <option value="formal">Formal</option>
+            </select>
+
+            <label class="small">Nivel de detalle</label>
+            <select name="detailLevel" [(ngModel)]="detailLevel" [disabled]="!promptEditable() || promptSaving()">
+              <option value="">(sin definir)</option>
+              <option value="breve">Breve</option>
+              <option value="normal">Normal</option>
+              <option value="detallado">Detallado</option>
+            </select>
+
+            <label class="small">Aviso obligatorio</label>
+            <textarea name="mandatoryNotice" [(ngModel)]="mandatoryNotice" rows="2" maxlength="300"
+                      [disabled]="!promptEditable() || promptSaving()"
+                      placeholder="p. ej. Verifica siempre la identidad del cliente."></textarea>
+
+            <label class="small">Palabras o expresiones a evitar (separadas por comas)</label>
+            <input name="avoidWordsText" [(ngModel)]="avoidWordsText" [disabled]="!promptEditable() || promptSaving()"
+                   placeholder="garantizado, gratis" autocomplete="off" />
+
+            <label class="small">Instrucciones adicionales (texto libre acotado)</label>
+            <textarea name="extraInstructions" [(ngModel)]="extraInstructions" rows="3" maxlength="2000"
+                      [disabled]="!promptEditable() || promptSaving()"></textarea>
+
+            @if (promptWarnings().length > 0) {
+              <p class="warning small">
+                ⚠ Aviso (no bloqueante): el texto contiene patrones que sugieren un
+                intento de anular el núcleo ({{ promptWarnings().join(', ') }}). Se ha
+                publicado igualmente porque el núcleo se reafirma después.
+              </p>
+            }
+
+            <div class="edit-actions">
+              <button class="small primary" [disabled]="!promptEditable() || promptSaving()"
+                      (click)="savePrompt()">
+                {{ promptSaving() ? 'Guardando…' : 'Guardar' }}
+              </button>
+            </div>
+          </section>
+
+          <section class="prompt-history">
+            <h3 class="small">Historial</h3>
+            @if (promptVersions().length === 0) {
+              <p class="small muted">Todavía no hay cambios publicados.</p>
+            } @else {
+              <ul class="version-list">
+                @for (version of promptVersions(); track version.id) {
+                  <li>
+                    <div class="version-meta small muted">
+                      {{ version.createdAtUtc | date:'short' }} — {{ version.publishedBy }}
+                    </div>
+                    <div class="version-summary small">{{ versionSummary(version) }}</div>
+                    <button class="small" [disabled]="!promptEditable() || promptSaving()"
+                            (click)="restoreVersion(version)">
+                      Restaurar
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+          </section>
+        </div>
+
+        <section class="prompt-preview">
+          <h3 class="small">Vista previa</h3>
+          <p class="small muted">
+            Compara, para la misma pregunta, la respuesta con lo publicado y con lo que
+            hay ahora mismo en el formulario (sin guardar). No crea conversación ni telemetría.
+          </p>
+          <div class="preview-ask">
+            <input name="previewQuestion" [(ngModel)]="previewQuestion" placeholder="Pregunta de prueba…"
+                   [disabled]="previewLoading()" autocomplete="off" />
+            <button class="small primary" [disabled]="previewLoading() || !previewQuestion.trim()"
+                    (click)="runPreview()">
+              {{ previewLoading() ? 'Generando…' : 'Probar' }}
+            </button>
+          </div>
+          @if (previewError()) {
+            <p class="error small">{{ previewError() }}</p>
+          }
+          @if (previewResult(); as result) {
+            <div class="preview-columns">
+              <div>
+                <h4 class="small">Publicado</h4>
+                <p class="small">{{ result.currentAnswer }}</p>
+              </div>
+              <div>
+                <h4 class="small">Candidato (formulario actual)</h4>
+                <p class="small">{{ result.candidateAnswer }}</p>
+              </div>
+            </div>
+            @if (result.warnings.length > 0) {
+              <p class="warning small">⚠ {{ result.warnings.join(', ') }}</p>
+            }
+          }
+        </section>
+      }
     </div>
   </div>
 }

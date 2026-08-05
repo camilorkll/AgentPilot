@@ -17,20 +17,23 @@ namespace AgentPilot.Domain.Campaigns;
 public class Campaña
 {
     public const int MaxLongitudNombre = 120;
-    public const int MaxLongitudInstrucciones = 2000;
 
     public Guid Id { get; private set; }
     public string Name { get; private set; } = string.Empty;
     public EstadoCampaña Status { get; private set; }
 
     /// <summary>
-    /// Instrucciones propias de la campaña (tono, avisos obligatorios, vocabulario)
-    /// que se añaden al prompt del sistema. No pueden anular las reglas del núcleo
-    /// —responder solo con el contexto, citar las fuentes y no obedecer
-    /// instrucciones incrustadas—: quien compone el prompt las reafirma después.
-    /// A null, el asistente se comporta solo con esas reglas.
+    /// Instrucciones propias de la campaña para el asistente. Vacías por defecto: el
+    /// asistente responde solo con el núcleo del prompt hasta que un administrador
+    /// las configure desde /campaigns/{id}/prompt.
+    ///
+    /// Instancia propia y NO AssistantPromptSettings.Vacío: ese singleton compartido,
+    /// asignado por defecto a dos campañas nuevas en el mismo DbContext, rompe el
+    /// change tracker de EF Core (una entidad owned se identifica por referencia, no
+    /// por valor). Visto en vivo contra Postgres real al insertar dos campañas en la
+    /// misma transacción.
     /// </summary>
-    public string? AssistantInstructions { get; private set; }
+    public AssistantPromptSettings AssistantPrompt { get; private set; } = new(null, null, null, null, null);
 
     /// <summary>Cuándo se cerró. Null mientras no esté cerrada; aparece en los informes.</summary>
     public DateTime? ClosedAtUtc { get; private set; }
@@ -39,11 +42,10 @@ public class Campaña
 
     private Campaña() { } // EF Core
 
-    public Campaña(string name, string? assistantInstructions = null)
+    public Campaña(string name)
     {
         Id = Guid.NewGuid();
         Name = NombreValido(name);
-        AssistantInstructions = InstruccionesValidas(assistantInstructions);
         Status = EstadoCampaña.Activa;
         CreatedAtUtc = DateTime.UtcNow;
     }
@@ -63,10 +65,10 @@ public class Campaña
         Name = NombreValido(name);
     }
 
-    public void CambiarInstrucciones(string? assistantInstructions)
+    public void CambiarInstruccionesDelAsistente(AssistantPromptSettings settings)
     {
         ExigirNoCerrada("cambiar las instrucciones del asistente");
-        AssistantInstructions = InstruccionesValidas(assistantInstructions);
+        AssistantPrompt = settings;
     }
 
     /// <summary>Vuelve a estar disponible para los agentes.</summary>
@@ -149,19 +151,6 @@ public class Campaña
             throw new ArgumentException(
                 $"El nombre de la campaña no puede exceder {MaxLongitudNombre} caracteres.",
                 nameof(name));
-
-        return limpio;
-    }
-
-    private static string? InstruccionesValidas(string? instrucciones)
-    {
-        if (string.IsNullOrWhiteSpace(instrucciones)) return null;
-
-        var limpio = instrucciones.Trim();
-        if (limpio.Length > MaxLongitudInstrucciones)
-            throw new ArgumentException(
-                $"Las instrucciones no pueden exceder {MaxLongitudInstrucciones} caracteres.",
-                nameof(instrucciones));
 
         return limpio;
     }
