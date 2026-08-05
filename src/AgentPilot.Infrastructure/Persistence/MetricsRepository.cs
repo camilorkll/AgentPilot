@@ -242,6 +242,17 @@ public class MetricsRepository(AgentPilotDbContext db) : IMetricsRepository
     private const string SinCampañaHistórica = "Sin campaña (histórico)";
 
     /// <summary>
+    /// Como con la campaña, "sin operador" es histórico real (llamadas de antes de que
+    /// existiera el seguimiento por agente), no una fila vacía que se pueda ocultar.
+    /// Etiquetarla es obligatorio y no cosmético: en el desglose por mes,
+    /// <c>UserName = null</c> ya significa "total de todos los operadores"; si una
+    /// llamada anónima conservara null, sería indistinguible de esa fila-total y las
+    /// mezclaría. El COALESCE va en el propio SELECT (no después, en C#) para que el
+    /// valor con el que se fusiona el feedback ya sea consistente.
+    /// </summary>
+    private const string SinOperadorHistórico = "Sin operador (histórico)";
+
+    /// <summary>
     /// Normaliza a Kind=Utc en la propia entrada del repositorio, no solo en el
     /// controlador: Npgsql rechaza un DateTime con Kind=Unspecified (el que produce,
     /// por ejemplo, el binder de ASP.NET desde un string de query) al compararlo con
@@ -271,8 +282,10 @@ public class MetricsRepository(AgentPilotDbContext db) : IMetricsRepository
             dateColumn: "l.\"CreatedAtUtc\"", userColumn: "l.\"UserName\"", campaignColumn: "l.\"CampaignId\"");
 
         var bucketExpr = bucket("l.\"CreatedAtUtc\"");
+        // El GROUP BY agrupa sobre la columna real (NULL agrupa con NULL igual que
+        // cualquier otro valor); el coalesce solo decide la etiqueta con la que sale.
         var groupBy = groupByUser ? $"{bucketExpr}, l.\"UserName\"" : bucketExpr;
-        var userSelect = groupByUser ? "l.\"UserName\"" : "NULL::text";
+        var userSelect = groupByUser ? $"coalesce(l.\"UserName\", '{SinOperadorHistórico}')" : "NULL::text";
 
         var sql = $"""
             SELECT
@@ -309,7 +322,10 @@ public class MetricsRepository(AgentPilotDbContext db) : IMetricsRepository
 
         var bucketExpr = bucket("f.\"CreatedAtUtc\"");
         var groupBy = groupByUser ? $"{bucketExpr}, f.\"CreatedBy\"" : bucketExpr;
-        var userSelect = groupByUser ? "f.\"CreatedBy\"" : "NULL::text";
+        // Mismo coalesce que en QueryUsageBucketsAsync y por el mismo motivo: si aquí
+        // se dejara null y allí la etiqueta, la fusión por (bucket, operador) en C# no
+        // encontraría la fila y el feedback de esas llamadas se perdería en silencio.
+        var userSelect = groupByUser ? $"coalesce(f.\"CreatedBy\", '{SinOperadorHistórico}')" : "NULL::text";
 
         var sql = $"""
             SELECT

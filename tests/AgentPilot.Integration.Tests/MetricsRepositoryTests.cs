@@ -272,6 +272,35 @@ public class MetricsRepositoryTests(PgVectorFixture fixture) : IClassFixture<PgV
     }
 
     /// <summary>
+    /// "Sin operador" es histórico real (llamadas de antes del seguimiento por
+    /// agente), no una fila que se pueda ocultar ni dejar en null: en el desglose
+    /// mensual, UserName=null ya significa "total de todos los operadores", así que
+    /// una llamada anónima con null sería indistinguible de esa fila y se mezclarían.
+    /// </summary>
+    [Fact]
+    public async Task GetDailyByOperator_SinOperador_SeEtiquetaYNoSeConfundeConElTotal()
+    {
+        await using var db = await FreshContextAsync();
+
+        db.LlmCallLogs.AddRange(
+            new LlmCallLog("gpt-5-mini", 10, 5, 0.001, 100, null, userName: null),
+            new LlmCallLog("gpt-5-mini", 10, 5, 0.001, 300, null, "agente"));
+        await db.SaveChangesAsync();
+
+        var repo = new MetricsRepository(db);
+
+        var daily = await repo.GetDailyByOperatorAsync(null, null);
+        Assert.Contains(daily, d => d.UserName == "Sin operador (histórico)");
+        Assert.DoesNotContain(daily, d => d.UserName is null || d.UserName == "");
+
+        var summary = await repo.GetSummaryAsync(null, null);
+        var anónima = summary.MonthlyTotals.Single(m => m.UserName == "Sin operador (histórico)");
+        var total = summary.MonthlyTotals.Single(m => m.UserName is null); // el total de todos
+        Assert.Equal(1, anónima.Questions);
+        Assert.Equal(2, total.Questions); // la anónima y la de "agente", no solo una
+    }
+
+    /// <summary>
     /// El binder de ASP.NET produce DateTime con Kind=Unspecified a partir de un
     /// string de query (los parámetros from/to heredados); Npgsql rechaza compararlo
     /// con una columna timestamptz. Apareció de verdad al probar

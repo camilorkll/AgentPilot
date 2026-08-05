@@ -1,0 +1,42 @@
+<div class="multi-select" (keydown)="onKeydown($event)">
+  <button type="button" class="trigger" (click)="toggleOpen()">
+    @if (selected().length === 0) {
+      <span class="muted">{{ placeholder() }}</span>
+    } @else {
+      <span class="tags">
+        @for (item of selected(); track item) {
+          <span class="tag">
+            {{ item }}
+            <span class="tag-x" (click)="remove(item, $event)">×</span>
+          </span>
+        }
+      </span>
+    }
+    <span class="chevron">{{ open() ? '▲' : '▼' }}</span>
+  </button>
+
+  @if (open()) {
+    <div class="panel card">
+      <input type="text" class="search" [ngModel]="query()" (ngModelChange)="query.set($event)"
+             placeholder="Buscar…" autocomplete="off" />
+
+      <div class="bulk-actions">
+        <button type="button" class="small" [disabled]="allSelected()" (click)="selectAll()">Todos</button>
+        <button type="button" class="small" [disabled]="selected().length === 0" (click)="selectNone()">Ninguno</button>
+      </div>
+
+      <ul class="options">
+        @for (option of filteredOptions(); track option; let i = $index) {
+          <li [class.focused]="i === focusedIndex()">
+            <label>
+              <input type="checkbox" [checked]="isSelected(option)" (change)="toggle(option)" />
+              {{ option }}
+            </label>
+          </li>
+        } @empty {
+          <li class="muted small no-results">Sin resultados.</li>
+        }
+      </ul>
+    </div>
+  }
+</div>

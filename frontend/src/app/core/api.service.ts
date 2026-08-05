@@ -13,6 +13,15 @@ import {
   Usage,
 } from './models';
 
+/** Filtros del informe de métricas; los mismos para el resumen y para el CSV. */
+export interface MetricsFilter {
+  operators?: string[];
+  monthFrom?: string;
+  monthTo?: string;
+  /** Id de campaña, o "none" para el histórico anterior a las campañas. */
+  campaignId?: string;
+}
+
 /** Callbacks del stream de una pregunta. */
 export interface AskHandlers {
   onToken: (text: string) => void;
@@ -196,16 +205,50 @@ export class ApiService {
 
   // --- Métricas ---
 
-  /** Resumen de métricas, opcionalmente limitado a uno o varios operadores. */
-  getMetrics(operators: string[] = []) {
-    let params = new HttpParams();
-    for (const op of operators) params = params.append('operator', op);
+  /** Resumen de métricas: operadores, meses y campaña son opcionales. */
+  getMetrics(filter: MetricsFilter = {}) {
     return firstValueFrom(
-      this.http.get<MetricsSummary>('/api/v1/metrics/summary', { params })
+      this.http.get<MetricsSummary>('/api/v1/metrics/summary', { params: this.metricsParams(filter) })
     );
   }
 
   getOperators() {
     return firstValueFrom(this.http.get<string[]>('/api/v1/metrics/operators'));
+  }
+
+  /**
+   * Descarga el CSV con exactamente los mismos filtros que `getMetrics`: reutiliza la
+   * misma consulta en el servidor, así que "respetar los filtros aplicados" es cierto
+   * por construcción. El navegador no puede seguir un enlace con la cabecera
+   * Authorization, así que se pide como blob (el interceptor sí la añade) y se
+   * dispara la descarga con un enlace efímero.
+   */
+  async exportMetricsCsv(filter: MetricsFilter = {}): Promise<void> {
+    const response = await firstValueFrom(
+      this.http.get('/api/v1/metrics/export.csv', {
+        params: this.metricsParams(filter),
+        responseType: 'blob',
+        observe: 'response',
+      })
+    );
+
+    const disposition = response.headers.get('Content-Disposition') ?? '';
+    const fileName = /filename="?([^";]+)"?/.exec(disposition)?.[1] ?? 'metricas.csv';
+
+    const url = URL.createObjectURL(response.body!);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  private metricsParams(filter: MetricsFilter): HttpParams {
+    let params = new HttpParams();
+    for (const op of filter.operators ?? []) params = params.append('operator', op);
+    if (filter.monthFrom) params = params.set('monthFrom', filter.monthFrom);
+    if (filter.monthTo) params = params.set('monthTo', filter.monthTo);
+    if (filter.campaignId) params = params.set('campaignId', filter.campaignId);
+    return params;
   }
 }

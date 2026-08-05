@@ -81,6 +81,31 @@ export interface OperatorUsage {
   positiveFeedbackRate: number | null;
 }
 
+/** Actividad de un operador en un día concreto, en hora de Europe/Madrid. */
+export interface DailyOperatorUsage {
+  date: string;
+  userName: string;
+  questions: number;
+  costUsd: number;
+  avgLatencyMs: number;
+  positiveFeedbackRate: number | null;
+}
+
+/**
+ * Total de un mes. Con `userName` es el total de ESE operador (vista Agente → Días);
+ * con `userName` a null es el total de todos los operadores del filtro (vista
+ * Día → Agentes). No es la suma de los días: la latencia media y el % de útiles no
+ * son aditivos, así que el servidor los calcula aparte.
+ */
+export interface MonthlyTotal {
+  month: string;
+  userName: string | null;
+  questions: number;
+  costUsd: number;
+  avgLatencyMs: number;
+  positiveFeedbackRate: number | null;
+}
+
 export interface MetricsSummary {
   totalQuestions: number;
   positiveFeedbackRate: number | null;
@@ -88,9 +113,19 @@ export interface MetricsSummary {
   p95LatencyMs: number;
   totalCostUsd: number;
   costByModel: Record<string, number>;
+  /** Coste por nombre de campaña; el histórico sin campaña aparece con su propia clave. */
+  costByCampaign: Record<string, number>;
   questionsPerDay: { date: string; count: number }[];
   byOperator: OperatorUsage[];
+  /** Matriz (día, operador): una sola consulta, pivotada de dos formas en pantalla. */
+  dailyByOperator: DailyOperatorUsage[];
+  monthlyTotals: MonthlyTotal[];
   filteredOperators: string[];
+  /** Mes inicial/final YA resueltos por el servidor (incluidos los valores por defecto). */
+  monthFrom: string | null;
+  monthTo: string | null;
+  /** Campaña aplicada al informe; null si no se filtró por campaña. */
+  campaignId: string | null;
 }
 
 /** Mensaje mostrado en el chat. */

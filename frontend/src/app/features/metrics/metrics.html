@@ -3,22 +3,46 @@
     <h1>Métricas y coste</h1>
     <p class="muted small">Uso, calidad percibida y coste de las consultas al modelo (LLMOps).</p>
   </div>
-  <button (click)="refresh()">Refrescar</button>
+  <div class="actions">
+    <button (click)="exportCsv()" [disabled]="exporting()">
+      {{ exporting() ? 'Exportando…' : '⬇ Exportar CSV' }}
+    </button>
+    <button (click)="refresh()">Refrescar</button>
+  </div>
 </div>
 
-@if (operators().length) {
-  <div class="card filter">
-    <span class="small muted">Filtrar por operador:</span>
-    @for (op of operators(); track op) {
-      <button class="small" [class.on]="isSelected(op)" (click)="toggle(op)">
-        {{ op }}
-      </button>
-    }
-    @if (selected().length) {
-      <button class="small clear" (click)="clearFilter()">Ver todos</button>
-    }
+<div class="card filters">
+  <div class="filter-field">
+    <span class="small muted">Operadores</span>
+    <app-multi-select
+      [options]="operators()"
+      [selected]="selectedOperators()"
+      placeholder="Todos los operadores"
+      (selectedChange)="onOperatorsChange($event)"
+    />
   </div>
-}
+
+  <div class="filter-field">
+    <span class="small muted">Mes desde</span>
+    <input type="month" [ngModel]="monthFrom()" (ngModelChange)="onMonthFromChange($event)" />
+  </div>
+
+  <div class="filter-field">
+    <span class="small muted">Mes hasta</span>
+    <input type="month" [ngModel]="monthTo()" (ngModelChange)="onMonthToChange($event)" />
+  </div>
+
+  <div class="filter-field">
+    <span class="small muted">Campaña</span>
+    <select [ngModel]="campaignId()" (ngModelChange)="onCampaignChange($event)">
+      <option value="">Todas las campañas</option>
+      <option value="none">Sin campaña (histórico)</option>
+      @for (campaign of campaigns(); track campaign.id) {
+        <option [value]="campaign.id">{{ campaign.name }}</option>
+      }
+    </select>
+  </div>
+</div>
 
 @if (error()) {
   <p class="error small">{{ error() }}</p>
@@ -74,6 +98,22 @@
     </div>
 
     <div class="card">
+      <h3>Coste por campaña</h3>
+      <table>
+        <tbody>
+          @for (row of costByCampaign(); track row.campaign) {
+            <tr>
+              <td>{{ row.campaign }}</td>
+              <td class="right">${{ row.cost | number:'1.4-4' }}</td>
+            </tr>
+          } @empty {
+            <tr><td class="muted">Sin datos todavía.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
       <h3>Actividad por operador</h3>
       <table>
         <thead>
@@ -115,6 +155,111 @@
         <p class="muted small">Sin datos todavía.</p>
       }
     </div>
+  </div>
+
+  <div class="card detail">
+    <div class="detail-head">
+      <h3>Actividad diaria</h3>
+      <div class="view-switch">
+        <button class="small" [class.on]="view() === 'byAgent'" (click)="setView('byAgent')">
+          Agente → Días
+        </button>
+        <button class="small" [class.on]="view() === 'byDay'" (click)="setView('byDay')">
+          Día → Agentes
+        </button>
+      </div>
+    </div>
+
+    @if (view() === 'byAgent') {
+      @for (agent of byAgentView(); track agent.userName) {
+        <h4 class="agent-name">{{ agent.userName }}</h4>
+        <table class="detail-table">
+          <thead>
+            <tr>
+              <th>Día</th>
+              <th class="right">Preguntas</th>
+              <th class="right">Coste</th>
+              <th class="right">Latencia</th>
+              <th class="right">Útiles</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (section of agent.sections; track section.month) {
+              @for (day of section.days; track day.date) {
+                <tr>
+                  <td>{{ day.date }}</td>
+                  <td class="right">{{ day.questions }}</td>
+                  <td class="right">${{ day.costUsd | number:'1.4-4' }}</td>
+                  <td class="right">{{ day.avgLatencyMs | number:'1.0-0' }} ms</td>
+                  <td class="right">
+                    {{ day.positiveFeedbackRate !== null ? (day.positiveFeedbackRate | percent:'1.0-0') : '—' }}
+                  </td>
+                </tr>
+              }
+              @if (section.total; as total) {
+                <tr class="month-total">
+                  <td>Total {{ section.month }}</td>
+                  <td class="right">{{ total.questions }}</td>
+                  <td class="right">${{ total.costUsd | number:'1.4-4' }}</td>
+                  <td class="right">{{ total.avgLatencyMs | number:'1.0-0' }} ms</td>
+                  <td class="right">
+                    {{ total.positiveFeedbackRate !== null ? (total.positiveFeedbackRate | percent:'1.0-0') : '—' }}
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      } @empty {
+        <p class="muted small">Sin actividad en el periodo seleccionado.</p>
+      }
+    } @else {
+      @for (row of byDayView(); track row.kind === 'day' ? row.date : ('total-' + row.month)) {
+        @if (row.kind === 'day') {
+          <h4 class="agent-name">{{ row.date }}</h4>
+          <table class="detail-table">
+            <thead>
+              <tr>
+                <th>Operador</th>
+                <th class="right">Preguntas</th>
+                <th class="right">Coste</th>
+                <th class="right">Latencia</th>
+                <th class="right">Útiles</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (agent of row.agents; track agent.userName) {
+                <tr>
+                  <td>{{ agent.userName }}</td>
+                  <td class="right">{{ agent.questions }}</td>
+                  <td class="right">${{ agent.costUsd | number:'1.4-4' }}</td>
+                  <td class="right">{{ agent.avgLatencyMs | number:'1.0-0' }} ms</td>
+                  <td class="right">
+                    {{ agent.positiveFeedbackRate !== null ? (agent.positiveFeedbackRate | percent:'1.0-0') : '—' }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        } @else {
+          <table class="detail-table">
+            <tbody>
+              <tr class="month-total">
+                <td>Total {{ row.month }}</td>
+                <td class="right">{{ row.total.questions }}</td>
+                <td class="right">${{ row.total.costUsd | number:'1.4-4' }}</td>
+                <td class="right">{{ row.total.avgLatencyMs | number:'1.0-0' }} ms</td>
+                <td class="right">
+                  {{ row.total.positiveFeedbackRate !== null ? (row.total.positiveFeedbackRate | percent:'1.0-0') : '—' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        }
+      } @empty {
+        <p class="muted small">Sin actividad en el periodo seleccionado.</p>
+      }
+    }
   </div>
 } @else if (!error()) {
   <p class="muted">Cargando…</p>
