@@ -110,8 +110,7 @@ public class ApiClient(string baseUrl)
 
     public async Task<Guid> CreateCampaignAsync(string name)
     {
-        var response = await _http.PostAsJsonAsync(
-            "/api/v1/campaigns", new { name, assistantInstructions = (string?)null });
+        var response = await _http.PostAsJsonAsync("/api/v1/campaigns", new { name });
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         return body.GetProperty("id").GetGuid();

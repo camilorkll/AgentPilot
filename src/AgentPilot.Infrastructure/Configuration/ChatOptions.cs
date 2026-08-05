@@ -13,8 +13,14 @@ public class ChatOptions
     /// <summary>"openai" (nube, por defecto) u "ollama" (local).</summary>
     public string Provider { get; set; } = "openai";
 
-    /// <summary>URL base del servidor Ollama (solo si Provider = ollama).</summary>
-    public string OllamaBaseUrl { get; set; } = "http://localhost:11434";
+    /// <summary>
+    /// URL base del servidor Ollama (solo si Provider = ollama). 127.0.0.1 y no
+    /// "localhost": en .NET "localhost" puede resolver primero a IPv6 (::1), y si
+    /// Ollama solo escucha en IPv4 la conexión falla por timeout en vez de fallar
+    /// rápido o funcionar. Visto en vivo al verificar el adaptador contra un Ollama
+    /// real en esta máquina.
+    /// </summary>
+    public string OllamaBaseUrl { get; set; } = "http://127.0.0.1:11434";
 
     /// <summary>Modelo de chat local. 3B y no 8B: en esta máquina la inferencia es en CPU
     /// (sin GPU dedicada), y un 3B es unas tres veces más rápido con calidad suficiente

@@ -100,7 +100,8 @@ public class OllamaChatCompletionTests
     [SkippableFact]
     public async Task StreamAsync_ContraOllamaReal_RespondeEnStreaming()
     {
-        var baseUrl = Environment.GetEnvironmentVariable("CHAT_OLLAMA_BASE_URL") ?? "http://localhost:11434";
+        // 127.0.0.1 y no "localhost": ver el porqué en ChatOptions.OllamaBaseUrl.
+        var baseUrl = Environment.GetEnvironmentVariable("CHAT_OLLAMA_BASE_URL") ?? "http://127.0.0.1:11434";
         Skip.IfNot(await EstáOllamaDisponibleAsync(baseUrl),
             $"Ollama no está accesible en {baseUrl}: se omite el test contra el servidor real.");
 

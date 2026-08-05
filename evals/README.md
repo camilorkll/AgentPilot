@@ -124,6 +124,14 @@ sin eso, la mayoría de instalaciones de Ollama usan 2048 tokens por defecto y e
 prompt de AgentPilot (núcleo + bloque de campaña + 5 fragmentos + historial) se
 desborda con facilidad, truncando el contexto **en silencio**.
 
+**Medido (05/08/2026, CPU, sin GPU dedicada, 3 pases):** `llama3.2:3b` iguala a
+`gpt-4o-mini` en recuperación y abstención (100 % los tres modelos) y pierde solo
+unos puntos en exactitud (92-96 % frente a 96 %), pero el primer token tarda de
+13 a 21 segundos según se cuente o no el arranque en frío del modelo —de 17 a 27
+veces más que los 776 ms de `gpt-4o-mini`—, y gratis no es lo mismo que rápido.
+Detalle completo, con el hardware y el porqué de usar la API nativa de Ollama (no
+la compatible con OpenAI), en [`COMPARATIVA-MODELOS.md`](COMPARATIVA-MODELOS.md).
+
 ## Resultados obtenidos (gpt-4o-mini, 30 casos)
 
 Informe completo y detalle por caso en [`RESULTS.md`](RESULTS.md).
