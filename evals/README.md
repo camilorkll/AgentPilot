@@ -102,6 +102,28 @@ una diferencia real de una variación de redacción (ver la comparativa).
 Comparativa realizada entre `gpt-5-mini` y `gpt-4o-mini`, con la decisión razonada y
 sus cifras: [`COMPARATIVA-MODELOS.md`](COMPARATIVA-MODELOS.md).
 
+### Ollama en local (paso 8.11)
+
+Desde este paso también se puede medir un modelo local con Ollama, vía un conmutador
+por configuración (`Chat:Provider`, mismo patrón que `Embeddings:Provider`). Ollama
+**no va a producción**: es solo para comparar frente a OpenAI en el vídeo del TFM.
+
+```bash
+# Ollama corre en el equipo anfitrión (no en un contenedor), con el modelo descargado:
+ollama pull llama3.2:3b
+
+# Recrear la API apuntando a Ollama:
+CHAT_PROVIDER=ollama docker compose up -d api
+
+# Y ejecutar el arnés igual que siempre:
+dotnet run --project evals/AgentPilot.Evals
+```
+
+`Chat__OllamaNumCtx` (por defecto 4096) fija la ventana de contexto explícitamente:
+sin eso, la mayoría de instalaciones de Ollama usan 2048 tokens por defecto y el
+prompt de AgentPilot (núcleo + bloque de campaña + 5 fragmentos + historial) se
+desborda con facilidad, truncando el contexto **en silencio**.
+
 ## Resultados obtenidos (gpt-4o-mini, 30 casos)
 
 Informe completo y detalle por caso en [`RESULTS.md`](RESULTS.md).

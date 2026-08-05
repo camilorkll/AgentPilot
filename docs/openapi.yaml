@@ -1048,6 +1048,7 @@ paths:
                   jwtSigningKey: { type: boolean }
                   jwtSigningKeyBytes: { type: integer }
                   connectionString: { type: boolean }
+                  chatProvider: { type: string, description: "openai (por defecto) u ollama (solo local, comparativa)" }
                   chatModel: { type: string }
                   chatModelLooksValid: { type: boolean }
                   embeddingsProvider: { type: string }

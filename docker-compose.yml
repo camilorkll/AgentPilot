@@ -34,8 +34,21 @@ services:
       OpenAI__ChatModel: ${OPENAI_CHAT_MODEL:-gpt-4o-mini}
       Embeddings__Provider: ${EMBEDDINGS_PROVIDER:-openai}
       Embeddings__OllamaBaseUrl: http://ollama:11434
+      # Comparativa local de chat (paso 8.11): Ollama corre en el equipo anfitrión, no
+      # en un contenedor -aquí no hay GPU que pasar, y así basta instalar Ollama en
+      # Windows y `ollama pull` el modelo, sin tocar el volumen del servicio de abajo
+      # (que es el de los *embeddings*, un proveedor distinto). Ollama no va a
+      # producción: es solo para medir frente a OpenAI, ver evals/COMPARATIVA-MODELOS.md.
+      Chat__Provider: ${CHAT_PROVIDER:-openai}
+      Chat__OllamaBaseUrl: ${CHAT_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      Chat__OllamaModel: ${CHAT_OLLAMA_MODEL:-llama3.2:3b}
+      Chat__OllamaNumCtx: ${CHAT_OLLAMA_NUM_CTX:-4096}
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Define JWT_SIGNING_KEY en .env}
       Sentry__Dsn: ${SENTRY_DSN:-}
+    extra_hosts:
+      # host.docker.internal ya funciona sin esto en Docker Desktop (Windows/Mac);
+      # en Docker Engine sobre Linux hace falta esta entrada para resolverlo.
+      - "host.docker.internal:host-gateway"
     ports:
       - "8080:8080"
     healthcheck:

@@ -73,7 +73,16 @@ public static class DependencyInjection
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
 
         // --- IA: chat (generación de respuestas) ---
-        services.AddSingleton<IChatCompletionService, OpenAiChatCompletionService>();
+        services.Configure<ChatOptions>(configuration.GetSection(ChatOptions.SectionName));
+
+        // Mismo patrón que Embeddings:Provider (Fase 2): el proveedor se elige por
+        // configuración. Ollama no va a producción, es solo para medir en local
+        // frente a OpenAI (ver evals/COMPARATIVA-MODELOS.md).
+        var chatProvider = configuration[$"{ChatOptions.SectionName}:Provider"] ?? "openai";
+        if (string.Equals(chatProvider, "ollama", StringComparison.OrdinalIgnoreCase))
+            services.AddHttpClient<IChatCompletionService, OllamaChatCompletionService>();
+        else
+            services.AddSingleton<IChatCompletionService, OpenAiChatCompletionService>();
 
         return services;
     }
