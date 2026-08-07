@@ -13,7 +13,7 @@ Toda la documentación pertenece a una **campaña** (un cliente, un producto): e
 
 | Recurso | URL |
 |---|---|
-| 🌐 Despliegue | *(pendiente de publicar — guía en [docs/DEPLOY.md](docs/DEPLOY.md))* |
+| 🌐 Despliegue | [agentpilot-crk.up.railway.app](https://agentpilot-crk.up.railway.app) (guía en [docs/DEPLOY.md](docs/DEPLOY.md)) |
 | 📊 Slides | *(pendiente — Fase 7)* |
 | 🎬 Vídeo | *(pendiente — Fase 7)* |
 
