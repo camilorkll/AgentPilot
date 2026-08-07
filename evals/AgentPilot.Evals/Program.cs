@@ -180,9 +180,15 @@ async Task<int> RunIsolationAsync(string baseUrlIso, string userIso, string pass
     {
         foreach (var caso in casos)
         {
-            // 1) En la campaña ajena: no debe citar nada ni responder con el dato.
+            // 1) En la campaña ajena: no debe responder con el dato. No se comprueba
+            //    Documents.Length > 0: la búsqueda por similitud siempre devuelve sus
+            //    topK fragmentos más cercanos, aunque sean poco relevantes, así que una
+            //    campaña ajena CON CORPUS PROPIO (a diferencia de la efímera vacía que
+            //    usa este mismo modo por defecto) citará sus propios documentos sin que
+            //    eso sea una fuga. Lo único que de verdad importa es si la respuesta usa
+            //    el dato de TeleNova o se abstiene.
             var enAjena = await apiIso.AskAsync(caso.Question, ajena);
-            var fugó = enAjena.Documents.Length > 0 || !LooksLikeAbstention(enAjena.Answer);
+            var fugó = !LooksLikeAbstention(enAjena.Answer);
             Console.WriteLine($"[{(fugó ? "FUGA " : "OK   ")}] #{caso.Id,2} en campaña ajena  {Truncate(caso.Question, 50)}");
             if (fugó)
             {
