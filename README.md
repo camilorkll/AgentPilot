@@ -189,4 +189,4 @@ Observabilidad de errores con **Sentry** (DSN opcional por entorno).
 
 ---
 
-*Proyecto desarrollado con asistencia de IA (Claude Code) como parte de la metodología del máster.*
+
