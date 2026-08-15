@@ -36,7 +36,7 @@ usa el token devuelto como `Authorization: Bearer <token>`.
 | Backend | .NET 8 Web API · Clean Architecture (4 capas) · EF Core |
 | IA — Chat | OpenAI `gpt-4o-mini` (SDK oficial .NET) con streaming · conmutable por configuración · comparado en local con Ollama `llama3.2:3b` (no en producción) |
 | IA — Embeddings | OpenAI `text-embedding-3-small` · alternativo local: Ollama `nomic-embed-text` |
-| IA — Orquestación | Semantic Kernel (prompt templates versionados) |
+| IA — Orquestación | Propia, sobre los puertos de `Application` ([ADR-008](docs/adr/ADR-008-orquestacion-propia.md)): sin Semantic Kernel ni otro framework — el flujo RAG es fijo y no necesita un *planner* |
 | Base de datos | PostgreSQL 16 + pgvector (relacional + vectorial) |
 | Frontend | Angular 20 (standalone components + signals, lazy loading) |
 | API | Contract-first con OpenAPI 3 ([docs/openapi.yaml](docs/openapi.yaml)) |
@@ -118,7 +118,7 @@ dotnet run --project src/AgentPilot.Api
 ├── src/
 │   ├── AgentPilot.Domain/          # Campaña, Documento, Chunk, Conversacion, PromptVersion...
 │   ├── AgentPilot.Application/     # Casos de uso y puertos (IChatCompletionService, IEmbeddingService)
-│   ├── AgentPilot.Infrastructure/  # EF Core+pgvector, OpenAI, Ollama, Semantic Kernel
+│   ├── AgentPilot.Infrastructure/  # EF Core+pgvector, SDK OpenAI, cliente Ollama
 │   └── AgentPilot.Api/             # Controllers, SSE, JWT, Swagger
 ├── tests/
 │   ├── AgentPilot.Domain.Tests/       # Unitarios de dominio puro

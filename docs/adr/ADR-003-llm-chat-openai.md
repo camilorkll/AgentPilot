@@ -9,6 +9,6 @@ Se necesita un LLM de calidad con streaming y buen soporte .NET. El usuario disp
 OpenAI `gpt-5` como modelo de demo, SDK oficial `OpenAI` (NuGet). Streaming con `CompleteChatStreamingAsync`.
 
 ## Consecuencias
-- Ecosistema .NET/Semantic Kernel de primera clase.
+- SDK oficial de .NET con streaming nativo, sin capas intermedias que mantener (ver [ADR-008](ADR-008-orquestacion-propia.md): la orquestación es propia, no Semantic Kernel).
 - OpenAI ofrece también API de embeddings (ver ADR-005), simplificando el stack.
-- El puerto `IChatService` en Application mantiene el proveedor como detalle intercambiable de Infrastructure.
+- El puerto `IChatCompletionService` en Application mantiene el proveedor como detalle intercambiable de Infrastructure.
