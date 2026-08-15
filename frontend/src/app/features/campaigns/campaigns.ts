@@ -346,8 +346,9 @@ export class Campaigns {
       // Un límite más estricto que el histórico existente purga de inmediato en el
       // servidor: se refresca la lista para reflejar lo que realmente sobrevivió.
       this.promptVersions.set(await this.api.listCampaignPromptVersions(campaign.id));
+      const limite = updated.maxPromptVersions;
       this.promptNotice.set(
-        `Límite guardado: se conservarán ${updated.maxPromptVersions} versiones como máximo.` +
+        `Límite guardado: ${limite === 1 ? 'se conservará 1 versión' : `se conservarán ${limite} versiones`} como máximo.` +
         this.avisoPurga(previas - this.promptVersions().length)
       );
     } catch (e: any) {
