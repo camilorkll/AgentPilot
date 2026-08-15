@@ -8,6 +8,7 @@
 }
 
 .error { color: var(--err); }
+.notice { color: var(--ok); }
 
 .new-campaign { margin-bottom: 1rem; }
 .new-campaign form {
@@ -79,8 +80,26 @@ button.danger:hover:not(:disabled) { background: var(--err); color: #fff; }
 
 .version-list { list-style: none; margin: .5rem 0 0; padding: 0; display: flex; flex-direction: column; gap: .75rem; }
 .version-list li { border: 1px solid var(--border); border-radius: 8px; padding: .5rem .6rem; }
+.version-list li.current-version { border-color: var(--ok); }
 .version-summary { margin: .2rem 0 .4rem; }
-.version-actions { display: flex; gap: .4rem; }
+.version-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
+
+.badge-current {
+  border: 1px solid var(--ok);
+  border-radius: 999px;
+  padding: 0 .4rem;
+  margin-left: .3rem;
+  color: var(--ok);
+  font-size: .75em;
+}
+
+/* Contenido desplegado de una versión: etiqueta encima del valor, porque la columna
+   del historial es estrecha y a dos columnas los textos largos quedan ilegibles. */
+.version-detail { margin: .6rem 0 .25rem; }
+.version-detail dt { color: var(--muted); margin-top: .4rem; }
+.version-detail dd { margin: 0; word-break: break-word; white-space: pre-wrap; }
+.version-detail .changed { color: var(--warn); }
+.version-detail dd.changed { font-weight: 600; }
 
 .prompt-preview { margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem; }
 .preview-ask { display: flex; gap: .5rem; margin: .5rem 0; }

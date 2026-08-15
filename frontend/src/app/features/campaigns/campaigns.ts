@@ -18,6 +18,17 @@ const VACÍO: AssistantPromptSettings = {
   tone: null, detailLevel: null, mandatoryNotice: null, avoidWords: [], extraInstructions: null, isEmpty: true,
 };
 
+/**
+ * Un campo de una versión del historial, ya comparado con las instrucciones
+ * vigentes: `changed` es lo que permite ver de un vistazo qué cambiaría al
+ * restaurarla, en vez de tener que restaurar para averiguarlo.
+ */
+export interface VersionField {
+  label: string;
+  value: string;
+  changed: boolean;
+}
+
 @Component({
   selector: 'app-campaigns',
   imports: [DatePipe, FormsModule],
@@ -60,6 +71,31 @@ export class Campaigns {
   readonly promptVersions = signal<PromptVersion[]>([]);
   readonly promptWarnings = signal<string[]>([]);
   readonly promptEditable = computed(() => this.promptTarget()?.status !== 'closed');
+
+  /** Resultado de la última acción (publicar, restaurar, eliminar, cambiar el límite). */
+  readonly promptNotice = signal<string | null>(null);
+
+  /**
+   * Instrucciones realmente publicadas, que NO son lo que hay en el formulario: el
+   * formulario es un borrador editable. Se guarda aparte para poder decir de cada
+   * versión del historial en qué se diferencia de lo que el asistente usa ahora.
+   */
+  readonly publishedPrompt = signal<AssistantPromptSettings>(VACÍO);
+
+  /** Entrada del historial desplegada; solo una a la vez, para no llenar el panel. */
+  readonly expandedVersionId = signal<string | null>(null);
+
+  /**
+   * Entrada que el asistente está usando: la más reciente cuyo contenido coincide con
+   * lo publicado. Se busca por contenido y no se asume que sea la primera de la lista,
+   * porque al eliminar entradas a mano la más reciente puede ya no ser la aplicada.
+   * Solo se marca una: una restauración deja dos entradas idénticas, y señalar las dos
+   * daría a entender que hay dos versiones vigentes a la vez.
+   */
+  readonly currentVersionId = computed(() => {
+    const publicado = this.publishedPrompt();
+    return this.promptVersions().find((v) => !Campaigns.difieren(v.prompt, publicado))?.id ?? null;
+  });
 
   // --- Límite del historial (por campaña) ---
   historyLimitDraft = 5;
@@ -207,6 +243,8 @@ export class Campaigns {
   async openPrompt(campaign: Campaign): Promise<void> {
     this.promptTarget.set(campaign);
     this.promptError.set(null);
+    this.promptNotice.set(null);
+    this.expandedVersionId.set(null);
     this.promptWarnings.set([]);
     this.previewQuestion = '';
     this.previewResult.set(null);
@@ -237,19 +275,21 @@ export class Campaigns {
     const campaign = this.promptTarget();
     if (!campaign || this.promptSaving() || !this.promptEditable()) return;
 
+    const previas = this.promptVersions().length;
     this.promptSaving.set(true);
     this.promptError.set(null);
+    this.promptNotice.set(null);
     try {
       const result = await this.api.updateCampaignPrompt(campaign.id, this.formValue());
       this.applySettings(result.prompt);
       this.promptWarnings.set(result.warnings);
-      this.promptVersions.update((all) => [
-        { id: result.versionId, prompt: result.prompt, publishedBy: '', createdAtUtc: result.createdAtUtc },
-        ...all,
-      ]);
-      // El publishedBy exacto (usuario autenticado) lo decide el servidor; se refresca
-      // el historial para mostrarlo sin inventarlo en el cliente.
+      // El publishedBy exacto (usuario autenticado) lo decide el servidor, igual que la
+      // purga por límite: se refresca el historial en vez de simularlo en el cliente.
       this.promptVersions.set(await this.api.listCampaignPromptVersions(campaign.id));
+      this.promptNotice.set(
+        'Instrucciones publicadas: el asistente ya responde con ellas.' +
+        this.avisoPurga(previas + 1 - this.promptVersions().length)
+      );
     } catch (e: any) {
       this.promptError.set(e?.error?.message ?? 'No se pudieron guardar las instrucciones.');
     } finally {
@@ -261,13 +301,28 @@ export class Campaigns {
     const campaign = this.promptTarget();
     if (!campaign || this.promptSaving() || !this.promptEditable()) return;
 
+    // Restaurar cambia lo que el asistente responde a partir de ese momento: se
+    // confirma antes, como cualquier otra publicación, y no como un simple "ver".
+    const confirmado = confirm(
+      `¿Restaurar las instrucciones del ${new Date(version.createdAtUtc).toLocaleString()}?\n\n` +
+      'Pasarán a ser las instrucciones vigentes de la campaña y se añadirán al ' +
+      'historial como una entrada nueva. La versión de la que parte no se borra.'
+    );
+    if (!confirmado) return;
+
+    const previas = this.promptVersions().length;
     this.promptSaving.set(true);
     this.promptError.set(null);
+    this.promptNotice.set(null);
     try {
       const result = await this.api.restoreCampaignPromptVersion(campaign.id, version.id);
       this.applySettings(result.prompt);
       this.promptWarnings.set(result.warnings);
       this.promptVersions.set(await this.api.listCampaignPromptVersions(campaign.id));
+      this.promptNotice.set(
+        'Versión restaurada: ya es la vigente y se ha añadido al historial como entrada nueva.' +
+        this.avisoPurga(previas + 1 - this.promptVersions().length)
+      );
     } catch (e: any) {
       this.promptError.set(e?.error?.message ?? 'No se pudo restaurar esta versión.');
     } finally {
@@ -280,8 +335,10 @@ export class Campaigns {
     if (!campaign || this.savingHistoryLimit() || !this.promptEditable()) return;
     if (this.historyLimitDraft < 1 || this.historyLimitDraft > 50) return;
 
+    const previas = this.promptVersions().length;
     this.savingHistoryLimit.set(true);
     this.promptError.set(null);
+    this.promptNotice.set(null);
     try {
       const updated = await this.api.updateCampaignPromptHistoryLimit(campaign.id, this.historyLimitDraft);
       this.promptTarget.set(updated);
@@ -289,6 +346,10 @@ export class Campaigns {
       // Un límite más estricto que el histórico existente purga de inmediato en el
       // servidor: se refresca la lista para reflejar lo que realmente sobrevivió.
       this.promptVersions.set(await this.api.listCampaignPromptVersions(campaign.id));
+      this.promptNotice.set(
+        `Límite guardado: se conservarán ${updated.maxPromptVersions} versiones como máximo.` +
+        this.avisoPurga(previas - this.promptVersions().length)
+      );
     } catch (e: any) {
       this.promptError.set(e?.error?.message ?? 'No se pudo guardar el límite del historial.');
     } finally {
@@ -309,9 +370,14 @@ export class Campaigns {
 
     this.deletingVersionId.set(version.id);
     this.promptError.set(null);
+    this.promptNotice.set(null);
     try {
       await this.api.deleteCampaignPromptVersion(campaign.id, version.id);
       this.promptVersions.update((all) => all.filter((v) => v.id !== version.id));
+      if (this.expandedVersionId() === version.id) this.expandedVersionId.set(null);
+      this.promptNotice.set(
+        'Entrada eliminada del historial. Las instrucciones vigentes de la campaña no han cambiado.'
+      );
     } catch (e: any) {
       this.promptError.set(e?.error?.message ?? 'No se pudo eliminar esta entrada del historial.');
     } finally {
@@ -345,7 +411,62 @@ export class Campaigns {
     return partes.length > 0 ? partes.join(' · ') : 'instrucciones propias';
   }
 
+  toggleVersion(version: PromptVersion): void {
+    this.expandedVersionId.update((id) => (id === version.id ? null : version.id));
+  }
+
+  /**
+   * Contenido completo de una versión, campo a campo y ya comparado con lo publicado.
+   * Es lo que convierte «Restaurar» en una decisión informada: se ve qué cambiaría
+   * antes de pulsarlo, sin tener que restaurar para descubrirlo.
+   */
+  versionFields(version: PromptVersion): VersionField[] {
+    return Campaigns.comparar(version.prompt, this.publishedPrompt());
+  }
+
+  /** Es la entrada que el asistente está usando ahora mismo. */
+  esVigente(version: PromptVersion): boolean {
+    return this.currentVersionId() === version.id;
+  }
+
+  /** Tiene algún campo distinto de lo publicado, es decir, restaurarla cambiaría algo. */
+  versionDifiere(version: PromptVersion): boolean {
+    return Campaigns.difieren(version.prompt, this.publishedPrompt());
+  }
+
+  private static comparar(
+    version: AssistantPromptSettings, publicado: AssistantPromptSettings
+  ): VersionField[] {
+    return [
+      Campaigns.campo('Tono', version.tone, publicado.tone),
+      Campaigns.campo('Nivel de detalle', version.detailLevel, publicado.detailLevel),
+      Campaigns.campo('Aviso obligatorio', version.mandatoryNotice, publicado.mandatoryNotice),
+      Campaigns.campo('Palabras a evitar', version.avoidWords.join(', '), publicado.avoidWords.join(', ')),
+      Campaigns.campo('Instrucciones adicionales', version.extraInstructions, publicado.extraInstructions),
+    ];
+  }
+
+  private static difieren(a: AssistantPromptSettings, b: AssistantPromptSettings): boolean {
+    return Campaigns.comparar(a, b).some((f) => f.changed);
+  }
+
+  private static campo(label: string, valor: string | null, publicado: string | null): VersionField {
+    const v = (valor ?? '').trim();
+    return { label, value: v || '—', changed: v !== (publicado ?? '').trim() };
+  }
+
+  /** Coletilla sobre las entradas que la purga por límite se ha llevado, si se llevó alguna. */
+  private avisoPurga(purgadas: number): string {
+    if (purgadas <= 0) return '';
+    return purgadas === 1
+      ? ' Se ha eliminado la entrada más antigua del historial por el límite configurado.'
+      : ` Se han eliminado las ${purgadas} entradas más antiguas del historial por el límite configurado.`;
+  }
+
   private applySettings(settings: AssistantPromptSettings): void {
+    // Solo se llama con instrucciones ya publicadas (las que devuelve el servidor al
+    // abrir el panel, al guardar o al restaurar), nunca con el borrador del formulario.
+    this.publishedPrompt.set(settings);
     this.tone = settings.tone ?? '';
     this.detailLevel = settings.detailLevel ?? '';
     this.mandatoryNotice = settings.mandatoryNotice ?? '';

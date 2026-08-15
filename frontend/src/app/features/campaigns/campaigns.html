@@ -156,6 +156,9 @@
       @if (promptError()) {
         <p class="error small">{{ promptError() }}</p>
       }
+      @if (promptNotice()) {
+        <p class="notice small">✓ {{ promptNotice() }}</p>
+      }
 
       @if (promptLoading()) {
         <p class="muted small">Cargando…</p>
@@ -236,12 +239,18 @@
             } @else {
               <ul class="version-list">
                 @for (version of promptVersions(); track version.id) {
-                  <li>
+                  <li [class.current-version]="esVigente(version)">
                     <div class="version-meta small muted">
                       {{ version.createdAtUtc | date:'short' }} — {{ version.publishedBy }}
+                      @if (esVigente(version)) {
+                        <span class="badge-current">vigente</span>
+                      }
                     </div>
                     <div class="version-summary small">{{ versionSummary(version) }}</div>
                     <div class="version-actions">
+                      <button class="small" (click)="toggleVersion(version)">
+                        {{ expandedVersionId() === version.id ? 'Ocultar' : 'Ver contenido' }}
+                      </button>
                       <button class="small" [disabled]="!promptEditable() || promptSaving()"
                               (click)="restoreVersion(version)">
                         Restaurar
@@ -251,6 +260,22 @@
                         {{ deletingVersionId() === version.id ? 'Eliminando…' : 'Eliminar' }}
                       </button>
                     </div>
+
+                    @if (expandedVersionId() === version.id) {
+                      <dl class="version-detail small">
+                        @for (field of versionFields(version); track field.label) {
+                          <dt [class.changed]="field.changed">{{ field.label }}</dt>
+                          <dd [class.changed]="field.changed">{{ field.value }}</dd>
+                        }
+                      </dl>
+                      @if (versionDifiere(version)) {
+                        <p class="small muted">
+                          Resaltado: lo que cambiaría respecto a las instrucciones vigentes si restauras esta versión.
+                        </p>
+                      } @else {
+                        <p class="small muted">Idéntica a las instrucciones vigentes: restaurarla no cambiaría nada.</p>
+                      }
+                    }
                   </li>
                 }
               </ul>
