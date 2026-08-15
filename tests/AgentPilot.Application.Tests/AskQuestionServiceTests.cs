@@ -285,6 +285,9 @@ public class AskQuestionServiceTests
         private readonly Dictionary<Guid, Conversation> _store = [];
         public Task AddAsync(Conversation c, CancellationToken ct = default) { _store[c.Id] = c; return Task.CompletedTask; }
         public Task<Conversation?> GetByIdAsync(Guid id, CancellationToken ct = default) => Task.FromResult(_store.GetValueOrDefault(id));
+        // Preguntar no consulta valoraciones: solo se leen al mostrar una conversación.
+        public Task<IReadOnlyList<Domain.Conversations.Feedback>> ListFeedbackAsync(Guid id, CancellationToken ct = default)
+            => throw new NotSupportedException();
         public Task SaveChangesAsync(CancellationToken ct = default) => Task.CompletedTask;
     }
 }

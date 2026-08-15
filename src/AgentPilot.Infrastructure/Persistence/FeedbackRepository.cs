@@ -9,6 +9,9 @@ public class FeedbackRepository(AgentPilotDbContext db) : IFeedbackRepository
     public Task<bool> MessageExistsAsync(Guid messageId, CancellationToken cancellationToken = default)
         => db.Set<Message>().AnyAsync(m => m.Id == messageId, cancellationToken);
 
+    public Task<Feedback?> GetByMessageAsync(Guid messageId, CancellationToken cancellationToken = default)
+        => db.Feedback.FirstOrDefaultAsync(f => f.MessageId == messageId, cancellationToken);
+
     public async Task AddAsync(Feedback feedback, CancellationToken cancellationToken = default)
         => await db.Feedback.AddAsync(feedback, cancellationToken);
 

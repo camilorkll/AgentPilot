@@ -63,8 +63,24 @@
 .snippet { margin: .25rem 0 0; max-height: 4.5em; overflow: hidden; }
 
 .meta { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
-.rate { display: flex; gap: .3rem; }
+.rate { display: flex; align-items: center; gap: .3rem; }
 .rate button { padding: .15rem .5rem; }
+
+/* "cambiar" es una acción secundaria: no debe competir con los pulgares. */
+.rate button.link {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--muted);
+  text-decoration: underline;
+}
+.rate button.link:hover { color: var(--text); }
+
+.feedback-comment { margin: .35rem 0 0; }
+
+.feedback-form { margin-top: .5rem; display: flex; flex-direction: column; gap: .35rem; }
+.feedback-form textarea { width: 100%; resize: vertical; }
+.feedback-actions { display: flex; gap: .5rem; }
 
 .composer { display: flex; gap: .6rem; }
 .composer input { flex: 1; }

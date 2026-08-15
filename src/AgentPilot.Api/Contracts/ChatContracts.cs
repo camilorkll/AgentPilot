@@ -23,7 +23,14 @@ public record ConversationResponse(
     IReadOnlyList<MessageResponse> Messages, DateTime CreatedAtUtc);
 
 public record MessageResponse(
-    Guid Id, string Role, string Content, IReadOnlyList<CitationDto> Citations, DateTime CreatedAtUtc);
+    Guid Id, string Role, string Content, IReadOnlyList<CitationDto> Citations, DateTime CreatedAtUtc,
+    FeedbackDto? Feedback);
+
+/// <summary>
+/// Valoración vigente de una respuesta. Null si nadie la ha valorado; nunca hay más de
+/// una por mensaje.
+/// </summary>
+public record FeedbackDto(string Rating, string? Comment, string? CreatedBy, DateTime CreatedAtUtc);
 
 public static class ChatMappings
 {
@@ -32,16 +39,32 @@ public static class ChatMappings
         c.Snippet.Length <= 300 ? c.Snippet : c.Snippet[..300] + "…",
         Math.Round(c.Score, 4));
 
-    public static ConversationResponse ToResponse(this Conversation c) => new(
-        c.Id, c.CampaignId, c.Title,
-        c.Messages
-            .OrderBy(m => m.CreatedAtUtc)
-            .Select(m => new MessageResponse(
-                m.Id,
-                m.Role.ToString().ToLowerInvariant(), // user/assistant
-                m.Content,
-                m.Citations.Select(ToDto).ToList(),
-                m.CreatedAtUtc))
-            .ToList(),
-        c.CreatedAtUtc);
+    public static FeedbackDto ToDto(this Feedback f) => new(
+        f.Rating.ToString().ToLowerInvariant(), // positive/negative
+        f.Comment, f.CreatedBy, f.CreatedAtUtc);
+
+    /// <summary>
+    /// Compone la conversación con las valoraciones de sus mensajes. Se pasan aparte
+    /// porque el feedback es otro agregado: el mensaje no lo referencia, para que
+    /// valorar no obligue a cargar (ni bloquear) la conversación entera.
+    /// </summary>
+    public static ConversationResponse ToResponse(
+        this Conversation c, IReadOnlyList<Feedback>? feedback = null)
+    {
+        var porMensaje = feedback?.ToDictionary(f => f.MessageId) ?? [];
+
+        return new ConversationResponse(
+            c.Id, c.CampaignId, c.Title,
+            c.Messages
+                .OrderBy(m => m.CreatedAtUtc)
+                .Select(m => new MessageResponse(
+                    m.Id,
+                    m.Role.ToString().ToLowerInvariant(), // user/assistant
+                    m.Content,
+                    m.Citations.Select(ToDto).ToList(),
+                    m.CreatedAtUtc,
+                    porMensaje.TryGetValue(m.Id, out var f) ? f.ToDto() : null))
+                .ToList(),
+            c.CreatedAtUtc);
+    }
 }

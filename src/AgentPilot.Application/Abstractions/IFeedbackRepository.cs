@@ -9,6 +9,9 @@ public interface IFeedbackRepository
     /// <summary>¿Existe el mensaje al que se quiere asociar el feedback?</summary>
     Task<bool> MessageExistsAsync(Guid messageId, CancellationToken cancellationToken = default);
 
+    /// <summary>Valoración vigente de un mensaje, o null si todavía no se ha valorado.</summary>
+    Task<FeedbackEntity?> GetByMessageAsync(Guid messageId, CancellationToken cancellationToken = default);
+
     Task AddAsync(FeedbackEntity feedback, CancellationToken cancellationToken = default);
 
     Task SaveChangesAsync(CancellationToken cancellationToken = default);

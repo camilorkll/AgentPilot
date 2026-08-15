@@ -889,6 +889,13 @@ paths:
         La valoración se asocia al mensaje y al operador que la envía, y alimenta el
         indicador de respuestas útiles del panel de métricas. Es la única señal de
         calidad que viene de quien usa el copiloto, no de una medición automática.
+
+
+        **Una valoración por mensaje.** Volver a valorar el mismo mensaje
+        **rectifica** la anterior en vez de añadir otra: el indicador de respuestas
+        útiles es positivos entre valoradas, y dos filas para la misma respuesta la
+        contarían dos veces. Cambiar de 👎 a 👍 sin enviar `comment` borra el motivo
+        anterior, que describía un rechazo que ya no aplica.
       requestBody:
         required: true
         content:
@@ -1551,6 +1558,34 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Citation"
+        createdAtUtc: { type: string, format: date-time }
+        feedback:
+          allOf:
+            - $ref: "#/components/schemas/MessageFeedback"
+          nullable: true
+          description: >
+            Valoración vigente de esta respuesta, o ausente si nadie la ha
+            valorado. Hay como mucho una por mensaje.
+
+    MessageFeedback:
+      type: object
+      description: >
+        Valoración que un operador dio a una respuesta. Viaja con la conversación
+        para que al reabrirla se vea lo ya votado en vez de ofrecer votar de nuevo.
+      required: [rating, createdAtUtc]
+      properties:
+        rating:
+          type: string
+          enum: [positive, negative]
+        comment:
+          type: string
+          maxLength: 1000
+          nullable: true
+          description: Motivo, normalmente solo en las valoraciones negativas
+        createdBy:
+          type: string
+          nullable: true
+          description: Quién valoró por última vez (una rectificación sustituye al anterior)
         createdAtUtc: { type: string, format: date-time }
 
     Conversation:

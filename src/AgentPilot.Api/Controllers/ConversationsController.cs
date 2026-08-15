@@ -10,12 +10,20 @@ namespace AgentPilot.Api.Controllers;
 [Authorize] // agente o admin
 public class ConversationsController(IConversationRepository conversations) : ControllerBase
 {
-    /// <summary>Recupera el historial de una conversación con sus mensajes y citas.</summary>
+    /// <summary>
+    /// Recupera el historial de una conversación con sus mensajes, citas y la valoración
+    /// de cada respuesta (si la tiene). La valoración viaja aquí para que al reabrir una
+    /// conversación se vea lo ya votado, en vez de ofrecer votar de nuevo algo que ya
+    /// se valoró.
+    /// </summary>
     [HttpGet("{conversationId:guid}")]
     public async Task<ActionResult<ConversationResponse>> GetById(
         Guid conversationId, CancellationToken cancellationToken)
     {
         var conversation = await conversations.GetByIdAsync(conversationId, cancellationToken);
-        return conversation is null ? NotFound() : conversation.ToResponse();
+        if (conversation is null) return NotFound();
+
+        var feedback = await conversations.ListFeedbackAsync(conversationId, cancellationToken);
+        return conversation.ToResponse(feedback);
     }
 }

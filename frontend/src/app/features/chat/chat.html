@@ -99,13 +99,41 @@
                   <span class="small muted">
                     {{ message.feedbackSent === 'positive' ? '👍 ¡Gracias!' : '👎 Anotado' }}
                   </span>
+                  <!-- Rectificar: el servidor sustituye la valoración, no añade otra. -->
+                  <button class="small link" title="Cambiar la valoración"
+                          (click)="changeRating(message)">cambiar</button>
                 } @else {
                   <button class="small" title="Útil" (click)="rate(message, 'positive')">👍</button>
-                  <button class="small" title="No útil" (click)="rate(message, 'negative')">👎</button>
+                  <button class="small" title="No útil" (click)="startNegative(message)">👎</button>
                 }
               </span>
             }
           </div>
+
+          @if (message.feedbackSent === 'negative' && message.feedbackComment) {
+            <p class="small muted feedback-comment">Motivo anotado: {{ message.feedbackComment }}</p>
+          }
+
+          <!--
+            El motivo de un "no útil" es lo que hace accionable el dato: sin él solo
+            se sabe que algo falló, no qué. Es opcional para no penalizar al agente
+            que está en llamada y no puede pararse a escribir.
+          -->
+          @if (commentingId() === message.id) {
+            <div class="feedback-form">
+              <label class="small muted" [attr.for]="'motivo-' + message.id">
+                ¿Qué falló? (opcional)
+              </label>
+              <textarea [id]="'motivo-' + message.id" rows="2" maxlength="1000"
+                        [ngModel]="commentDraft()" (ngModelChange)="commentDraft.set($event)"
+                        [ngModelOptions]="{ standalone: true }"
+                        placeholder="p. ej. se inventó el precio, o no encontró la tarifa que sí está en el corpus"></textarea>
+              <div class="feedback-actions">
+                <button class="small primary" (click)="submitNegative(message)">Enviar</button>
+                <button class="small" (click)="cancelComment()">Cancelar</button>
+              </div>
+            </div>
+          }
         }
       </div>
     }

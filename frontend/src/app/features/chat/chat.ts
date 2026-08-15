@@ -22,6 +22,10 @@ export class Chat {
   readonly error = signal<string | null>(null);
   private conversationId: string | null = null;
 
+  /** Mensaje cuyo motivo de «no útil» se está escribiendo, y el borrador del texto. */
+  readonly commentingId = signal<string | null>(null);
+  readonly commentDraft = signal('');
+
   /** Campañas activas: solo sobre ellas se puede preguntar. */
   readonly campaigns = signal<CampaignSummary[]>([]);
   readonly campaignsLoaded = signal(false);
@@ -149,16 +153,50 @@ export class Chat {
     }
   }
 
-  async rate(message: ChatMessage, rating: 'positive' | 'negative'): Promise<void> {
-    if (!message.id || message.feedbackSent) return;
+  /**
+   * Publica la valoración. El servidor hace upsert: volver a valorar el mismo mensaje
+   * rectifica, no añade una valoración más (contaría dos veces esa respuesta en el
+   * porcentaje de respuestas útiles).
+   */
+  async rate(message: ChatMessage, rating: 'positive' | 'negative', comment?: string): Promise<void> {
+    if (!message.id) return;
     try {
-      await this.api.sendFeedback(message.id, rating);
+      await this.api.sendFeedback(message.id, rating, comment);
       this.messages.update((all) =>
-        all.map((m) => (m.id === message.id ? { ...m, feedbackSent: rating } : m))
+        all.map((m) => (m.id === message.id
+          ? { ...m, feedbackSent: rating, feedbackComment: comment?.trim() || undefined }
+          : m))
       );
+      this.cancelComment();
     } catch {
       this.error.set('No se pudo registrar la valoración.');
     }
+  }
+
+  /** Un «no útil» abre la caja de motivo en vez de enviarse directamente. */
+  startNegative(message: ChatMessage): void {
+    if (!message.id) return;
+    this.commentingId.set(message.id);
+    this.commentDraft.set('');
+  }
+
+  submitNegative(message: ChatMessage): Promise<void> {
+    return this.rate(message, 'negative', this.commentDraft());
+  }
+
+  cancelComment(): void {
+    this.commentingId.set(null);
+    this.commentDraft.set('');
+  }
+
+  /** Vuelve a mostrar los pulgares para corregir una valoración ya emitida. */
+  changeRating(message: ChatMessage): void {
+    this.cancelComment();
+    this.messages.update((all) =>
+      all.map((m) => (m.id === message.id
+        ? { ...m, feedbackSent: undefined, feedbackComment: undefined }
+        : m))
+    );
   }
 
   private scrollToBottom(): void {

@@ -178,4 +178,14 @@ export interface ChatMessage {
   usage?: Usage;
   streaming?: boolean;
   feedbackSent?: 'positive' | 'negative';
+  /** Motivo anotado en un «no útil»; opcional. */
+  feedbackComment?: string;
+}
+
+/** Valoración vigente de una respuesta, tal como la devuelve GET /conversations/{id}. */
+export interface MessageFeedback {
+  rating: 'positive' | 'negative';
+  comment: string | null;
+  createdBy: string | null;
+  createdAtUtc: string;
 }

@@ -15,6 +15,14 @@ public class ConversationRepository(AgentPilotDbContext db) : IConversationRepos
              .AsSplitQuery()
              .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
 
+    public async Task<IReadOnlyList<Feedback>> ListFeedbackAsync(
+        Guid conversationId, CancellationToken cancellationToken = default)
+        => await (from f in db.Feedback
+                  join m in db.Set<Message>() on f.MessageId equals m.Id
+                  where m.ConversationId == conversationId
+                  select f)
+            .ToListAsync(cancellationToken);
+
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)
         => db.SaveChangesAsync(cancellationToken);
 }
