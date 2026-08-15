@@ -1,7 +1,7 @@
 # AgentPilot 🎧🤖
 
 > Copiloto de conocimiento **RAG** en tiempo real para agentes de Contact Center.
-> Trabajo Fin de Máster — Máster en Desarrollo potenciado por IA.
+
 
 Los agentes de un call center pierden entre 30 y 60 segundos por llamada buscando información en wikis, PDFs y argumentarios dispersos. **AgentPilot** indexa esa base de conocimiento y responde en lenguaje natural, en streaming y **con citas a los documentos fuente**, para que el agente resuelva sin poner la llamada en espera.
 
@@ -189,4 +189,4 @@ Observabilidad de errores con **Sentry** (DSN opcional por entorno).
 
 ---
 
-*Proyecto desarrollado con asistencia de IA (Claude Code) como parte de la metodología del máster.*
+
