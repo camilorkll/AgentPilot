@@ -61,4 +61,21 @@ public interface ICampaignService
     /// </summary>
     Task<PromptUpdateResult> RestorePromptVersionAsync(
         Guid id, Guid versionId, string publishedBy, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Cambia cuántas entradas conserva el historial de instrucciones de la campaña. Si
+    /// el histórico ya tiene más entradas que el nuevo límite, purga de inmediato las
+    /// más antiguas. Lanza <see cref="ArgumentException"/> si el valor está fuera de
+    /// rango, e <see cref="InvalidOperationException"/> si la campaña está cerrada.
+    /// </summary>
+    Task<CampaignWithCounts> UpdateHistoryLimitAsync(
+        Guid id, int maxVersions, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Borra una entrada concreta del historial, a petición del administrador. Lanza
+    /// <see cref="KeyNotFoundException"/> si la versión no existe o no es de esta
+    /// campaña, e <see cref="InvalidOperationException"/> si la campaña está cerrada.
+    /// </summary>
+    Task DeletePromptVersionAsync(
+        Guid id, Guid versionId, CancellationToken cancellationToken = default);
 }

@@ -62,6 +62,8 @@ public class CampaignRepository(AgentPilotDbContext db) : ICampaignRepository
         => db.PromptVersions.FirstOrDefaultAsync(
             v => v.CampaignId == campaignId && v.Id == versionId, cancellationToken);
 
+    public void DeletePromptVersion(PromptVersion version) => db.PromptVersions.Remove(version);
+
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)
         => db.SaveChangesAsync(cancellationToken);
 

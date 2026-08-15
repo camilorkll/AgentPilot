@@ -122,6 +122,37 @@ public class CampaignService(ICampaignRepository campaigns) : ICampaignService
         return await AplicarPromptAsync(campaign, version.ToSettings(), publishedBy, cancellationToken);
     }
 
+    public async Task<CampaignWithCounts> UpdateHistoryLimitAsync(
+        Guid id, int maxVersions, CancellationToken cancellationToken = default)
+    {
+        var campaign = await BuscarAsync(id, cancellationToken);
+
+        // CambiarLimiteHistorialPrompt ya rechaza una campaña cerrada y un valor fuera de rango.
+        campaign.CambiarLimiteHistorialPrompt(maxVersions);
+        await campaigns.SaveChangesAsync(cancellationToken);
+
+        // Un límite más estricto que el histórico existente purga de inmediato: el
+        // historial nunca debe mostrar más entradas que el límite vigente, sea cual sea
+        // el motivo (publicar de más, o que alguien acabe de bajar el límite).
+        await PurgarHistorialSiExcedeAsync(campaign, cancellationToken);
+
+        return await ConCuentaAsync(campaign, cancellationToken);
+    }
+
+    public async Task DeletePromptVersionAsync(
+        Guid id, Guid versionId, CancellationToken cancellationToken = default)
+    {
+        var campaign = await BuscarAsync(id, cancellationToken);
+        campaign.ExigirHistorialEditable();
+
+        var version = await campaigns.GetPromptVersionAsync(id, versionId, cancellationToken)
+            ?? throw new KeyNotFoundException(
+                $"La versión {versionId} no existe o no pertenece a la campaña {id}.");
+
+        campaigns.DeletePromptVersion(version);
+        await campaigns.SaveChangesAsync(cancellationToken);
+    }
+
     private async Task<PromptUpdateResult> AplicarPromptAsync(
         Campaña campaign, AssistantPromptSettings settings, string publishedBy,
         CancellationToken cancellationToken)
@@ -133,7 +164,23 @@ public class CampaignService(ICampaignRepository campaigns) : ICampaignService
         await campaigns.AddPromptVersionAsync(version, cancellationToken);
         await campaigns.SaveChangesAsync(cancellationToken);
 
+        // El límite se aplica DESPUÉS de guardar la nueva versión: si se supera, se
+        // elimina la más antigua, nunca la que se acaba de publicar.
+        await PurgarHistorialSiExcedeAsync(campaign, cancellationToken);
+
         return new PromptUpdateResult(settings, settings.AdviertePatronesSospechosos(), version.Id, version.CreatedAtUtc);
+    }
+
+    /// <summary>Elimina las entradas más antiguas del historial que sobren respecto al límite configurado de la campaña.</summary>
+    private async Task PurgarHistorialSiExcedeAsync(Campaña campaign, CancellationToken cancellationToken)
+    {
+        var historial = await campaigns.ListPromptVersionsAsync(campaign.Id, cancellationToken); // más reciente primero
+        var sobrantes = historial.Skip(campaign.MaxPromptVersions).ToList();
+        if (sobrantes.Count == 0) return;
+
+        foreach (var antigua in sobrantes)
+            campaigns.DeletePromptVersion(antigua);
+        await campaigns.SaveChangesAsync(cancellationToken);
     }
 
     private async Task<Campaña> BuscarAsync(Guid id, CancellationToken cancellationToken)

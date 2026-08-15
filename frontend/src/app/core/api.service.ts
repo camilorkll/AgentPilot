@@ -180,6 +180,28 @@ export class ApiService {
   }
 
   /**
+   * Borra una entrada concreta del historial. A diferencia de la purga automática al
+   * superar el límite, esta la elige el administrador; no afecta a las instrucciones vigentes.
+   */
+  deleteCampaignPromptVersion(campaignId: string, versionId: string) {
+    return firstValueFrom(
+      this.http.delete(`/api/v1/campaigns/${campaignId}/prompt/versions/${versionId}`)
+    );
+  }
+
+  /**
+   * Cambia cuántas entradas conserva el historial de instrucciones. Si el histórico ya
+   * tiene más entradas que el nuevo límite, el servidor purga de inmediato las más antiguas.
+   */
+  updateCampaignPromptHistoryLimit(campaignId: string, maxVersions: number) {
+    return firstValueFrom(
+      this.http.put<Campaign>(
+        `/api/v1/campaigns/${campaignId}/prompt/max-versions`, { maxVersions }
+      )
+    );
+  }
+
+  /**
    * Compara, para la misma pregunta de prueba, la respuesta con lo publicado y con un
    * candidato sin guardar. No crea conversación ni telemetría.
    */

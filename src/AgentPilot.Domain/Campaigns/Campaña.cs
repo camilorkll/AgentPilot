@@ -18,6 +18,12 @@ public class Campaña
 {
     public const int MaxLongitudNombre = 120;
 
+    /// <summary>Valor por defecto de <see cref="MaxPromptVersions"/> para una campaña nueva.</summary>
+    public const int LimiteHistorialPromptPorDefecto = 5;
+
+    public const int MinLimiteHistorialPrompt = 1;
+    public const int MaxLimiteHistorialPrompt = 50;
+
     public Guid Id { get; private set; }
     public string Name { get; private set; } = string.Empty;
     public EstadoCampaña Status { get; private set; }
@@ -34,6 +40,13 @@ public class Campaña
     /// misma transacción.
     /// </summary>
     public AssistantPromptSettings AssistantPrompt { get; private set; } = new(null, null, null, null, null);
+
+    /// <summary>
+    /// Cuántas entradas de <see cref="PromptVersion"/> conserva el historial de esta
+    /// campaña como máximo. Al superarse, se elimina la más antigua (ver
+    /// CampaignService); no afecta a las instrucciones vigentes, solo al histórico.
+    /// </summary>
+    public int MaxPromptVersions { get; private set; } = LimiteHistorialPromptPorDefecto;
 
     /// <summary>Cuándo se cerró. Null mientras no esté cerrada; aparece en los informes.</summary>
     public DateTime? ClosedAtUtc { get; private set; }
@@ -70,6 +83,30 @@ public class Campaña
         ExigirNoCerrada("cambiar las instrucciones del asistente");
         AssistantPrompt = settings;
     }
+
+    /// <summary>
+    /// Cambia cuántas entradas conserva el historial de instrucciones. No purga por sí
+    /// solo las entradas que ya sobren: eso lo hace CampaignService contra el
+    /// repositorio, que es quien conoce el historial real.
+    /// </summary>
+    public void CambiarLimiteHistorialPrompt(int max)
+    {
+        ExigirNoCerrada("cambiar el límite del historial de instrucciones");
+
+        if (max < MinLimiteHistorialPrompt || max > MaxLimiteHistorialPrompt)
+            throw new ArgumentException(
+                $"El límite del historial debe estar entre {MinLimiteHistorialPrompt} y " +
+                $"{MaxLimiteHistorialPrompt} (recibido: {max}).", nameof(max));
+
+        MaxPromptVersions = max;
+    }
+
+    /// <summary>
+    /// Comprueba que se puede gestionar el historial de instrucciones (borrar una
+    /// entrada concreta) y si no, lanza. Misma regla que editar las instrucciones
+    /// vigentes: una campaña cerrada es de solo lectura también para su historial.
+    /// </summary>
+    public void ExigirHistorialEditable() => ExigirNoCerrada("gestionar el historial de instrucciones");
 
     /// <summary>Vuelve a estar disponible para los agentes.</summary>
     public void Activar()

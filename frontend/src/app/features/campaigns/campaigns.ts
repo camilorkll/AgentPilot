@@ -61,6 +61,11 @@ export class Campaigns {
   readonly promptWarnings = signal<string[]>([]);
   readonly promptEditable = computed(() => this.promptTarget()?.status !== 'closed');
 
+  // --- Límite del historial (por campaña) ---
+  historyLimitDraft = 5;
+  readonly savingHistoryLimit = signal(false);
+  readonly deletingVersionId = signal<string | null>(null);
+
   tone: '' | 'cercano' | 'neutro' | 'formal' = '';
   detailLevel: '' | 'breve' | 'normal' | 'detallado' = '';
   mandatoryNotice = '';
@@ -206,6 +211,7 @@ export class Campaigns {
     this.previewQuestion = '';
     this.previewResult.set(null);
     this.previewError.set(null);
+    this.historyLimitDraft = campaign.maxPromptVersions;
     this.applySettings(VACÍO);
 
     this.promptLoading.set(true);
@@ -266,6 +272,50 @@ export class Campaigns {
       this.promptError.set(e?.error?.message ?? 'No se pudo restaurar esta versión.');
     } finally {
       this.promptSaving.set(false);
+    }
+  }
+
+  async saveHistoryLimit(): Promise<void> {
+    const campaign = this.promptTarget();
+    if (!campaign || this.savingHistoryLimit() || !this.promptEditable()) return;
+    if (this.historyLimitDraft < 1 || this.historyLimitDraft > 50) return;
+
+    this.savingHistoryLimit.set(true);
+    this.promptError.set(null);
+    try {
+      const updated = await this.api.updateCampaignPromptHistoryLimit(campaign.id, this.historyLimitDraft);
+      this.promptTarget.set(updated);
+      this.replace(updated);
+      // Un límite más estricto que el histórico existente purga de inmediato en el
+      // servidor: se refresca la lista para reflejar lo que realmente sobrevivió.
+      this.promptVersions.set(await this.api.listCampaignPromptVersions(campaign.id));
+    } catch (e: any) {
+      this.promptError.set(e?.error?.message ?? 'No se pudo guardar el límite del historial.');
+    } finally {
+      this.savingHistoryLimit.set(false);
+    }
+  }
+
+  async deleteVersion(version: PromptVersion): Promise<void> {
+    const campaign = this.promptTarget();
+    if (!campaign || this.deletingVersionId() || !this.promptEditable()) return;
+
+    const confirmed = confirm(
+      `¿Seguro que quieres eliminar esta entrada del historial (${this.versionSummary(version)})?\n\n` +
+      'No afecta a las instrucciones vigentes de la campaña, solo a su histórico. ' +
+      'Esta acción no se puede deshacer.'
+    );
+    if (!confirmed) return;
+
+    this.deletingVersionId.set(version.id);
+    this.promptError.set(null);
+    try {
+      await this.api.deleteCampaignPromptVersion(campaign.id, version.id);
+      this.promptVersions.update((all) => all.filter((v) => v.id !== version.id));
+    } catch (e: any) {
+      this.promptError.set(e?.error?.message ?? 'No se pudo eliminar esta entrada del historial.');
+    } finally {
+      this.deletingVersionId.set(null);
     }
   }
 

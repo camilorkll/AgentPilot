@@ -2,7 +2,7 @@
 
 Análisis de seguridad del proyecto, mapeado a **OWASP Top 10 (2021)** y a
 **OWASP Top 10 for LLM Applications (2025)**. Documenta lo que ya está
-implementado y las líneas de mejora. Es un MVP de TFM: el alcance de seguridad
+implementado y las líneas de mejora. Es un MVP: el alcance de seguridad
 es proporcional, y se distingue explícitamente lo implementado de lo pendiente.
 
 ## Modelo de amenazas (resumen)

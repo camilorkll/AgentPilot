@@ -11,7 +11,8 @@ public record CampaignResponse(
     int DocumentCount,
     int ActiveDocumentCount,
     DateTime? ClosedAtUtc,
-    DateTime CreatedAtUtc);
+    DateTime CreatedAtUtc,
+    int MaxPromptVersions);
 
 /// <summary>DTO reducido para el selector del agente (esquema CampaignSummary).</summary>
 public record CampaignSummaryResponse(Guid Id, string Name, int ActiveDocumentCount);
@@ -53,6 +54,9 @@ public record PromptVersionResponse(
     AssistantPromptResponse Prompt,
     string PublishedBy,
     DateTime CreatedAtUtc);
+
+/// <summary>Cuerpo de PUT /campaigns/{id}/prompt/max-versions.</summary>
+public record PromptHistoryLimitRequest(int MaxVersions);
 
 /// <summary>Cuerpo de POST /campaigns/{id}/prompt/preview: una pregunta de prueba y un candidato sin publicar.</summary>
 public record PromptPreviewRequest(
@@ -100,7 +104,8 @@ public static class CampaignMappings
         c.DocumentCount,
         c.ActiveDocumentCount,
         c.Campaign.ClosedAtUtc,
-        c.Campaign.CreatedAtUtc);
+        c.Campaign.CreatedAtUtc,
+        c.Campaign.MaxPromptVersions);
 
     /// <summary>
     /// Para el detalle de una sola campaña (alta, actualización, cambio de estado), sin
@@ -108,7 +113,7 @@ public static class CampaignMappings
     /// </summary>
     public static CampaignResponse ToResponse(this Campaña c, int documentCount, int activeDocumentCount) => new(
         c.Id, c.Name, c.Status.ToDto(), documentCount, activeDocumentCount,
-        c.ClosedAtUtc, c.CreatedAtUtc);
+        c.ClosedAtUtc, c.CreatedAtUtc, c.MaxPromptVersions);
 
     public static CampaignSummaryResponse ToSummary(this CampaignWithCounts c) => new(
         c.Campaign.Id, c.Campaign.Name, c.ActiveDocumentCount);

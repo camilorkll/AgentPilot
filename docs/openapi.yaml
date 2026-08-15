@@ -24,7 +24,18 @@ info:
     que lo que se previsualiza sea exactamente lo que se publica. Cada cambio
     (incluida una restauración) añade una entrada a `/prompt/versions`; ninguna
     se sobrescribe ni se borra.
-  version: 1.2.0
+
+
+    **Límite de historial de prompt (v1.3.0):** el historial de instrucciones de
+    cada campaña conserva como máximo `Campaign.maxPromptVersions` entradas
+    (5 por defecto), configurable por campaña con
+    `PUT /campaigns/{campaignId}/prompt/max-versions`. Al superarse el límite
+    (al publicar o al bajar el propio límite) se elimina automáticamente la
+    entrada más antigua. Un administrador también puede borrar una entrada
+    concreta con `DELETE /campaigns/{campaignId}/prompt/versions/{versionId}`;
+    ninguna de las dos vías de borrado afecta a las instrucciones vigentes de
+    la campaña, solo a su histórico. Cambio aditivo, compatible con la 1.2.0.
+  version: 1.3.0
   contact:
     name: Camilo Rodríguez
     url: https://github.com/camilorkll/AgentPilot
@@ -404,6 +415,73 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "409":
+          $ref: "#/components/responses/CampaignClosed"
+
+  /campaigns/{campaignId}/prompt/versions/{versionId}:
+    delete:
+      tags: [campaigns]
+      operationId: deleteCampaignPromptVersion
+      summary: Borra una entrada concreta del historial
+      description: >
+        Requiere rol `admin`. A diferencia de la purga automática al superar
+        el límite (que solo se lleva la más antigua), esta entrada la elige
+        el administrador. No afecta a las instrucciones vigentes de la
+        campaña, solo a su histórico. Una campaña `closed` es de solo lectura
+        y responde 409.
+      parameters:
+        - $ref: "#/components/parameters/CampaignIdPath"
+        - $ref: "#/components/parameters/VersionIdPath"
+      responses:
+        "204":
+          description: Entrada del historial eliminada
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: >
+            La campaña no existe, o la versión no existe o no pertenece a
+            esta campaña
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          $ref: "#/components/responses/CampaignClosed"
+
+  /campaigns/{campaignId}/prompt/max-versions:
+    put:
+      tags: [campaigns]
+      operationId: updateCampaignPromptHistoryLimit
+      summary: Configura el límite del historial de instrucciones de la campaña
+      description: >
+        Requiere rol `admin`. Si el histórico ya tiene más entradas que el
+        nuevo límite, purga de inmediato las más antiguas hasta ajustarse a
+        él. Una campaña `closed` es de solo lectura y responde 409.
+      parameters:
+        - $ref: "#/components/parameters/CampaignIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromptHistoryLimitRequest"
+      responses:
+        "200":
+          description: Campaña con el límite actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/CampaignClosed"
 
@@ -1156,7 +1234,7 @@ components:
 
     Campaign:
       type: object
-      required: [id, name, status, documentCount, createdAtUtc]
+      required: [id, name, status, documentCount, createdAtUtc, maxPromptVersions]
       properties:
         id: { type: string, format: uuid }
         name: { type: string, maxLength: 120 }
@@ -1170,6 +1248,16 @@ components:
           description: Documentos indexados y activos, es decir consultables por el asistente
         closedAtUtc: { type: string, format: date-time, nullable: true }
         createdAtUtc: { type: string, format: date-time }
+        maxPromptVersions:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 5
+          description: >
+            Cuántas entradas conserva como máximo el historial de instrucciones
+            de esta campaña (`/prompt/versions`). Al superarse se elimina la
+            más antigua; se cambia con
+            `PUT /campaigns/{campaignId}/prompt/max-versions`.
 
     CampaignSummary:
       type: object
@@ -1293,6 +1381,16 @@ components:
           type: string
           description: Usuario autenticado que publicó este cambio (o restauración)
         createdAtUtc: { type: string, format: date-time }
+
+    PromptHistoryLimitRequest:
+      type: object
+      required: [maxVersions]
+      properties:
+        maxVersions:
+          type: integer
+          minimum: 1
+          maximum: 50
+          description: Nuevo límite de entradas del historial de instrucciones de la campaña
 
     PromptPreviewRequest:
       allOf:

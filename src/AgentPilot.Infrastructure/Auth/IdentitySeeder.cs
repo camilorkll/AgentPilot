@@ -6,7 +6,7 @@ namespace AgentPilot.Infrastructure.Auth;
 /// <summary>
 /// Crea los usuarios de prueba al arrancar si la tabla está vacía. Las
 /// contraseñas se guardan hasheadas; en claro solo aquí y documentadas en el
-/// README (credenciales de demo para el TFM).
+/// README (credenciales de demo).
 /// </summary>
 public static class IdentitySeeder
 {

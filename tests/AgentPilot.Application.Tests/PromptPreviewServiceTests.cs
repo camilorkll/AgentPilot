@@ -131,6 +131,7 @@ public class PromptPreviewServiceTests
             => throw new NotSupportedException();
         public Task<PromptVersion?> GetPromptVersionAsync(Guid campaignId, Guid versionId, CancellationToken ct = default)
             => throw new NotSupportedException();
+        public void DeletePromptVersion(PromptVersion version) => throw new NotSupportedException();
         public Task SaveChangesAsync(CancellationToken ct = default) => throw new NotSupportedException();
     }
 }

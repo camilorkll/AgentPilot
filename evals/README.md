@@ -106,7 +106,7 @@ sus cifras: [`COMPARATIVA-MODELOS.md`](COMPARATIVA-MODELOS.md).
 
 Desde este paso también se puede medir un modelo local con Ollama, vía un conmutador
 por configuración (`Chat:Provider`, mismo patrón que `Embeddings:Provider`). Ollama
-**no va a producción**: es solo para comparar frente a OpenAI en el vídeo del TFM.
+**no va a producción**: es solo una comparativa medida frente a OpenAI, no una opción de despliegue.
 
 ```bash
 # Ollama corre en el equipo anfitrión (no en un contenedor), con el modelo descargado:

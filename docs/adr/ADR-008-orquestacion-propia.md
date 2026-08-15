@@ -3,7 +3,7 @@
 **Estado:** Aceptada (07/2026) — **Revisada** (12/08/2026): se descarta Semantic Kernel
 
 ## Contexto
-El temario pide demostrar orquestación con frameworks de IA (Semantic Kernel / LangChain). La decisión original de este ADR fue adoptar Semantic Kernel como capa fina sobre los puertos de `Application`, con *prompt templates* versionados en el repo.
+Se buscaba demostrar orquestación con un framework de IA (Semantic Kernel / LangChain). La decisión original de este ADR fue adoptar Semantic Kernel como capa fina sobre los puertos de `Application`, con *prompt templates* versionados en el repo.
 
 ## Revisión: Semantic Kernel nunca llegó a integrarse
 Al revisar el código para responder una pregunta sobre la diferencia entre Semantic Kernel y el SDK de OpenAI, se confirmó que la decisión original **nunca se implementó**: ningún `.csproj` del proyecto referencia `Microsoft.SemanticKernel`, y no existe ninguna plantilla de prompt al estilo SK (`skprompt.txt` / `config.json`). `OpenAiChatCompletionService` llama directamente a `OpenAI.Chat.ChatClient` del SDK oficial, y `OllamaChatCompletionService` habla la API REST nativa de Ollama por `HttpClient` — ambos detrás del puerto propio `IChatCompletionService` (`Application.Abstractions`), que **no tiene relación** con la interfaz del mismo nombre de Semantic Kernel pese a la coincidencia de nombre.
@@ -17,5 +17,5 @@ La orquestación es **propia**, construida con las herramientas de Clean Archite
 
 ## Consecuencias
 - Una dependencia menos en el proyecto: Semantic Kernel no aparece en ningún `.csproj`.
-- El punto del temario sobre "orquestación con frameworks de IA" no queda cubierto por un framework de terceros, sino por el propio diseño de puertos y adaptadores de Clean Architecture — documentado aquí y en el README de forma explícita, en vez de dejar una afirmación en la documentación que el código no respalda.
+- La orquestación con frameworks de IA no queda cubierta por un framework de terceros, sino por el propio diseño de puertos y adaptadores de Clean Architecture — documentado aquí y en el README de forma explícita, en vez de dejar una afirmación en la documentación que el código no respalda.
 - Si en el futuro el flujo dejara de ser fijo (por ejemplo, un agente que elija entre varias herramientas), Semantic Kernel o un *planner* propio volverían a ser una opción real que evaluar; hoy no aportan nada que los puertos existentes no resuelvan ya.

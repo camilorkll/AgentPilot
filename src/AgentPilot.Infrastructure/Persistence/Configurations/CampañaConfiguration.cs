@@ -27,6 +27,10 @@ public class CampañaConfiguration : IEntityTypeConfiguration<Campaña>
         // columnas sueltas.
         builder.OwnsOne(c => c.AssistantPrompt, prompt => prompt.ToJson());
 
+        builder.Property(c => c.MaxPromptVersions)
+            .IsRequired()
+            .HasDefaultValue(Campaña.LimiteHistorialPromptPorDefecto);
+
         builder.Property(c => c.ClosedAtUtc);
         builder.Property(c => c.CreatedAtUtc).IsRequired();
 

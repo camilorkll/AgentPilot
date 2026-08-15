@@ -49,5 +49,11 @@ public interface ICampaignRepository
     Task<PromptVersion?> GetPromptVersionAsync(
         Guid campaignId, Guid versionId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Borra una entrada del historial: por purga automática al superar el límite de la
+    /// campaña, o por borrado manual de un administrador.
+    /// </summary>
+    void DeletePromptVersion(PromptVersion version);
+
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

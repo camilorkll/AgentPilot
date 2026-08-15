@@ -73,9 +73,14 @@ button.danger:hover:not(:disabled) { background: var(--err); color: #fff; }
 .prompt-form textarea { resize: vertical; }
 
 .prompt-history { border-left: 1px solid var(--border); padding-left: 1rem; }
+
+.history-limit { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; margin: .4rem 0; }
+.history-limit input { width: 4.5rem; }
+
 .version-list { list-style: none; margin: .5rem 0 0; padding: 0; display: flex; flex-direction: column; gap: .75rem; }
 .version-list li { border: 1px solid var(--border); border-radius: 8px; padding: .5rem .6rem; }
 .version-summary { margin: .2rem 0 .4rem; }
+.version-actions { display: flex; gap: .4rem; }
 
 .prompt-preview { margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem; }
 .preview-ask { display: flex; gap: .5rem; margin: .5rem 0; }

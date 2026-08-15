@@ -225,6 +225,124 @@ public class CampaignServiceTests
         await Assert.ThrowsAsync<KeyNotFoundException>(() => service.GetAsync(Guid.NewGuid()));
     }
 
+    [Fact]
+    public async Task UpdatePromptAsync_AlSuperarElLimite_PurgaLaEntradaMasAntigua()
+    {
+        var repo = new FakeCampaigns();
+        var propia = await repo.CrearAsync("TeleNova");
+        var service = new CampaignService(repo);
+
+        // Límite por defecto: 5. La sexta publicación debe purgar la primera.
+        var primera = await service.UpdatePromptAsync(
+            propia.Id, new AssistantPromptSettings("cercano", null, null, null, null), "ana");
+        for (var i = 0; i < 4; i++)
+            await service.UpdatePromptAsync(
+                propia.Id, new AssistantPromptSettings("neutro", null, null, null, null), "ana");
+
+        var historialAntesDeSuperar = await service.ListPromptVersionsAsync(propia.Id);
+        Assert.Equal(5, historialAntesDeSuperar.Count);
+
+        await service.UpdatePromptAsync(
+            propia.Id, new AssistantPromptSettings("formal", null, null, null, null), "ana");
+
+        var historial = await service.ListPromptVersionsAsync(propia.Id);
+        Assert.Equal(5, historial.Count);
+        Assert.DoesNotContain(historial, v => v.Id == primera.VersionId);
+    }
+
+    [Fact]
+    public async Task UpdateHistoryLimitAsync_ConHistoricoSobrante_PurgaDeInmediato()
+    {
+        var repo = new FakeCampaigns();
+        var propia = await repo.CrearAsync("TeleNova");
+        var service = new CampaignService(repo);
+
+        for (var i = 0; i < 5; i++)
+            await service.UpdatePromptAsync(
+                propia.Id, new AssistantPromptSettings("neutro", null, null, null, null), "ana");
+        Assert.Equal(5, (await service.ListPromptVersionsAsync(propia.Id)).Count);
+
+        var result = await service.UpdateHistoryLimitAsync(propia.Id, 2);
+
+        Assert.Equal(2, result.Campaign.MaxPromptVersions);
+        Assert.Equal(2, (await service.ListPromptVersionsAsync(propia.Id)).Count);
+    }
+
+    [Fact]
+    public async Task UpdateHistoryLimitAsync_FueraDeRango_SeRechaza()
+    {
+        var repo = new FakeCampaigns();
+        var propia = await repo.CrearAsync("TeleNova");
+        var service = new CampaignService(repo);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => service.UpdateHistoryLimitAsync(propia.Id, 0));
+    }
+
+    [Fact]
+    public async Task UpdateHistoryLimitAsync_EnCampañaCerrada_SeRechaza()
+    {
+        var campaña = new Campaña("TeleNova");
+        campaña.Desactivar();
+        campaña.Cerrar();
+        var service = new CampaignService(new FakeCampaigns(campaña));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.UpdateHistoryLimitAsync(campaña.Id, 3));
+    }
+
+    [Fact]
+    public async Task DeletePromptVersionAsync_BorraSoloLaEntradaIndicada()
+    {
+        var repo = new FakeCampaigns();
+        var propia = await repo.CrearAsync("TeleNova");
+        var service = new CampaignService(repo);
+
+        var primera = await service.UpdatePromptAsync(
+            propia.Id, new AssistantPromptSettings("cercano", null, null, null, null), "ana");
+        var segunda = await service.UpdatePromptAsync(
+            propia.Id, new AssistantPromptSettings("formal", null, null, null, null), "ana");
+
+        await service.DeletePromptVersionAsync(propia.Id, primera.VersionId);
+
+        var historial = await service.ListPromptVersionsAsync(propia.Id);
+        Assert.Single(historial);
+        Assert.Equal(segunda.VersionId, historial[0].Id);
+    }
+
+    [Fact]
+    public async Task DeletePromptVersionAsync_ConVersionDeOtraCampaña_LanzaKeyNotFound()
+    {
+        var repo = new FakeCampaigns();
+        var campañaA = await repo.CrearAsync("TeleNova");
+        var campañaB = await repo.CrearAsync("Luz y Gas Premium");
+        var service = new CampaignService(repo);
+
+        var versionDeA = await service.UpdatePromptAsync(
+            campañaA.Id, new AssistantPromptSettings("cercano", null, null, null, null), "ana");
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => service.DeletePromptVersionAsync(campañaB.Id, versionDeA.VersionId));
+    }
+
+    [Fact]
+    public async Task DeletePromptVersionAsync_EnCampañaCerrada_SeRechazaYNoBorraNada()
+    {
+        var campaña = new Campaña("TeleNova");
+        var repo = new FakeCampaigns(campaña);
+        var service = new CampaignService(repo);
+
+        var version = await service.UpdatePromptAsync(
+            campaña.Id, new AssistantPromptSettings("cercano", null, null, null, null), "ana");
+
+        campaña.Desactivar();
+        campaña.Cerrar();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.DeletePromptVersionAsync(campaña.Id, version.VersionId));
+
+        Assert.Single(await service.ListPromptVersionsAsync(campaña.Id));
+    }
+
     // --- Doble en memoria ---
 
     private sealed class FakeCampaigns : ICampaignRepository
@@ -280,6 +398,8 @@ public class CampaignServiceTests
 
         public Task<PromptVersion?> GetPromptVersionAsync(Guid campaignId, Guid versionId, CancellationToken ct = default)
             => Task.FromResult(_versiones.FirstOrDefault(v => v.CampaignId == campaignId && v.Id == versionId));
+
+        public void DeletePromptVersion(PromptVersion version) => _versiones.Remove(version);
 
         public Task SaveChangesAsync(CancellationToken ct = default) => Task.CompletedTask;
     }

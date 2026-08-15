@@ -73,6 +73,8 @@ public class CampañaTests
         Assert.Throws<InvalidOperationException>(() => campaña.CambiarInstruccionesDelAsistente(instrucciones));
         Assert.Throws<InvalidOperationException>(() => campaña.Activar());
         Assert.Throws<InvalidOperationException>(() => campaña.Desactivar());
+        Assert.Throws<InvalidOperationException>(() => campaña.CambiarLimiteHistorialPrompt(3));
+        Assert.Throws<InvalidOperationException>(() => campaña.ExigirHistorialEditable());
     }
 
     [Fact]
@@ -128,6 +130,43 @@ public class CampañaTests
 
         Assert.Same(instrucciones, campaña.AssistantPrompt);
         Assert.False(campaña.AssistantPrompt.EstáVacío);
+    }
+
+    [Fact]
+    public void NuevaCampaña_ConservaCincoVersionesPorDefecto()
+    {
+        var campaña = new Campaña("TeleNova");
+
+        Assert.Equal(5, campaña.MaxPromptVersions);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(51)]
+    public void CambiarLimiteHistorialPrompt_FueraDeRango_SeRechaza(int limite)
+    {
+        var campaña = new Campaña("TeleNova");
+
+        Assert.Throws<ArgumentException>(() => campaña.CambiarLimiteHistorialPrompt(limite));
+        Assert.Equal(5, campaña.MaxPromptVersions); // no cambia nada si rechaza
+    }
+
+    [Fact]
+    public void CambiarLimiteHistorialPrompt_ConValorValido_LoActualiza()
+    {
+        var campaña = new Campaña("TeleNova");
+
+        campaña.CambiarLimiteHistorialPrompt(10);
+
+        Assert.Equal(10, campaña.MaxPromptVersions);
+    }
+
+    [Fact]
+    public void ExigirHistorialEditable_EnCampañaNoCerrada_NoLanza()
+    {
+        var campaña = new Campaña("TeleNova");
+
+        campaña.ExigirHistorialEditable(); // no lanza
     }
 
     private static Campaña Cerrada()

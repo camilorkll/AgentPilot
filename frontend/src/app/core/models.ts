@@ -18,6 +18,8 @@ export interface Campaign {
   activeDocumentCount: number;
   closedAtUtc: string | null;
   createdAtUtc: string;
+  /** Cuántas entradas conserva como máximo el historial de instrucciones (5 por defecto). */
+  maxPromptVersions: number;
 }
 
 /**
