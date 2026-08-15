@@ -7,9 +7,9 @@ namespace AgentPilot.Api.Startup;
 public static class PaasConfiguration
 {
     /// <summary>
-    /// Devuelve una cadena de conexión válida para Npgsql. Si el valor recibido es una
-    /// URI de PostgreSQL (<c>postgresql://usuario:clave@host:puerto/base</c>), la
-    /// traduce; si ya es una cadena clave=valor, la deja intacta.
+    /// Devuelve una cadena de conexión válida para Npgsql. 
+    /// CRK La cadena puede llegar en un formato de connectionstring o si se envía en formato URL
+    /// en ese caso se leen los datos y se transforma a un formato connectionstring
     /// </summary>
     public static string NormalizePostgresConnectionString(string value)
     {

@@ -3,7 +3,7 @@
 **Estado:** Aceptada (07/2026)
 
 ## Contexto
-Anthropic no ofrece API de embeddings; OpenAI sí. En call centers los documentos pueden contener datos sensibles que no deben salir a la nube (argumento para un modo 100% local). El temario pide demostrar modelos locales.
+Anthropic no ofrece API de embeddings; OpenAI sí. En call centers los documentos pueden contener datos sensibles que no deben salir a la nube (argumento para un modo 100% local).
 
 ## Decisión
 - Principal: `text-embedding-3-small` (OpenAI, 1536 dims, coste ~0,02 USD/M tokens).

@@ -10,4 +10,4 @@ EF Core con el paquete `Pgvector.EntityFrameworkCore`.
 
 ## Consecuencias
 - Migraciones versionadas en el repo (requisito de reproducibilidad del despliegue).
-- Soporte de tipos `vector` y operadores de distancia en LINQ; SQL crudo puntual donde convenga (búsqueda híbrida).
+- Soporte de tipos `vector` y operadores de distancia en LINQ; Se usará SQL crudo puntual donde convenga (búsqueda híbrida).

@@ -27,6 +27,7 @@ if (!string.IsNullOrWhiteSpace(rawConnectionString))
 // Acepta también los nombres "planos" del .env / docker-compose (OPENAI_API_KEY,
 // JWT_SIGNING_KEY…) como alternativa a las claves jerárquicas de .NET
 // (OpenAI__ApiKey, Jwt__SigningKey…). Evita despliegues fallidos por usar unos u otros.
+// CRK En producción las variables se leen de las variables del entorno
 foreach (var (envName, configKey) in new[]
 {
     ("OPENAI_API_KEY", "OpenAI:ApiKey"),

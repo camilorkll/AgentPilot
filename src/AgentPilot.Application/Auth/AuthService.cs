@@ -24,8 +24,9 @@ public class AuthService(
         // si el usuario existe.
         if (user is null || !passwordHasher.Verify(password, user.PasswordHash))
             return null;
-
+        // CRK. Tenemos usuario y contraseña correctos, generamos el token.
         var (token, expiresAt) = tokenGenerator.Generate(user);
+
         return new LoginResult(token, user.RoleName, expiresAt);
     }
 }

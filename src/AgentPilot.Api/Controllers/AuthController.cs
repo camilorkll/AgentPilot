@@ -15,6 +15,7 @@ public class AuthController(IAuthService auth) : ControllerBase
         [FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
         var result = await auth.LoginAsync(request.Username, request.Password, cancellationToken);
+        // CRK. Si el resultado es null o usario no existe o password incorrecta, devolvemos un 401 con un mensaje genérico, no indicamos causa.
         if (result is null)
             return Unauthorized(new { code = "invalid_credentials", message = "Usuario o contraseña incorrectos." });
 
