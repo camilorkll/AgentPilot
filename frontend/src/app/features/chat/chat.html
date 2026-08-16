@@ -23,7 +23,21 @@
         Esta campaña no tiene documentación indexada: el asistente solo podrá abstenerse.
       </span>
     }
+
+    <!--
+      Al atender a otro cliente hay que cortar el hilo: si no, lo que contó el anterior
+      sigue viajando al modelo. En producción lo señalaría la centralita al colgar.
+    -->
+    <button class="small nueva-llamada" [disabled]="messages().length === 0"
+            title="Empieza una conversación nueva para el siguiente cliente"
+            (click)="nuevaLlamada()">
+      📞 Nueva llamada
+    </button>
   </div>
+
+  @if (notice()) {
+    <p class="notice small">{{ notice() }}</p>
+  }
 
   <div class="messages" #scroller>
     @if (messages().length === 0) {

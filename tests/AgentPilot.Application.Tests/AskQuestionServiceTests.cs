@@ -115,6 +115,39 @@ public class AskQuestionServiceTests
     }
 
     [Fact]
+    public async Task Ask_ElHistorialQueViajaAlModelo_NoCreceSinLimite()
+    {
+        var repo = new FakeConversationRepository();
+        var chat = new FakeChat(["ok"]);
+        var service = new AskQuestionService(
+            new FakeEmbeddings(), new FakeSearch([]), chat, repo, new FakeMetrics(),
+            new FakeCurrentUser("agente"), new CampaignGuard(new FakeCampaigns(Activa)));
+
+        // Un agente encadenando preguntas durante horas: antes, cada turno reenviaba
+        // todos los anteriores y el prompt (y su coste) crecía sin fin.
+        Guid? conversationId = null;
+        for (var i = 1; i <= 12; i++)
+        {
+            chat.CapturedMessages.Clear();
+            await foreach (var evt in service.AskAsync($"pregunta {i}", Activa.Id, conversationId))
+                if (evt is DoneEvent done) conversationId = done.ConversationId;
+        }
+
+        // system + historial acotado + la pregunta con su contexto.
+        Assert.True(chat.CapturedMessages.Count <= 1 + 6 + 1,
+            $"El prompt llevaba {chat.CapturedMessages.Count} mensajes en el turno 12.");
+
+        // Y lo que viaja es lo RECIENTE, no el principio de la jornada.
+        var texto = string.Join("\n", chat.CapturedMessages.Select(m => m.Content));
+        Assert.Contains("pregunta 12", texto);
+        Assert.DoesNotContain("pregunta 1\n", texto);
+
+        // La conversación se guarda entera: esto solo acota el prompt.
+        var guardada = await repo.GetByIdAsync(conversationId!.Value);
+        Assert.Equal(24, guardada!.Messages.Count); // 12 preguntas + 12 respuestas
+    }
+
+    [Fact]
     public async Task Ask_BuscaSoloEnLaCampañaIndicada()
     {
         var search = new FakeSearch([]);

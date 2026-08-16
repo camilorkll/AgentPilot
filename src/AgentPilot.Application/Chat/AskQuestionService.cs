@@ -38,6 +38,23 @@ public class AskQuestionService(
     /// </summary>
     private const int Candidatos = 30;
 
+    /// <summary>
+    /// Mensajes anteriores que se reenvían al modelo: los 3 últimos intercambios
+    /// (pregunta + respuesta). La conversación se sigue guardando ENTERA; esto solo
+    /// acota lo que viaja en el prompt.
+    ///
+    /// Sin este límite el prompt crecía con cada turno, y con él el coste: medido sobre
+    /// una conversación real, 1.358 → 1.535 → 1.626 tokens en tres turnos. Un agente que
+    /// encadene preguntas durante horas acabaría (a) pagando por pregunta una cifra que
+    /// crece sin fin, (b) agotando la ventana de contexto —con Ollama a 4.096 tokens eso
+    /// llega hacia el turno 18, y el truncado es SILENCIOSO— y (c) diluyendo lo relevante
+    /// entre horas de charla ajena a la pregunta actual.
+    ///
+    /// Tres intercambios bastan para la continuidad real ("¿y de la otra tarifa?"). Lo de
+    /// hace dos horas es de otro cliente y no debe influir en esta respuesta.
+    /// </summary>
+    private const int MensajesDeHistorial = 6;
+
     public async IAsyncEnumerable<AskEvent> AskAsync(
         string question, Guid campaignId, Guid? conversationId,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -134,8 +151,13 @@ public class AskQuestionService(
     {
         var messages = new List<PromptMessage> { new(PromptRole.System, SystemPromptBuilder.Build(campaignPrompt)) };
 
-        // Historial previo (todos los mensajes menos la pregunta actual, ya añadida).
-        foreach (var previous in conversation.Messages.Take(conversation.Messages.Count - 1))
+        // Historial previo, acotado a los últimos turnos: se descarta la pregunta actual
+        // (ya añadida a la conversación) y de lo anterior solo viajan los más recientes.
+        var previos = conversation.Messages
+            .Take(conversation.Messages.Count - 1)
+            .TakeLast(MensajesDeHistorial);
+
+        foreach (var previous in previos)
             messages.Add(new PromptMessage(
                 previous.Role == MessageRole.Assistant ? PromptRole.Assistant : PromptRole.User,
                 previous.Content));

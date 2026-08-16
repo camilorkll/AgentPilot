@@ -6,6 +6,17 @@ import { CampaignSummary, ChatMessage } from '../../core/models';
 
 const CAMPAIGN_KEY = 'agentpilot.chat.campaignId';
 
+/**
+ * Inactividad tras la cual se da la llamada por terminada y la siguiente pregunta
+ * empieza una conversación nueva.
+ *
+ * Es una **simulación**: en un despliegue real esta señal la daría la centralita (CTI)
+ * al colgar, sin que el agente hiciera nada. Aquí se aproxima con el hueco entre
+ * preguntas, que es la huella que deja el fin de una llamada. Diez minutos son de
+ * sobra para una consulta encadenada y muy poco para dos clientes seguidos.
+ */
+const INACTIVIDAD_MS = 10 * 60 * 1000;
+
 @Component({
   selector: 'app-chat',
   imports: [FormsModule, DecimalPipe],
@@ -25,6 +36,12 @@ export class Chat {
   /** Mensaje cuyo motivo de «no útil» se está escribiendo, y el borrador del texto. */
   readonly commentingId = signal<string | null>(null);
   readonly commentDraft = signal('');
+
+  /** Aviso informativo (no error): p. ej. que se ha empezado una llamada nueva. */
+  readonly notice = signal<string | null>(null);
+
+  /** Momento de la última pregunta, para detectar que la llamada anterior terminó. */
+  private lastActivity = 0;
 
   /** Campañas activas: solo sobre ellas se puede preguntar. */
   readonly campaigns = signal<CampaignSummary[]>([]);
@@ -91,6 +108,36 @@ export class Chat {
     this.send();
   }
 
+  /**
+   * Cierra la conversación en curso y empieza otra. Es lo que el agente pulsa al
+   * atender a un cliente distinto.
+   *
+   * En un despliegue real esta señal la daría la integración con la centralita al
+   * colgar, sin intervención del agente (ver «líneas futuras» del README); aquí es
+   * manual, con un corte por inactividad como respaldo para cuando se olvide.
+   *
+   * Importa más de lo que parece: sin esto, los datos que el cliente anterior facilitó
+   * siguen viajando al modelo mientras se atiende al siguiente. No es solo coste ni
+   * ruido, es higiene entre clientes distintos.
+   *
+   * Nada se pierde: la conversación anterior queda guardada y sigue apareciendo en las
+   * métricas y en la revisión.
+   */
+  nuevaLlamada(confirmar = true): void {
+    if (this.messages().length === 0) return;
+
+    if (confirmar && !confirm(
+      '¿Empezar una llamada nueva?\n\n' +
+      'Se limpia la pantalla y el asistente deja de tener en cuenta lo hablado hasta ' +
+      'ahora. La conversación queda guardada.'
+    )) return;
+
+    this.messages.set([]);
+    this.conversationId = null;
+    this.error.set(null);
+    this.cancelComment();
+  }
+
   async send(): Promise<void> {
     const question = this.question.trim();
     const campaignId = this.campaignId();
@@ -98,7 +145,19 @@ export class Chat {
 
     this.question = '';
     this.error.set(null);
+    this.notice.set(null);
     this.sending.set(true);
+
+    // Si ha pasado mucho desde la última pregunta, se da la llamada anterior por
+    // terminada: lo que sigue es otro cliente y no debe arrastrar su contexto.
+    if (this.conversationId && Date.now() - this.lastActivity > INACTIVIDAD_MS) {
+      this.nuevaLlamada(false);
+      this.notice.set(
+        'Se ha empezado una llamada nueva: había pasado un rato sin preguntas. ' +
+        'La conversación anterior queda guardada.'
+      );
+    }
+    this.lastActivity = Date.now();
 
     // Pregunta del usuario + hueco para la respuesta que va a llegar en streaming.
     this.messages.update((m) => [
