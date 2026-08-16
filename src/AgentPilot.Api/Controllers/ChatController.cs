@@ -16,6 +16,7 @@ public class ChatController(IAskQuestionService ask) : ControllerBase
 
     /// <summary>Pregunta RAG con respuesta en streaming (Server-Sent Events).</summary>
     [HttpPost("ask")]
+    // CRK 
     public async Task Ask([FromBody] AskRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Question))
