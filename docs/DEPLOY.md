@@ -20,7 +20,9 @@ El proyecto está preparado para PaaS: si el proveedor inyecta `PORT` o `DATABAS
 | `ASPNETCORE_ENVIRONMENT` | — | `Production` |
 
 > Al arrancar, la aplicación **aplica las migraciones y crea los usuarios de prueba**
-> (`admin` / `agente`), así que la base de datos queda lista sin pasos manuales.
+> (`admin`, `agente`, `laura` y `marcos` — tres agentes para poder probar el filtro por
+> operador), así que la base de datos queda lista sin pasos manuales. Solo siembra una
+> base vacía: sobre una que ya tenga usuarios no toca nada.
 
 ---
 

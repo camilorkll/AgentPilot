@@ -67,10 +67,20 @@ docker compose up --build
 - API + Swagger UI: http://localhost:8080/swagger
 - Healthcheck: http://localhost:8080/api/v1/health
 
-Al arrancar en una base de datos nueva se siembra la campaña **TeleNova** con su
-corpus ya indexado (12 documentos) y los usuarios de prueba. Para probar el
-aislamiento entre campañas: crea una campaña nueva desde `/campaigns` (como
-`admin`) y sube el corpus de ejemplo de [`corpus-luz-y-gas/`](corpus-luz-y-gas/)
+Al arrancar en una base de datos nueva se siembran los usuarios de prueba y la campaña
+**TeleNova**, pero **vacía**: indexar exige llamadas de *embeddings* y no puede depender
+de que haya clave de OpenAI en el momento de migrar. Para poblarla:
+
+```bash
+./scripts/poblar-corpus.sh
+```
+
+Sube los 12 documentos de [`corpus/`](corpus/) y los deja indexándose en segundo plano
+(se sigue desde `/documents` como `admin`). Hasta entonces el asistente responderá que no
+dispone de la información, que es su comportamiento correcto con un corpus vacío.
+
+Para probar el aislamiento entre campañas: crea una campaña nueva desde `/campaigns`
+(como `admin`) y sube el corpus de ejemplo de [`corpus-luz-y-gas/`](corpus-luz-y-gas/)
 desde `/documents` — la misma pregunta se contesta en una y se rechaza en la otra.
 
 ### Frontend (Angular)
