@@ -14,7 +14,7 @@ Toda la documentación pertenece a una **campaña** (un cliente, un producto): e
 | Recurso | URL |
 |---|---|
 | 🌐 Despliegue | [agentpilot-crk.up.railway.app](https://agentpilot-crk.up.railway.app) (guía en [docs/DEPLOY.md](docs/DEPLOY.md)) |
-| 📊 Slides | *(pendiente — Fase 7)* |
+| 📊 Slides | [Presentación de la defensa](https://docs.google.com/presentation/d/e/2PACX-1vRqu-7tG6VG4bfg7L4xLH6LQ-LysUtn39hRm1ISSpdNJJH50jB453Nx_O4z1mCb_RpdSEOK-kfL-g8L/pub?start=true&loop=false&delayms=3000&slide=id.g3f7337d7e9f_2_75) (Google Slides) |
 | 🎬 Vídeo | *(pendiente — Fase 7)* · guion en [docs/GUION_DEMO.md](docs/GUION_DEMO.md) |
 
 ## 🔑 Usuario y contraseña de prueba
