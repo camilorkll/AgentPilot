@@ -167,8 +167,7 @@ dotnet run --project src/AgentPilot.Api
 │   ├── openapi.yaml          # Contrato de la API (fuente de verdad, contract-first)
 │   ├── adr/                  # Decisiones de arquitectura (ADR-001..020)
 │   ├── DEPLOY.md             # Guía de despliegue en Railway
-│   ├── GUION_DEMO.md         # Recorrido de la demo, con preguntas previsibles
-│   └── slides.html           # Diapositivas de la defensa (navegables e imprimibles)
+│   └── GUION_DEMO.md         # Recorrido de la demo, con preguntas previsibles
 ├── scripts/
 │   └── poblar-corpus.sh      # Sube el corpus de ejemplo a una campaña
 ├── src/
