@@ -132,7 +132,7 @@ dotnet run --project src/AgentPilot.Api
 ├── frontend/                 # Angular 20 (standalone components + signals)
 │   └── src/app/
 │       ├── core/             # AuthService (signals), interceptor JWT, guardas, ApiService (SSE)
-│       └── features/         # login · chat · campaigns · documents · metrics (lazy loading)
+│       └── features/         # login · chat · campaigns · documents · review · metrics (lazy loading)
 ├── evals/                    # Set dorado de preguntas + script de evaluación + comparativas de modelo
 ├── corpus/                   # Documentos de ejemplo de la campaña TeleNova (sintéticos)
 ├── corpus-luz-y-gas/         # Corpus de ejemplo de una segunda campaña, para probar el aislamiento
@@ -172,12 +172,17 @@ El RAG se evalúa con un **set dorado de 30 preguntas** sobre el corpus, incluid
 
 | Métrica | Resultado |
 |---|---|
+| Aciertos | **30/30** |
 | Precisión de recuperación | **100,0%** |
-| Exactitud de la respuesta | **96,0%** |
+| Exactitud de la respuesta | **100,0%** |
 | Abstención correcta (no alucina) | **100,0%** |
-| Coste medio por consulta | **~$0,001** |
+| Coste medio por consulta | **$0,00027** |
+| Latencia total media | **1.016 ms** |
 
-Metodología, análisis del único fallo y detalle por caso en **[evals/README.md](evals/README.md)**
+El set pasa entero desde [ADR-016](docs/adr/ADR-016-troceado-estructural-y-reordenado.md)
+(troceado por estructura + reordenado); antes fallaba un caso.
+
+Metodología y detalle por caso en **[evals/README.md](evals/README.md)**
 y [evals/RESULTS.md](evals/RESULTS.md). Reproducible con `dotnet run --project evals/AgentPilot.Evals`.
 Comparativa de tres modelos de chat (`gpt-5-mini`, `gpt-4o-mini`, `llama3.2:3b` local) con el
 mismo set y el mismo prompt en [evals/COMPARATIVA-MODELOS.md](evals/COMPARATIVA-MODELOS.md).

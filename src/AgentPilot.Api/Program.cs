@@ -199,6 +199,17 @@ app.MapControllers();
 // de modo que recargar la página no produzca un 404.
 app.UseDefaultFiles();
 app.UseStaticFiles();
+
+// Lo que cuelga de /api/ NO cae en el fallback: una ruta de API inexistente debe
+// responder 404, no la página de Angular con un 200. Sin esto, un cliente que se
+// equivocara de endpoint recibía HTML donde esperaba JSON —y un 200 que decía que todo
+// había ido bien—, que es de los errores más difíciles de diagnosticar desde fuera.
+app.MapFallback("/api/{**resto}", () => Results.NotFound(new
+{
+    code = "not_found",
+    message = "El endpoint no existe. Consulta el contrato en /openapi.yaml.",
+}));
+
 app.MapFallbackToFile("index.html");
 
 app.Run();
