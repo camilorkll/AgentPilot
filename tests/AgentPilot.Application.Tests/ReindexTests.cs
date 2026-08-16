@@ -75,7 +75,7 @@ public class ReindexTests
     }
 
     [Fact]
-    public async Task ReindexarUnDocumentoSinTexto_LanzaConMensajeAccionable()
+    public async Task ReindexarUnDocumentoSinTexto_LoDejaServibleConUnMensajeAccionable()
     {
         var (service, repo, _) = Construir();
         var documento = new Documento(IdCampaña, "Antiguo", "antiguo.md");
@@ -87,7 +87,11 @@ public class ReindexTests
         // ProcessAsync captura el fallo y lo deja en el documento, no lo propaga.
         await service.ProcessAsync(IngestionJob.Reindexado(documento.Id, "antiguo.md"));
 
-        Assert.Equal(EstadoIngesta.Failed, documento.Status);
+        // Sigue consultable: sus fragmentos son de un modelo viejo, pero responden. Sacarlo
+        // de las búsquedas por no poder REGENERARLOS sería perder conocimiento por intentar
+        // mejorarlo (ADR-018). El motivo queda anotado para que el administrador actúe.
+        Assert.Equal(EstadoIngesta.Ready, documento.Status);
+        Assert.True(documento.ActualizacionFallidaConContenidoAnterior);
         Assert.Contains("volver a subir el fichero", documento.ErrorMessage);
     }
 

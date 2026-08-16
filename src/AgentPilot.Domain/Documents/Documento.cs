@@ -88,15 +88,28 @@ public class Documento
     /// <summary>Retira el documento de las búsquedas sin perder lo indexado.</summary>
     public void Desactivar() => IsActive = false;
 
-    /// <summary>El worker toma el documento y empieza a procesarlo.</summary>
+    /// <summary>
+    /// El worker toma el documento y empieza a procesarlo.
+    ///
+    /// Se admite también desde <see cref="EstadoIngesta.Ready"/>: sustituir el fichero de
+    /// un documento ya indexado es reprocesarlo, no crear otro. Sus fragmentos actuales
+    /// se conservan intactos hasta que <see cref="MarcarIndexado"/> los sustituya, de
+    /// modo que si la ingesta nueva falla no se pierde lo que ya había.
+    /// </summary>
     public void MarcarProcesando()
     {
-        if (Status is not (EstadoIngesta.Pending or EstadoIngesta.Failed))
+        if (Status == EstadoIngesta.Processing)
             throw new InvalidOperationException(
-                $"No se puede procesar un documento en estado {Status}.");
+                "El documento ya se está procesando.");
 
         Status = EstadoIngesta.Processing;
         ErrorMessage = null;
+    }
+
+    /// <summary>Actualiza el título al sustituir el fichero por una versión nueva.</summary>
+    public void CambiarTitulo(string title)
+    {
+        if (!string.IsNullOrWhiteSpace(title)) Title = title.Trim();
     }
 
     /// <summary>
@@ -149,10 +162,35 @@ public class Documento
         ErrorMessage = null;
     }
 
-    /// <summary>La ingesta falló; se registra el motivo para diagnóstico.</summary>
+    /// <summary>
+    /// La ingesta falló; se registra el motivo para diagnóstico.
+    ///
+    /// Si el documento **ya tenía fragmentos indexados**, vuelve a <see cref="EstadoIngesta.Ready"/>:
+    /// lo que ha fallado es la actualización, no el documento, y su contenido anterior
+    /// sigue siendo válido y consultable. Dejarlo en Failed lo sacaría de las búsquedas
+    /// y el asistente perdería en silencio algo que sabía responder — que es exactamente
+    /// lo que ocurría cuando sustituir un fichero borraba el anterior antes de tener el
+    /// nuevo. El motivo queda registrado para que el administrador vea que su
+    /// actualización no llegó a aplicarse.
+    ///
+    /// Solo se queda en Failed cuando no hay nada indexado que preservar: una primera
+    /// ingesta que no llegó a producir fragmentos.
+    ///
+    /// La decisión mira <see cref="ChunkCount"/> y no la colección <see cref="Chunks"/> a
+    /// propósito: la colección puede venir vacía porque la consulta que cargó el documento
+    /// no la pidiera, no porque no haya fragmentos. Un listado no carga los chunks —serían
+    /// todos sus vectores— y con esa lectura un documento perfectamente indexado se habría
+    /// marcado como fallido, sacándolo de las búsquedas. ChunkCount es un escalar que
+    /// siempre viaja con la fila, así que la regla vale igual se haya cargado como se haya
+    /// cargado.
+    /// </summary>
     public void MarcarFallido(string error)
     {
-        Status = EstadoIngesta.Failed;
+        Status = ChunkCount > 0 ? EstadoIngesta.Ready : EstadoIngesta.Failed;
         ErrorMessage = error;
     }
+
+    /// <summary>La última ingesta falló pero el documento conserva contenido servible.</summary>
+    public bool ActualizacionFallidaConContenidoAnterior
+        => Status == EstadoIngesta.Ready && ErrorMessage is not null;
 }

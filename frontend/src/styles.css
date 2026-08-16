@@ -75,3 +75,6 @@ th { color: var(--muted); font-weight: 600; font-size: .85rem; }
 .badge.ready { color: var(--ok); border-color: var(--ok); }
 .badge.failed { color: var(--err); border-color: var(--err); }
 .badge.pending, .badge.processing { color: var(--warn); border-color: var(--warn); }
+/* Consultable, pero su última actualización no llegó a aplicarse: sirve la versión
+   anterior. Va en tono de aviso, no de error: el documento funciona. */
+.badge.stale { color: var(--warn); border-color: var(--warn); margin-left: .35rem; }

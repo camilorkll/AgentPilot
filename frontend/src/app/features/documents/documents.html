@@ -90,7 +90,17 @@
                    (change)="toggle(document.id)" />
           </td>
           <td>{{ document.title }}</td>
-          <td><span class="badge {{ document.status }}">{{ document.status }}</span></td>
+          <td>
+            <span class="badge {{ document.status }}">{{ document.status }}</span>
+            <!-- Un documento consultable con un error anotado es una actualización que no
+                 llegó a aplicarse: sirve la versión anterior. Sin este aviso, el fallo
+                 sería silencioso y el administrador creería que su cambio entró. -->
+            @if (document.status === 'ready' && document.errorMessage) {
+              <span class="badge stale" [title]="document.errorMessage">
+                sin actualizar
+              </span>
+            }
+          </td>
           <td>
             <button class="small toggle" [class.on]="document.isActive"
                     [disabled]="!canEditDocumentation()"

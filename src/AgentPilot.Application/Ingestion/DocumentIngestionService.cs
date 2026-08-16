@@ -35,32 +35,43 @@ public class DocumentIngestionService(
         // duplicado se busca solo dentro de la campaña: el mismo nombre en otra es
         // legítimo, son corpus independientes.
         var existing = await repository.GetByFileNameAsync(campaignId, fileName, cancellationToken);
-        if (existing is not null)
-        {
-            if (!replaceExisting)
-                throw new DuplicateDocumentException(existing.Id, fileName);
-
-            repository.Delete(existing); // los fragmentos se borran en cascada
-            await repository.SaveChangesAsync(cancellationToken);
-            logger.LogInformation(
-                "Documento {Id} ({File}) reemplazado por una nueva versión.", existing.Id, fileName);
-        }
+        if (existing is not null && !replaceExisting)
+            throw new DuplicateDocumentException(existing.Id, fileName);
 
         // Copiamos los bytes para llevarlos en el trabajo: la petición HTTP
         // termina enseguida y el stream original se cerraría.
         using var buffer = new MemoryStream();
         await content.CopyToAsync(buffer, cancellationToken);
 
-        var document = new Documento(campaign.Id, title ?? fileName, fileName);
-        await repository.AddAsync(document, cancellationToken);
+        Documento document;
+        if (existing is not null)
+        {
+            // Sustituir es REPROCESAR la misma fila, no borrar y crear otra. Antes se
+            // eliminaba el documento anterior (y sus fragmentos) antes de encolar el
+            // nuevo, así que un fallo de la ingesta —OpenAI caído, fichero corrupto, el
+            // contenedor reiniciándose— dejaba la campaña sin ese conocimiento y sin
+            // vuelta atrás. Reprocesando la misma fila, sus fragmentos siguen intactos
+            // hasta que MarcarIndexado los sustituya.
+            //
+            // Conservar el Id tiene otro efecto deseable: las citas ya emitidas apuntan
+            // al documento y seguían apuntando a un Id inexistente tras cada sustitución.
+            document = existing;
+            if (title is not null) document.CambiarTitulo(title);
+        }
+        else
+        {
+            document = new Documento(campaign.Id, title ?? fileName, fileName);
+            await repository.AddAsync(document, cancellationToken);
+        }
+
         await repository.SaveChangesAsync(cancellationToken);
 
         await queue.EnqueueAsync(
             new IngestionJob(document.Id, fileName, buffer.ToArray()), cancellationToken);
 
         logger.LogInformation(
-            "Documento {Id} encolado para ingesta ({File}) en la campaña {Campaign}.",
-            document.Id, fileName, campaign.Name);
+            "Documento {Id} encolado para {Accion} ({File}) en la campaña {Campaign}.",
+            document.Id, existing is not null ? "sustitución" : "ingesta", fileName, campaign.Name);
         return document;
     }
 

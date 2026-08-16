@@ -32,6 +32,28 @@ public class DocumentIngestionServiceTests
         return (service, repo);
     }
 
+    /// <summary>Como <see cref="Build"/>, pero con el proveedor de embeddings caído.</summary>
+    private static (DocumentIngestionService Service, FakeDocuments Repo) BuildConIngestaRota(
+        params Documento[] existing)
+    {
+        var repo = new FakeDocuments(existing);
+        var service = new DocumentIngestionService(
+            repo, new FakeExtractor(), new FakeChunker(), new FakeEmbeddingsRotos(),
+            new FakeQueue(), new CampaignGuard(new FakeCampaigns(Activa)),
+            NullLogger<DocumentIngestionService>.Instance);
+        return (service, repo);
+    }
+
+    private sealed class FakeEmbeddingsRotos : IEmbeddingService
+    {
+        public string ModelName => "fake-embed";
+        public Task<float[]> EmbedAsync(string t, CancellationToken ct = default)
+            => throw new HttpRequestException("El proveedor de embeddings no responde.");
+        public Task<IReadOnlyList<float[]>> EmbedBatchAsync(
+            IReadOnlyList<string> texts, CancellationToken ct = default)
+            => throw new HttpRequestException("El proveedor de embeddings no responde.");
+    }
+
     [Fact]
     public async Task Submit_DeUnFicheroNuevo_LoEncolaEnLaCampaña()
     {
@@ -60,16 +82,76 @@ public class DocumentIngestionServiceTests
     }
 
     [Fact]
-    public async Task Submit_ConReemplazo_BorraElAnteriorYEncolaElNuevo()
+    public async Task Submit_ConReemplazo_ReprocesaLaMismaFilaSinBorrarNada()
     {
         var existing = new Documento(Activa.Id, "Tarifas", "tarifas.md");
         var (service, repo) = Build(Activa, existing);
 
         var document = await service.SubmitAsync(
-            Activa.Id, "tarifas.md", null, Content(), replaceExisting: true);
+            Activa.Id, "tarifas.md", "Tarifas 2027", Content(), replaceExisting: true);
 
-        Assert.Contains(existing, repo.Deleted);       // el anterior se elimina
-        Assert.NotEqual(existing.Id, document.Id);      // y se crea uno nuevo
+        // Antes se borraba el anterior ANTES de encolar el nuevo, así que un fallo de la
+        // ingesta dejaba la campaña sin ese conocimiento y sin vuelta atrás.
+        Assert.Empty(repo.Deleted);
+        Assert.Equal(existing.Id, document.Id);        // misma fila: las citas emitidas siguen apuntando a algo
+        Assert.Equal("Tarifas 2027", document.Title);  // el título sí se actualiza
+    }
+
+    [Fact]
+    public async Task Reemplazo_QueFalla_DejaServibleLaVersionAnterior()
+    {
+        var existing = new Documento(Activa.Id, "Tarifas", "tarifas.md");
+        existing.MarcarProcesando();
+        existing.MarcarIndexado("test", [new Chunk(0, "Nova Mini: 9,90 €", [0.1f])], "Nova Mini: 9,90 €");
+
+        // Embeddings caídos: el fallo más probable de verdad (proveedor no disponible,
+        // límite de peticiones), y el que antes se llevaba por delante el documento.
+        var (service, repo) = BuildConIngestaRota(existing);
+
+        await service.SubmitAsync(Activa.Id, "tarifas.md", null, Content(), replaceExisting: true);
+        await service.ProcessAsync(new IngestionJob(existing.Id, "tarifas.md", "nuevo"u8.ToArray()));
+
+        // Lo que falló es la ACTUALIZACIÓN, no el documento: sigue consultable con su
+        // contenido anterior, y el motivo queda registrado para el administrador.
+        Assert.Empty(repo.Deleted);
+        Assert.Equal(EstadoIngesta.Ready, existing.Status);
+        Assert.Equal(1, existing.ChunkCount);
+        Assert.Contains("Nova Mini", existing.Chunks.First().Content);
+        Assert.True(existing.ActualizacionFallidaConContenidoAnterior);
+    }
+
+    [Fact]
+    public async Task PrimeraIngestaQueFalla_SeQuedaEnFallido()
+    {
+        var (service, _) = BuildConIngestaRota();
+        var document = await service.SubmitAsync(Activa.Id, "tarifas.md", null, Content());
+
+        await service.ProcessAsync(new IngestionJob(document.Id, "tarifas.md", "nuevo"u8.ToArray()));
+
+        // Aquí no hay nada anterior que preservar, así que el estado honesto es Failed.
+        Assert.Equal(EstadoIngesta.Failed, document.Status);
+        Assert.Empty(document.Chunks);
+        Assert.NotNull(document.ErrorMessage);
+    }
+
+    [Fact]
+    public void UnDocumentoInterrumpido_VuelveAServirSiTeniaContenido()
+    {
+        // Lo que hace el rescate de arranque con los documentos que quedaron en
+        // 'Processing' al reiniciarse la aplicación.
+        var conContenido = new Documento(Activa.Id, "Tarifas", "tarifas.md");
+        conContenido.MarcarProcesando();
+        conContenido.MarcarIndexado("test", [new Chunk(0, "contenido", [0.1f])], "contenido");
+        conContenido.MarcarProcesando(); // reingesta interrumpida por el reinicio
+
+        var sinContenido = new Documento(Activa.Id, "Nuevo", "nuevo.md");
+        sinContenido.MarcarProcesando(); // primera ingesta interrumpida
+
+        conContenido.MarcarFallido("La ingesta se interrumpió al reiniciarse la aplicación.");
+        sinContenido.MarcarFallido("La ingesta se interrumpió al reiniciarse la aplicación.");
+
+        Assert.Equal(EstadoIngesta.Ready, conContenido.Status);   // su versión anterior sigue valiendo
+        Assert.Equal(EstadoIngesta.Failed, sinContenido.Status);  // no hay nada que servir
     }
 
     [Fact]
