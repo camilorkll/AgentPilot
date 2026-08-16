@@ -49,11 +49,6 @@
             <strong>{{ selectedCampaign()?.name }}</strong>. Cada respuesta cita entre
             corchetes los fragmentos en que se apoya.
           </p>
-          <div class="examples">
-            @for (example of examples; track example) {
-              <button class="small" (click)="useExample(example)">{{ example }}</button>
-            }
-          </div>
         } @else if (campaignsLoaded()) {
           <h2>Selecciona una campaña para empezar</h2>
           <p class="muted">El asistente solo responde con la documentación de la campaña elegida.</p>

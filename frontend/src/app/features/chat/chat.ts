@@ -60,13 +60,6 @@ export class Chat {
     return renderMarkdown(texto);
   }
 
-  /** Sugerencias para arrancar la demo sin escribir. */
-  readonly examples = [
-    '¿Puedo cambiar de tarifa y tiene algún coste?',
-    '¿Cuánto cuesta el Bono Viaje de 10 GB?',
-    '¿Qué hago si la luz LOS del router está en rojo?',
-  ];
-
   constructor() {
     this.loadCampaigns();
   }
@@ -110,11 +103,6 @@ export class Chat {
 
     this.campaignId.set(id);
     localStorage.setItem(CAMPAIGN_KEY, id);
-  }
-
-  useExample(text: string): void {
-    this.question = text;
-    this.send();
   }
 
   /**

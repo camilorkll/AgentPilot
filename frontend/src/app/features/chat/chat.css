@@ -29,8 +29,6 @@
 }
 
 .empty { text-align: center; margin: auto 0; padding: 2rem 1rem; }
-.examples { display: flex; flex-direction: column; gap: .5rem; align-items: center; margin-top: 1.25rem; }
-.examples button { max-width: 100%; text-align: left; }
 
 .msg { display: flex; flex-direction: column; gap: .4rem; max-width: 82%; }
 .msg.user { align-self: flex-end; align-items: flex-end; }
