@@ -1,0 +1,549 @@
+<!-- El fichero vive en el repo además de publicarse: sin esto, abrirlo desde disco o
+     desde un servidor que no declare el charset rompe todos los acentos. -->
+<meta charset="utf-8">
+<title>Defensa de AgentPilot</title>
+
+<style>
+  :root {
+    --ink:    #0a0e17;
+    --panel:  #131a27;
+    --line:   #253048;
+    --fg:     #eaeef6;
+    --dim:    #8a97ae;
+    --signal: #4f8cff;
+    --good:   #3ecf8e;
+    --flag:   #f0b429;
+
+    --sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+
+    /* Escala tipográfica: se mantiene en todas las diapositivas. */
+    --t-hero:  clamp(2.6rem, 7.2vw, 6rem);
+    --t-title: clamp(1.9rem, 4.2vw, 3.4rem);
+    --t-lead:  clamp(1.05rem, 1.9vw, 1.6rem);
+    --t-body:  clamp(0.95rem, 1.35vw, 1.15rem);
+    --t-mono:  clamp(0.78rem, 1.05vw, 0.95rem);
+    --t-fig:   clamp(2.4rem, 6vw, 5rem);
+  }
+
+  /* Compromiso deliberado con un único tema: la baraja es la pantalla del operador, y
+     acompaña a una demo que también es oscura. Por eso no hay bloques de tema — pero
+     todos los colores se pintan explícitamente, incluido el fondo del body, para que la
+     página no herede el suelo del anfitrión. */
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--fg);
+    font-family: var(--sans);
+    font-size: var(--t-body);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .deck { position: relative; }
+
+  .slide {
+    display: none;
+    min-height: 100svh;
+    padding: clamp(2rem, 5vw, 4.5rem) clamp(1.5rem, 6vw, 6rem) 5.5rem;
+    flex-direction: column;
+    justify-content: center;
+    gap: clamp(1rem, 2.2vw, 2rem);
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .slide.on { display: flex; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: var(--t-mono);
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--signal);
+  }
+
+  h1 {
+    font-size: var(--t-hero);
+    line-height: 0.98;
+    letter-spacing: -0.035em;
+    font-weight: 700;
+    margin: 0;
+    text-wrap: balance;
+  }
+  h2 {
+    font-size: var(--t-title);
+    line-height: 1.06;
+    letter-spacing: -0.025em;
+    font-weight: 650;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .lead {
+    font-size: var(--t-lead);
+    color: var(--dim);
+    max-width: 62ch;
+    margin: 0;
+    text-wrap: pretty;
+  }
+  .lead strong { color: var(--fg); font-weight: 600; }
+
+  /* Evidencia en monoespaciada: toda cifra medida, endpoint o código de ADR. */
+  .m { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  .fig {
+    font-family: var(--mono);
+    font-size: var(--t-fig);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    color: var(--good);
+  }
+  .fig.signal { color: var(--signal); }
+  .fig.flag   { color: var(--flag); }
+
+  .cols {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+    gap: clamp(1rem, 2.4vw, 2.2rem);
+    align-items: start;
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: clamp(1rem, 2vw, 1.6rem);
+    display: flex;
+    flex-direction: column;
+    gap: .55rem;
+  }
+  .card h3 {
+    margin: 0;
+    font-size: var(--t-body);
+    font-weight: 650;
+    letter-spacing: -0.01em;
+  }
+  .card p { margin: 0; color: var(--dim); }
+  .card .label {
+    font-family: var(--mono);
+    font-size: var(--t-mono);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+
+  ul.points { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: .8rem; }
+  ul.points li { display: grid; grid-template-columns: auto 1fr; gap: .8rem; align-items: baseline; }
+  ul.points li::before {
+    content: "—";
+    font-family: var(--mono);
+    color: var(--signal);
+  }
+
+  /* Intercambio pregunta/respuesta: es el material más fuerte de la defensa. */
+  .exchange { display: flex; flex-direction: column; gap: .9rem; }
+  .turn {
+    border-left: 3px solid var(--line);
+    padding: .1rem 0 .1rem 1rem;
+  }
+  .turn .who {
+    font-family: var(--mono);
+    font-size: var(--t-mono);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--dim);
+    display: block;
+    margin-bottom: .2rem;
+  }
+  .turn.answer  { border-left-color: var(--good); }
+  .turn.refusal { border-left-color: var(--flag); }
+  .turn.reason  { border-left-color: var(--signal); }
+  .turn q { quotes: "«" "»"; font-size: var(--t-lead); }
+
+  .tbl { width: 100%; overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: .6rem .8rem; border-bottom: 1px solid var(--line); }
+  th:first-child, td:first-child { text-align: left; }
+  thead th {
+    font-family: var(--mono);
+    font-size: var(--t-mono);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--dim);
+    font-weight: 400;
+  }
+  td.num { font-family: var(--mono); }
+  td.win { color: var(--good); font-weight: 600; }
+  tbody tr:last-child td { border-bottom: none; }
+
+  /* Barra de estado, como la línea de un puesto de operador. */
+  .status {
+    position: fixed;
+    inset: auto 0 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .7rem clamp(1.5rem, 6vw, 6rem) 1rem;
+    background: linear-gradient(to top, var(--ink) 62%, transparent);
+    font-family: var(--mono);
+    font-size: var(--t-mono);
+    color: var(--dim);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+  .rail { position: fixed; inset: auto 0 0 0; height: 2px; background: var(--line); }
+  .rail span { display: block; height: 100%; width: 0; background: var(--signal); transition: width .28s ease; }
+
+  .nav { display: flex; gap: .4rem; }
+  .nav button {
+    font: inherit;
+    letter-spacing: inherit;
+    color: var(--fg);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: .3rem .7rem;
+    cursor: pointer;
+  }
+  .nav button:hover { border-color: var(--signal); color: var(--signal); }
+  .nav button:disabled { opacity: .35; cursor: default; }
+  :focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rail span { transition: none; }
+  }
+
+  /* Exportar a PDF: al imprimir se apilan todas, una por página. */
+  @media print {
+    .slide { display: flex !important; break-after: page; min-height: 0; }
+    .status, .rail { display: none; }
+    body { background: #fff; color: #111; }
+  }
+</style>
+
+<div class="deck" id="deck">
+
+  <!-- 1 -->
+  <section class="slide on" data-section="Portada">
+    <p class="eyebrow">TFM · Máster en Inteligencia Artificial · 2026</p>
+    <h1>AgentPilot</h1>
+    <p class="lead">Copiloto de conocimiento <strong>RAG</strong> para agentes de contact center:
+      responde en lenguaje natural, en streaming y <strong>citando el documento del que sale cada dato</strong>.</p>
+    <p class="m" style="color:var(--dim)">Camilo Rodríguez · agentpilot-crk.up.railway.app</p>
+  </section>
+
+  <!-- 2 -->
+  <section class="slide" data-section="El problema">
+    <p class="eyebrow">El problema</p>
+    <p class="fig flag">30–60 s</p>
+    <h2>perdidos en cada llamada buscando en wikis, PDFs y argumentarios</h2>
+    <p class="lead">Con el cliente esperando al teléfono. Y si el agente improvisa para no dejarlo
+      en espera, el error —una penalización, un precio— se lo lleva el cliente.</p>
+  </section>
+
+  <!-- 3 -->
+  <section class="slide" data-section="La propuesta">
+    <p class="eyebrow">La propuesta</p>
+    <h2>Que el agente pregunte como preguntaría a un compañero</h2>
+    <div class="cols">
+      <div class="card">
+        <span class="label">Responde</span>
+        <h3>En lenguaje natural y escribiéndose</h3>
+        <p>Streaming por SSE: empieza a leer antes de que el modelo termine.</p>
+      </div>
+      <div class="card">
+        <span class="label">Cita</span>
+        <h3>Cada dato es verificable</h3>
+        <p>Las citas <span class="m">[1]</span> no las inventa el modelo: son los fragmentos
+          recuperados, con su texto a la vista.</p>
+      </div>
+      <div class="card">
+        <span class="label">Se abstiene</span>
+        <h3>Dice «no lo sé» cuando no está</h3>
+        <p>Tan importante como acertar: un copiloto que se inventa un precio hace más daño
+          que no tenerlo.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="slide" data-section="Arquitectura">
+    <p class="eyebrow">Arquitectura</p>
+    <h2>Clean Architecture, cuatro capas, dominio sin dependencias</h2>
+    <p class="lead m" style="color:var(--fg)">pregunta → embedding → pgvector (30 candidatos)
+      → reordenado (10) → prompt por capas → GPT en streaming → SSE con citas</p>
+    <div class="cols">
+      <div class="card">
+        <span class="label">Backend</span>
+        <h3>.NET 8 · EF Core</h3>
+        <p>Reglas de dependencia verificadas con tests de arquitectura, no por convención.</p>
+      </div>
+      <div class="card">
+        <span class="label">Datos</span>
+        <h3>PostgreSQL 16 + pgvector</h3>
+        <p>Relacional y vectorial en el mismo motor: una sola pieza que operar.</p>
+      </div>
+      <div class="card">
+        <span class="label">Frontend</span>
+        <h3>Angular 20</h3>
+        <p>Standalone components y signals; contrato <span class="m">OpenAPI</span> como fuente de verdad.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section class="slide" data-section="Aislamiento">
+    <p class="eyebrow">La campaña como frontera</p>
+    <h2>La misma pregunta, dos campañas, dos respuestas</h2>
+    <div class="exchange">
+      <div class="turn">
+        <span class="who">Agente</span>
+        <q>¿Cuánto cuesta el Bono Viaje de 10 GB?</q>
+      </div>
+      <div class="turn answer">
+        <span class="who">Campaña TeleNova</span>
+        <q>El Bono Viaje de 10 GB cuesta 35 € y tiene una duración de 30 días en zonas 1 y 2 <span class="m">[1]</span></q>
+      </div>
+      <div class="turn refusal">
+        <span class="who">Campaña Luz y Gas Premium</span>
+        <q>No dispongo de esa información en la base de conocimiento</q>
+      </div>
+    </div>
+    <p class="lead">La documentación de un cliente no puede filtrarse a otro: la campaña es
+      <strong>obligatoria en la recuperación</strong>, sin sobrecarga que permita omitirla
+      <span class="m">(ADR-009)</span>. Verificado con un test de fuga cruzada en cada build.</p>
+  </section>
+
+  <!-- 6 -->
+  <section class="slide" data-section="Prompt">
+    <p class="eyebrow">Prompt por capas</p>
+    <h2>Operaciones escribe el tono; nadie puede desactivar las citas</h2>
+    <div class="cols">
+      <div class="card">
+        <span class="label">Capa 1 · código</span>
+        <h3>Núcleo inmutable</h3>
+        <p>Identidad, idioma, <em>grounding</em>, citas y anti-inyección. No se edita desde la interfaz.</p>
+      </div>
+      <div class="card">
+        <span class="label">Capa 2 · dato</span>
+        <h3>Bloque de campaña</h3>
+        <p>Tono, nivel de detalle, avisos obligatorios, vocabulario a evitar. Vive en la base de datos.</p>
+      </div>
+      <div class="card">
+        <span class="label">Capa 3 · código</span>
+        <h3>Reafirmación del núcleo</h3>
+        <p>Las instrucciones de campaña son de negocio, nunca reglas del sistema.</p>
+      </div>
+    </div>
+    <p class="lead">La vista previa usa <strong>el mismo compositor</strong> que el chat real
+      <span class="m">(ADR-011)</span>: lo que se previsualiza es exactamente lo que se publica.</p>
+  </section>
+
+  <!-- 7 -->
+  <section class="slide" data-section="Calidad">
+    <p class="eyebrow">Calidad medida</p>
+    <p class="fig">30/30</p>
+    <h2>Set dorado de 30 preguntas, 5 de ellas sin respuesta en el corpus</h2>
+    <div class="cols">
+      <div class="card">
+        <span class="label">Recuperación</span>
+        <p class="fig" style="font-size:var(--t-title)">100 %</p>
+      </div>
+      <div class="card">
+        <span class="label">Exactitud</span>
+        <p class="fig" style="font-size:var(--t-title)">100 %</p>
+      </div>
+      <div class="card">
+        <span class="label">Abstención</span>
+        <p class="fig" style="font-size:var(--t-title)">100 %</p>
+      </div>
+      <div class="card">
+        <span class="label">Coste por consulta</span>
+        <p class="fig signal" style="font-size:var(--t-title)">$0,00027</p>
+      </div>
+    </div>
+    <p class="lead">No es una impresión: se relanza con un comando y el informe se regenera.
+      Las cinco preguntas fuera del corpus existen para comprobar que <strong>se abstiene</strong>.</p>
+  </section>
+
+  <!-- 8 -->
+  <section class="slide" data-section="Modelos">
+    <p class="eyebrow">Elegir modelo con datos</p>
+    <h2>A igualdad de calidad, gana el que responde en menos de un segundo</h2>
+    <div class="tbl">
+      <table>
+        <thead>
+          <tr><th>Métrica</th><th>gpt-5-mini</th><th>gpt-4o-mini</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Abstención correcta</td><td class="num">100 %</td><td class="num">100 %</td></tr>
+          <tr><td>Primer token (media)</td><td class="num">4.199 ms</td><td class="num win">776 ms</td></tr>
+          <tr><td>Latencia total (media)</td><td class="num">4.373 ms</td><td class="num win">918 ms</td></tr>
+          <tr><td>Coste por pregunta</td><td class="num">$0,000932</td><td class="num win">$0,000220</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="lead">Tres pases por modelo, mismo set y misma máquina. En un contact center,
+      cuatro segundos de espera con el cliente al teléfono <strong>no son un detalle</strong>.
+      <span class="m">gpt-4o-mini</span> pasó a ser el valor por defecto; el otro sigue conmutable
+      por configuración.</p>
+  </section>
+
+  <!-- 9 -->
+  <section class="slide" data-section="Modelo local">
+    <p class="eyebrow">Modelo local: Ollama</p>
+    <h2>Gratis y sin salir de casa, pero no a este precio</h2>
+    <div class="cols">
+      <div class="card">
+        <span class="label">Primer token</span>
+        <p class="fig flag" style="font-size:var(--t-title)">12.979 ms</p>
+        <p><span class="m">16,7×</span> más lento que <span class="m">gpt-4o-mini</span>; en p95,
+          <span class="m">43.279 ms</span>.</p>
+      </div>
+      <div class="card">
+        <span class="label">Coste</span>
+        <p class="fig" style="font-size:var(--t-title)">$0,0000</p>
+        <p>Sin llamada a ninguna API externa.</p>
+      </div>
+      <div class="card">
+        <span class="label">Abstención</span>
+        <p class="fig" style="font-size:var(--t-title)">100 %</p>
+        <p>Tampoco alucina: el <em>grounding</em> no depende del modelo.</p>
+      </div>
+    </div>
+    <p class="lead"><span class="m">llama3.2:3b</span> en CPU. Se queda como <strong>herramienta de
+      desarrollo</strong> —permite trabajar sin gastar API— y como respuesta al escenario en que
+      los datos no puedan salir de la organización. Decisión tomada con las cifras delante,
+      no por intuición.</p>
+  </section>
+
+  <!-- 10 -->
+  <section class="slide" data-section="Seguridad">
+    <p class="eyebrow">Seguridad</p>
+    <h2>El corpus es contenido no confiable, y se trata como tal</h2>
+    <ul class="points">
+      <li><span><strong>Prompt injection</strong>, la amenaza central de un RAG: tres vectores
+        probados, con un documento envenenado dentro del propio corpus. El contexto se marca
+        como <em>datos</em>, nunca como instrucciones.</span></li>
+      <li><span>El <strong>formato de la respuesta se renderiza</strong> con un subconjunto cerrado
+        que escapa el HTML antes de transformar y no genera enlaces ni imágenes
+        <span class="m">(ADR-019)</span>.</span></li>
+      <li><span><strong>Una sesión por operador</strong>: un puesto es una persona, y dos sesiones
+        mezclarían las conversaciones de dos clientes <span class="m">(ADR-020)</span>.</span></li>
+      <li><span>Mapeo completo a <strong>OWASP Top 10</strong> y <strong>OWASP LLM Top 10</strong>,
+        con las pruebas reproducibles paso a paso.</span></li>
+    </ul>
+  </section>
+
+  <!-- 11 -->
+  <section class="slide" data-section="El bucle">
+    <p class="eyebrow">El bucle que se cierra</p>
+    <h2>Cuando falla, alguien se entera y puede arreglarlo</h2>
+    <div class="exchange">
+      <div class="turn">
+        <span class="who">Pregunta del agente</span>
+        <q>Cuanto cuesta el bono de 10 GB</q>
+      </div>
+      <div class="turn refusal">
+        <span class="who">Respuesta</span>
+        <q>No dispongo de esa información… Los bonos disponibles son de 5 GB y 20 GB <span class="m">[1]</span></q>
+      </div>
+      <div class="turn reason">
+        <span class="who">Motivo escrito por el agente al valorar 👎</span>
+        <q>Existe el bono viaje de 10 GB en la opción de roaming</q>
+      </div>
+    </div>
+    <p class="lead">Un hueco real del corpus, detectado por quien lo sufre y con el porqué escrito.
+      Medir en LLMOps <strong>no es solo contar tokens</strong>: es saber cuándo el sistema no sirvió.</p>
+  </section>
+
+  <!-- 12 -->
+  <section class="slide" data-section="Fase 9">
+    <p class="eyebrow">Lo que salió de usarlo</p>
+    <h2>La última fase no estaba en ningún plan</h2>
+    <ul class="points">
+      <li><span>Sustituir un documento <strong>borraba el anterior antes</strong> de tener el
+        sustituto: si la subida fallaba, la campaña perdía ese conocimiento sin vuelta atrás.</span></li>
+      <li><span>Dos navegadores con el mismo agente entraban a la vez, y las conversaciones de dos
+        clientes se mezclaban bajo un mismo operador.</span></li>
+      <li><span>La lista de fuentes <strong>parecía desordenada</strong>: se ordenaba por una
+        puntuación y se etiquetaba con otra.</span></li>
+    </ul>
+    <p class="lead">Siete decisiones documentadas <span class="m">(ADR-014 a ADR-020)</span>, casi
+      todas nacidas de <strong>usar la aplicación y preguntarse qué pasa cuando algo va mal</strong>.
+      Es la parte del proyecto que más se parece a mantener software de verdad.</p>
+  </section>
+
+  <!-- 13 -->
+  <section class="slide" data-section="Cierre">
+    <p class="eyebrow">Cierre</p>
+    <h2>Lo que queda escrito</h2>
+    <div class="cols">
+      <div class="card">
+        <span class="label">Decisiones</span>
+        <p class="fig signal" style="font-size:var(--t-title)">20</p>
+        <p>ADR con su porqué y lo que se descartó.</p>
+      </div>
+      <div class="card">
+        <span class="label">Tests</span>
+        <p class="fig signal" style="font-size:var(--t-title)">199</p>
+        <p>Dominio, aplicación, integración con Testcontainers y frontend.</p>
+      </div>
+      <div class="card">
+        <span class="label">Contrato</span>
+        <p class="fig signal" style="font-size:var(--t-title)">1.7.0</p>
+        <p><em>Contract-first</em>: la especificación es la fuente de verdad.</p>
+      </div>
+    </div>
+    <p class="lead"><strong>Líneas futuras:</strong> búsqueda híbrida (vectorial + <span class="m">tsvector</span>),
+      cola de ingesta persistente y dimensión de vector variable para cambiar de modelo de
+      <em>embeddings</em> sin reindexar. Las tres están descartadas <em>por ahora</em> con su motivo
+      escrito, no olvidadas.</p>
+    <p class="m" style="color:var(--dim)">Gracias · agentpilot-crk.up.railway.app</p>
+  </section>
+
+</div>
+
+<div class="status">
+  <span id="section">Portada</span>
+  <span class="nav">
+    <button id="prev" type="button" aria-label="Diapositiva anterior">◀</button>
+    <span id="counter" aria-live="polite">[01/13]</span>
+    <button id="next" type="button" aria-label="Diapositiva siguiente">▶</button>
+  </span>
+</div>
+<div class="rail"><span id="railFill"></span></div>
+
+<script>
+  const slides  = Array.from(document.querySelectorAll('.slide'));
+  const counter = document.getElementById('counter');
+  const section = document.getElementById('section');
+  const fill    = document.getElementById('railFill');
+  const prev    = document.getElementById('prev');
+  const next    = document.getElementById('next');
+  let i = 0;
+
+  function show(n) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach((s, k) => s.classList.toggle('on', k === i));
+    counter.textContent = '[' + String(i + 1).padStart(2, '0') + '/' + slides.length + ']';
+    section.textContent = slides[i].dataset.section;
+    fill.style.width = ((i + 1) / slides.length * 100) + '%';
+    prev.disabled = i === 0;
+    next.disabled = i === slides.length - 1;
+    window.scrollTo(0, 0);
+  }
+
+  prev.addEventListener('click', () => show(i - 1));
+  next.addEventListener('click', () => show(i + 1));
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); show(i + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') { e.preventDefault(); show(0); }
+    else if (e.key === 'End')  { e.preventDefault(); show(slides.length - 1); }
+  });
+
+  show(0);
+</script>
