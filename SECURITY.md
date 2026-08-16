@@ -90,6 +90,19 @@ es proporcional, y se distingue explícitamente lo implementado de lo pendiente.
 - Hashing fuerte (BCrypt) y verificación en tiempo constante que ofrece la librería.
 - **Sin *user enumeration***: usuario inexistente y contraseña incorrecta devuelven el
   mismo `401`, sin revelar cuál de los dos falló.
+- **Una sesión abierta por operador**
+  ([ADR-020](docs/adr/ADR-020-sesion-unica-por-operador.md)): cada login renueva
+  `User.SessionId`, que viaja en el token como claim `sid` y se comprueba en cada
+  petición autenticada. Un puesto de contact center es una persona; dos sesiones a la vez
+  significan credenciales compartidas o una sesión olvidada en otro sitio, y además
+  mezclan bajo un mismo operador las conversaciones de dos clientes. Gana la última
+  sesión: rechazar el login nuevo dejaría bloqueado ocho horas —lo que dura el token— a
+  quien cerrara el navegador sin salir.
+- **Un intento fallido no cierra la sesión abierta.** Si la cerrara, bastaría con conocer
+  el nombre de usuario de un agente para echarlo de su puesto. Hay un test que lo fija.
+- El token sigue siendo un JWT firmado y con caducidad (8 horas, un turno); la
+  comprobación de sesión ocurre **después** de validar firma, emisor, audiencia y
+  caducidad, así que solo consulta la base de datos un token ya válido.
 
 ### A08 — Software and Data Integrity Failures
 - Dependencias fijadas por versión (NuGet) y build reproducible en contenedor.
@@ -160,8 +173,24 @@ esta es una defensa en profundidad (mitiga, no elimina). Refuerzos futuros: vali
 la salida y un segundo modelo revisor.
 
 ### LLM02 — Insecure Output Handling
-- La respuesta del modelo se muestra como texto; **no se ejecuta ni se interpreta** como
-  código, ni se pasa a `eval`, shell o SQL.
+- La respuesta del modelo **no se ejecuta ni se interpreta** como código: no se pasa a
+  `eval`, ni a shell, ni a SQL.
+- Sí se **renderiza** su formato (listas y negritas), porque el agente lee en diagonal
+  durante la llamada y los asteriscos en crudo estorban. Es el punto delicado: ese texto
+  lo escribe un LLM que acaba de leer documentos de campaña, así que se trata como
+  contenido no confiable. El renderizador es propio y de subconjunto cerrado
+  ([ADR-019](docs/adr/ADR-019-markdown-del-asistente-renderizado.md)), con tres capas en
+  este orden:
+  1. **Se escapa antes de transformar**: `&`, `<`, `>` y `"` se neutralizan primero, así
+     que a partir de ahí el contenido no puede producir una etiqueta.
+  2. **No se generan enlaces ni imágenes**: el asistente cita con `[1]`, no con URLs, de
+     modo que la superficie de `javascript:` y `onerror=` no existe en vez de tener que
+     filtrarse. Las únicas etiquetas posibles son `<p>`, `<br>`, `<ul>`, `<ol>`, `<li>`,
+     `<strong>`, `<em>` y `<code>`.
+  3. **Angular vuelve a sanear** en el binding `[innerHTML]` (`DomSanitizer`).
+- Lo que teclea el operador **no** pasa por el renderizador: es entrada de usuario y se
+  pinta tal cual, sin darle un camino a HTML.
+- Hay 12 tests del renderizador, la mitad de ellos de seguridad.
 - Las **citas** permiten al agente verificar el origen de cada afirmación.
 
 ### LLM04 — Model Denial of Service
