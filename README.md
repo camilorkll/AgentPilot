@@ -147,6 +147,7 @@ Las reglas de dependencia entre capas se verifican con tests de arquitectura
 - [ ] **Búsqueda híbrida**: similitud vectorial + keyword (tsvector). *(línea futura)*
 - [x] **Autenticación JWT** con roles agente/administrador (contraseñas con hash BCrypt). *(Fase 4 ✓)*
 - [x] **Feedback 👍/👎** por respuesta, con autor y un motivo opcional al valorar negativo. Una valoración por respuesta, rectificable ([ADR-015](docs/adr/ADR-015-valoracion-unica-por-respuesta.md)). *(Fase 4 ✓)*
+- [x] **Revisión de respuestas valoradas** (solo administrador): listado filtrable por valoración y campaña con la pregunta, la respuesta y el motivo que escribió el agente, y apertura bajo demanda del hilo completo. El listado no expone la conversación entera a propósito — ver la nota de privacidad en [`SECURITY.md`](SECURITY.md).
 - [x] **Métricas / coste (LLMOps)**: filtro por operador (multiselección), rango de meses, campaña, exportación CSV, dos vistas (agente→días / día→agentes) con totales mensuales calculados en el servidor. *(Fase 5 y 8 ✓)*
 - [x] **Evals**: set dorado de 30 preguntas — **100% de precisión de recuperación, 96% de exactitud y 100% de abstención correcta** (sin alucinaciones), a ~$0,001 por consulta. *(Fase 6 ✓)*
 - [x] **Campañas**: la documentación se organiza por campaña (cliente/producto) y el asistente solo responde con el corpus de la campaña activa — aislamiento verificado con un test automatizado de fuga cruzada. Ciclo de vida (activa/inactiva/**cerrada**, de solo lectura) y borrado reforzado con confirmación escrita. *(Fase 8 ✓)*

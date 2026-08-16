@@ -1,0 +1,110 @@
+<div class="head">
+  <div>
+    <h1>Revisión de respuestas</h1>
+    <p class="muted small">
+      Lo que los agentes valoraron al usar el copiloto, con el motivo que escribieron.
+      Un 👎 con motivo suele señalar una de tres cosas: falta documentación en el corpus,
+      el <em>retrieval</em> no la encontró, o las instrucciones de la campaña necesitan un ajuste.
+    </p>
+  </div>
+  <button (click)="refresh()">Refrescar</button>
+</div>
+
+@if (error()) {
+  <p class="error small">{{ error() }}</p>
+}
+
+<div class="card filters">
+  <label class="small">
+    Valoración
+    <select name="rating" [(ngModel)]="rating" (ngModelChange)="refresh()">
+      <option value="negative">👎 No útiles</option>
+      <option value="positive">👍 Útiles</option>
+      <option value="">Todas</option>
+    </select>
+  </label>
+
+  <label class="small">
+    Campaña
+    <select name="campaignId" [(ngModel)]="campaignId" (ngModelChange)="refresh()">
+      <option value="">Todas</option>
+      @for (campaign of campaigns(); track campaign.id) {
+        <option [value]="campaign.id">{{ campaign.name }}</option>
+      }
+    </select>
+  </label>
+</div>
+
+@if (loading()) {
+  <p class="muted small">Cargando…</p>
+} @else if (answers().length === 0) {
+  <div class="card">
+    <p class="muted">
+      @if (rating === 'negative') {
+        Ninguna respuesta valorada como no útil con estos filtros. Es una buena noticia,
+        pero conviene mirar también cuántas se valoran en total: el porcentaje de
+        «Respuestas útiles» del panel de métricas solo cuenta las valoradas.
+      } @else {
+        No hay respuestas valoradas con estos filtros.
+      }
+    </p>
+  </div>
+} @else {
+  <ul class="answer-list">
+    @for (answer of answers(); track answer.messageId) {
+      <li class="card answer" [class.negative]="answer.rating === 'negative'">
+        <div class="answer-head small muted">
+          <span class="badge rating-{{ answer.rating }}">
+            {{ answer.rating === 'negative' ? '👎 No útil' : '👍 Útil' }}
+          </span>
+          <span>{{ answer.campaignName ?? 'Sin campaña' }}</span>
+          <span>{{ answer.ratedAtUtc | date:'short' }}</span>
+          <span>por {{ answer.ratedBy ?? 'desconocido' }}</span>
+        </div>
+
+        @if (answer.comment) {
+          <p class="reason"><strong>Motivo:</strong> {{ answer.comment }}</p>
+        } @else if (answer.rating === 'negative') {
+          <p class="small muted">Sin motivo escrito.</p>
+        }
+
+        <div class="exchange">
+          <p class="question"><strong>Pregunta:</strong> {{ answer.question ?? '(no encontrada)' }}</p>
+          <p class="answer-text">{{ answer.answer }}</p>
+        </div>
+
+        <button class="small" [disabled]="openingId() === answer.conversationId"
+                (click)="openThread(answer)">
+          {{ openingId() === answer.conversationId
+              ? 'Abriendo…'
+              : (isOpen(answer) ? 'Ocultar conversación' : 'Ver conversación completa') }}
+        </button>
+
+        <!--
+          El hilo entero se pide bajo demanda, no viene en el listado: puede contener
+          datos del cliente que no hacen falta para juzgar esta respuesta.
+        -->
+        @if (isOpen(answer)) {
+          <div class="thread">
+            @for (message of openConversation()!.messages; track message.id) {
+              <div class="turn turn-{{ message.role }}"
+                   [class.rated]="isRatedMessage(answer, message)">
+                <div class="small muted">
+                  {{ message.role === 'user' ? 'Agente' : 'Asistente' }}
+                  @if (isRatedMessage(answer, message)) { <span>· valorada</span> }
+                </div>
+                <p class="small">{{ message.content }}</p>
+                @if (message.citations?.length) {
+                  <p class="small muted">
+                    📎 {{ message.citations!.length }} fuente(s):
+                    {{ message.citations![0].documentTitle }}@if (message.citations!.length > 1) { …}
+                  </p>
+                }
+              </div>
+            }
+          </div>
+        }
+      </li>
+    }
+  </ul>
+}

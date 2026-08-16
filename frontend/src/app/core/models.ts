@@ -189,3 +189,20 @@ export interface MessageFeedback {
   createdBy: string | null;
   createdAtUtc: string;
 }
+
+/**
+ * Una respuesta valorada con su contexto mínimo (GET /feedback), para la pantalla de
+ * revisión. No trae la conversación entera: esa se pide aparte y solo si hace falta.
+ */
+export interface RatedAnswer {
+  messageId: string;
+  conversationId: string;
+  campaignId: string | null;
+  campaignName: string | null;
+  question: string | null;
+  answer: string;
+  rating: 'positive' | 'negative';
+  comment: string | null;
+  ratedBy: string | null;
+  ratedAtUtc: string;
+}

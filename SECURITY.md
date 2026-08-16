@@ -39,6 +39,21 @@ es proporcional, y se distingue explícitamente lo implementado de lo pendiente.
   preguntas ancladas a nombres de producto exclusivos de una campaña formuladas en otra:
   deben abstenerse siempre). Resultado en [`evals/ISOLATION-RESULTS.md`](evals/ISOLATION-RESULTS.md).
 
+- **Revisión de conversaciones por el administrador (`GET /feedback`, pantalla «Revisión»).**
+  Un administrador puede leer respuestas que sus agentes valoraron y, pidiéndolo, el hilo
+  completo. Es supervisión del trabajo de una persona y puede contener datos que el cliente
+  facilitó en la llamada, así que se acota a propósito:
+  - **Solo rol `admin`.** Un agente valora, pero no revisa lo que valoraron los demás.
+  - **El listado devuelve solo el intercambio valorado** (pregunta + respuesta), nunca el
+    hilo entero. Ver la conversación completa es una acción aparte y explícita
+    (`GET /conversations/{id}`), no algo que ocurra por defecto al abrir la pantalla.
+  - El filtro por defecto es **👎 no útiles**: el propósito es corregir el asistente, no
+    leer la actividad de un agente. Nada impide listar las positivas, pero hay que pedirlo.
+  - **Límite conocido**: no hay registro de quién ha consultado qué. Si el proyecto pasara
+    a un entorno con datos reales de clientes, esta pantalla necesitaría traza de acceso
+    y una base legal explícita (interés legítimo o consentimiento, según jurisdicción),
+    además de informar a la plantilla de que existe.
+
 ### A02 — Cryptographic Failures
 - Contraseñas almacenadas **solo como hash BCrypt** (sal automática y factor de coste), nunca en claro.
 - Tokens **JWT firmados** con HMAC-SHA256 y clave de ≥ 32 bytes.

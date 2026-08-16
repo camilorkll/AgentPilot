@@ -92,6 +92,11 @@ public class FeedbackServiceTests
             return Task.CompletedTask;
         }
 
+        // El listado de revisión es una consulta de lectura que no pasa por el servicio.
+        public Task<IReadOnlyList<RatedAnswer>> ListRatedAnswersAsync(
+            RatedAnswerFilter filter, CancellationToken ct = default)
+            => throw new NotSupportedException();
+
         public Task SaveChangesAsync(CancellationToken ct = default) => Task.CompletedTask;
     }
 }

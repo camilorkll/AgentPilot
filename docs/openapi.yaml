@@ -916,7 +916,62 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
-          $ref: "#/components/responses/NotFound"
+          description: El mensaje no existe
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      tags: [feedback]
+      operationId: listRatedAnswers
+      summary: Respuestas valoradas, para revisarlas
+      description: >
+        Requiere rol `admin`: un agente valora, pero no revisa lo que valoraron
+        los demás. Devuelve las respuestas valoradas más recientes primero, con
+        la pregunta que las provocó, la campaña y el motivo escrito.
+
+
+        **Devuelve solo el intercambio valorado, no la conversación completa.**
+        Para ver el hilo entero hay que pedirlo explícitamente con
+        `GET /conversations/{conversationId}`. Es una decisión de privacidad y no
+        una limitación técnica: revisar por qué falló una respuesta no exige leer
+        todo lo que el cliente contó (ver `SECURITY.md`).
+      parameters:
+        - name: rating
+          in: query
+          required: false
+          description: Filtra por valoración; ausente devuelve ambas.
+          schema:
+            type: string
+            enum: [positive, negative]
+        - name: campaignId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: limit
+          in: query
+          required: false
+          description: Máximo de resultados; se recorta al rango permitido.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: Respuestas valoradas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RatedAnswer"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 
   /metrics/summary:
     get:
@@ -1612,6 +1667,44 @@ components:
           items:
             $ref: "#/components/schemas/Message"
         createdAtUtc: { type: string, format: date-time }
+
+    RatedAnswer:
+      type: object
+      description: >
+        Una respuesta valorada con el contexto mínimo para juzgarla: la pregunta
+        que la provocó, la campaña y el motivo escrito. **No** incluye el resto de
+        la conversación.
+      required: [messageId, conversationId, answer, rating, ratedAtUtc]
+      properties:
+        messageId:
+          type: string
+          format: uuid
+          description: Respuesta valorada
+        conversationId:
+          type: string
+          format: uuid
+          description: Hilo al que pertenece, para pedirlo entero si hace falta
+        campaignId: { type: string, format: uuid, nullable: true }
+        campaignName:
+          type: string
+          nullable: true
+          description: >
+            Null si la conversación es anterior a las campañas o si la campaña
+            se eliminó (el hilo se conserva; ver `Conversation.campaignId`).
+        question:
+          type: string
+          nullable: true
+          description: Pregunta del agente inmediatamente anterior a la respuesta
+        answer: { type: string }
+        rating:
+          type: string
+          enum: [positive, negative]
+        comment:
+          type: string
+          nullable: true
+          description: Motivo escrito por el agente, normalmente solo en las negativas
+        ratedBy: { type: string, nullable: true }
+        ratedAtUtc: { type: string, format: date-time }
 
     FeedbackRequest:
       type: object

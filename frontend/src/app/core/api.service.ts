@@ -14,6 +14,7 @@ import {
   PromptPreviewResult,
   PromptUpdateResult,
   PromptVersion,
+  RatedAnswer,
   Usage,
 } from './models';
 
@@ -219,6 +220,18 @@ export class ApiService {
     return firstValueFrom(
       this.http.post('/api/v1/feedback', { messageId, rating, comment: comment ?? null })
     );
+  }
+
+  /**
+   * Respuestas valoradas para revisarlas (solo administrador). Trae el intercambio
+   * valorado, no la conversación entera: para eso está `getConversation`.
+   */
+  listRatedAnswers(filter: { rating?: 'positive' | 'negative'; campaignId?: string; limit?: number } = {}) {
+    let params = new HttpParams();
+    if (filter.rating) params = params.set('rating', filter.rating);
+    if (filter.campaignId) params = params.set('campaignId', filter.campaignId);
+    if (filter.limit) params = params.set('limit', String(filter.limit));
+    return firstValueFrom(this.http.get<RatedAnswer[]>('/api/v1/feedback', { params }));
   }
 
   // --- Conversaciones ---

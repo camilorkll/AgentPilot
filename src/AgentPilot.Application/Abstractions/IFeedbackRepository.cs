@@ -1,3 +1,4 @@
+using AgentPilot.Application.Feedback;
 // Tipo del dominio cualificado con alias: 'Feedback' a secas colisionaría con
 // el espacio de nombres AgentPilot.Application.Feedback.
 using FeedbackEntity = AgentPilot.Domain.Conversations.Feedback;
@@ -13,6 +14,14 @@ public interface IFeedbackRepository
     Task<FeedbackEntity?> GetByMessageAsync(Guid messageId, CancellationToken cancellationToken = default);
 
     Task AddAsync(FeedbackEntity feedback, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Respuestas valoradas con su pregunta y su campaña, más recientes primero, para
+    /// la revisión del administrador. Proyecta solo el intercambio valorado, no la
+    /// conversación entera.
+    /// </summary>
+    Task<IReadOnlyList<RatedAnswer>> ListRatedAnswersAsync(
+        RatedAnswerFilter filter, CancellationToken cancellationToken = default);
 
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

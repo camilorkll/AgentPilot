@@ -23,6 +23,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/documents/documents').then((m) => m.Documents),
   },
   {
+    path: 'review',
+    canActivate: [adminGuard],
+    loadComponent: () => import('./features/review/review').then((m) => m.Review),
+  },
+  {
     path: 'metrics',
     canActivate: [adminGuard],
     loadComponent: () => import('./features/metrics/metrics').then((m) => m.Metrics),
