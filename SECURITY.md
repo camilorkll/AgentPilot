@@ -71,6 +71,16 @@ es proporcional, y se distingue explícitamente lo implementado de lo pendiente.
 ### A09 — Security Logging and Monitoring Failures
 - **Sentry** captura excepciones no controladas y errores en producción.
 - **`LlmCallLog`** registra cada llamada al LLM (coste, latencia) para auditoría y control.
+- **Límite conocido — el historial de prompts no es una pista de auditoría fiable.**
+  `PromptVersion` registra quién cambió las instrucciones de una campaña y cuándo, pero
+  desde [ADR-014](docs/adr/ADR-014-historial-de-prompt-acotado.md) conserva solo las
+  últimas `MaxPromptVersions` entradas (5 por defecto) y un administrador puede borrar
+  una concreta. Sirve para trabajar (comparar y restaurar), **no** para demostrar
+  a posteriori qué instrucciones estaban vigentes en una fecha: quien puede editar el
+  prompt puede borrar el rastro de haberlo hecho. Si el proyecto llegara a necesitar esa
+  garantía, el registro tendría que ser otro distinto del que la interfaz edita, y de
+  solo-anexar. `LlmCallLog` sí conserva la traza completa de uso, que es la que sostiene
+  el control de coste.
 
 ### A10 — Server-Side Request Forgery (SSRF)
 - La API no realiza peticiones a URLs proporcionadas por el usuario. Las llamadas salientes

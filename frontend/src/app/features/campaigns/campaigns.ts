@@ -303,10 +303,22 @@ export class Campaigns {
 
     // Restaurar cambia lo que el asistente responde a partir de ese momento: se
     // confirma antes, como cualquier otra publicación, y no como un simple "ver".
+    //
+    // La entrada nueva empuja a las demás una posición, así que la que se restaura
+    // se sale del límite (y la purga se la lleva) si ya estaba en la última plaza.
+    // Prometer que "no se borra" sin comprobarlo sería mentir justo en ese caso.
+    const posicion = this.promptVersions().findIndex((v) => v.id === version.id);
+    const laPurgaSeLaLleva = posicion >= (campaign.maxPromptVersions - 1);
+
     const confirmado = confirm(
       `¿Restaurar las instrucciones del ${new Date(version.createdAtUtc).toLocaleString()}?\n\n` +
       'Pasarán a ser las instrucciones vigentes de la campaña y se añadirán al ' +
-      'historial como una entrada nueva. La versión de la que parte no se borra.'
+      'historial como una entrada nueva.\n\n' +
+      (laPurgaSeLaLleva
+        ? `Aviso: el historial está al límite (${campaign.maxPromptVersions}), así que esta ` +
+          'entrada desaparecerá al añadirse la nueva. El contenido no se pierde (queda en ' +
+          'la entrada nueva), pero sí la fecha y el autor originales.'
+        : 'La versión de la que parte se conserva en el historial.')
     );
     if (!confirmado) return;
 

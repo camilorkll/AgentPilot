@@ -7,7 +7,12 @@ namespace AgentPilot.Domain.Campaigns;
 /// Un prompt es configuración que cambia el comportamiento del producto: merece
 /// histórico y responsable, igual que un despliegue. Se guarda una fila por cada
 /// cambio (incluido "restaurar por defecto" y cada restauración de una versión
-/// anterior), nunca se sobrescribe: es un registro de auditoría, no una caché.
+/// anterior) y ninguna se sobrescribe.
+///
+/// Es un historial de trabajo, NO una pista de auditoría: conserva solo las últimas
+/// Campaña.MaxPromptVersions entradas y un administrador puede borrar una concreta
+/// (ADR-014), así que no sirve para demostrar qué instrucciones estaban vigentes en
+/// una fecha pasada. Ver el límite conocido anotado en SECURITY.md (A09).
 /// </summary>
 public class PromptVersion
 {

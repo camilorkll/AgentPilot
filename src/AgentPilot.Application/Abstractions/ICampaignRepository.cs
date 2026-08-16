@@ -38,7 +38,11 @@ public interface ICampaignRepository
 
     void Delete(Campaña campaign);
 
-    /// <summary>Añade una entrada al historial de prompts. Nunca se actualiza ni se borra una ya guardada.</summary>
+    /// <summary>
+    /// Añade una entrada al historial de prompts. Una entrada ya guardada nunca se
+    /// actualiza, pero sí puede borrarse: por la purga al superar el límite de la
+    /// campaña o a mano por un administrador (ver <see cref="DeletePromptVersion"/>).
+    /// </summary>
     Task AddPromptVersionAsync(PromptVersion version, CancellationToken cancellationToken = default);
 
     /// <summary>Historial de una campaña, más reciente primero.</summary>

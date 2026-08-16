@@ -23,7 +23,8 @@ info:
     la misma tanto para el chat real como para `POST .../prompt/preview`, para
     que lo que se previsualiza sea exactamente lo que se publica. Cada cambio
     (incluida una restauración) añade una entrada a `/prompt/versions`; ninguna
-    se sobrescribe ni se borra.
+    entrada existente se reescribe (ver más abajo lo que cambia en la v1.3.0
+    sobre cuántas se conservan).
 
 
     **Límite de historial de prompt (v1.3.0):** el historial de instrucciones de
@@ -329,9 +330,10 @@ paths:
       description: >
         Requiere rol `admin`. Enviar el formulario completamente vacío equivale
         a restaurar el comportamiento por defecto (solo el núcleo). Cada
-        llamada crea una entrada nueva en `/prompt/versions`; ninguna entrada
-        anterior se sobrescribe ni se borra. Una campaña `closed` es de solo
-        lectura y responde 409.
+        llamada crea una entrada nueva en `/prompt/versions` y ninguna entrada
+        anterior se reescribe, pero el historial está **acotado**: si con la
+        nueva se supera `maxPromptVersions` de la campaña, se elimina la más
+        antigua. Una campaña `closed` es de solo lectura y responde 409.
       parameters:
         - $ref: "#/components/parameters/CampaignIdPath"
       requestBody:
@@ -364,8 +366,12 @@ paths:
       operationId: listCampaignPromptVersions
       summary: Historial de instrucciones de la campaña, más reciente primero
       description: >
-        Requiere rol `admin`. Registro de auditoría de solo lectura: incluye
-        también las restauraciones, cada una como su propia entrada.
+        Requiere rol `admin`. Incluye también las restauraciones, cada una como
+        su propia entrada. Es un registro de auditoría **acotado**, no completo:
+        conserva a lo sumo las `maxPromptVersions` últimas entradas de la
+        campaña, y un administrador puede borrar una concreta con
+        `DELETE .../prompt/versions/{versionId}`. Lo que devuelve es, por tanto,
+        lo que ha sobrevivido a esas dos reglas, no todo lo que se publicó.
       parameters:
         - $ref: "#/components/parameters/CampaignIdPath"
       responses:

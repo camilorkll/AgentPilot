@@ -146,11 +146,11 @@ Las reglas de dependencia entre capas se verifican con tests de arquitectura
 - [x] **Chat RAG con citas**: pregunta en lenguaje natural → respuesta en streaming (SSE) anclada a los documentos, con citas y telemetría de coste. *(Fase 3 ✓)*
 - [ ] **Búsqueda híbrida**: similitud vectorial + keyword (tsvector). *(línea futura)*
 - [x] **Autenticación JWT** con roles agente/administrador (contraseñas con hash BCrypt). *(Fase 4 ✓)*
-- [x] **Feedback 👍/👎** por respuesta, con comentario y autor. *(Fase 4 ✓)*
+- [x] **Feedback 👍/👎** por respuesta, con autor y un motivo opcional al valorar negativo. Una valoración por respuesta, rectificable ([ADR-015](docs/adr/ADR-015-valoracion-unica-por-respuesta.md)). *(Fase 4 ✓)*
 - [x] **Métricas / coste (LLMOps)**: filtro por operador (multiselección), rango de meses, campaña, exportación CSV, dos vistas (agente→días / día→agentes) con totales mensuales calculados en el servidor. *(Fase 5 y 8 ✓)*
 - [x] **Evals**: set dorado de 30 preguntas — **100% de precisión de recuperación, 96% de exactitud y 100% de abstención correcta** (sin alucinaciones), a ~$0,001 por consulta. *(Fase 6 ✓)*
 - [x] **Campañas**: la documentación se organiza por campaña (cliente/producto) y el asistente solo responde con el corpus de la campaña activa — aislamiento verificado con un test automatizado de fuga cruzada. Ciclo de vida (activa/inactiva/**cerrada**, de solo lectura) y borrado reforzado con confirmación escrita. *(Fase 8 ✓)*
-- [x] **Prompt por capas**: instrucciones de negocio por campaña (tono, avisos, vocabulario) que se componen alrededor de un núcleo inmutable en código — verificado que ninguna instrucción de campaña logra anular el *grounding* ni las citas. Formulario estructurado, historial de versiones con restauración y vista previa lado a lado antes de publicar. *(Fase 8 ✓)*
+- [x] **Prompt por capas**: instrucciones de negocio por campaña (tono, avisos, vocabulario) que se componen alrededor de un núcleo inmutable en código — verificado que ninguna instrucción de campaña logra anular el *grounding* ni las citas. Formulario estructurado, vista previa lado a lado antes de publicar e historial de versiones con restauración, comparación de cada versión con la vigente y un máximo de entradas configurable por campaña ([ADR-014](docs/adr/ADR-014-historial-de-prompt-acotado.md)). *(Fase 8 ✓)*
 - [x] **Comparativa de modelo local vs nube**: Ollama (`llama3.2:3b`, CPU) medido frente a `gpt-4o-mini` con el mismo arnés de evals — igualdad casi total en calidad, 17-27× más lento en el primer token. *(Fase 8 ✓)*
 
 ## 📏 Calidad medida (evals)
