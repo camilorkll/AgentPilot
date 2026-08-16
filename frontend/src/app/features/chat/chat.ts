@@ -130,12 +130,52 @@ export class Chat {
         },
       });
     } catch (e: any) {
-      this.error.set(e?.message ?? 'No se pudo obtener la respuesta. Revisa que la API esté disponible.');
       patchLast({ streaming: false });
+
+      if (e?.code === 'campaign_not_active') {
+        await this.retirarCampaña(campaignId);
+      } else {
+        this.error.set(e?.message ?? 'No se pudo obtener la respuesta. Revisa que la API esté disponible.');
+      }
     } finally {
       this.sending.set(false);
       this.scrollToBottom();
     }
+  }
+
+  /**
+   * El administrador ha desactivado o cerrado la campaña mientras el agente trabajaba
+   * en ella. El servidor ya rechaza la pregunta (lo comprueba en cada una), pero sin
+   * esto el agente se quedaría con la campaña seleccionada y podría reintentar sin fin
+   * contra algo que ya no responde, justo mientras atiende una llamada.
+   *
+   * Se le retira del selector y se le deselecciona, pero **los mensajes se conservan**:
+   * lo que ya leyó le sigue haciendo falta aunque la conversación no pueda continuar.
+   */
+  private async retirarCampaña(campaignId: string): Promise<void> {
+    const nombre = this.campaigns().find((c) => c.id === campaignId)?.name;
+
+    // Se retira el hueco de la respuesta que ya no va a llegar; la pregunta se queda,
+    // para que el agente pueda volver a formularla en otra campaña sin reescribirla.
+    this.messages.update((all) => {
+      const ultimo = all[all.length - 1];
+      return ultimo?.role === 'assistant' && ultimo.content === '' ? all.slice(0, -1) : all;
+    });
+
+    this.campaignId.set(null);
+    localStorage.removeItem(CAMPAIGN_KEY);
+    // La conversación queda cerrada: no se puede continuar en una campaña que ya no
+    // admite consultas, así que la siguiente pregunta empezará otra.
+    this.conversationId = null;
+
+    this.error.set(
+      `${nombre ? `La campaña «${nombre}»` : 'La campaña seleccionada'} ya no admite consultas: ` +
+      'un administrador la ha desactivado o cerrado. Selecciona otra campaña para continuar.'
+    );
+
+    // Se recarga el selector para que la campaña retirada desaparezca de la lista y no
+    // se pueda volver a elegir.
+    await this.loadCampaigns();
   }
 
   /** Recupera el id del último mensaje del asistente para poder valorarlo. */

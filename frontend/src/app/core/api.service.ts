@@ -18,6 +18,18 @@ import {
   Usage,
 } from './models';
 
+/**
+ * Error de la API que conserva el `code` del cuerpo además del mensaje. El chat lo usa
+ * para reaccionar a `campaign_not_active` (retirarle la campaña al agente) sin tener
+ * que reconocer el error por su texto.
+ */
+export class ApiError extends Error {
+  constructor(message: string, readonly code: string | null, readonly status: number) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 /** Cuerpo de PUT /prompt y de la parte "candidato" de POST /prompt/preview. */
 export interface PromptFormValue {
   tone: string | null;
@@ -74,11 +86,17 @@ export class ApiService {
       // El error llega como JSON (no como SSE) cuando la petición se rechaza antes de
       // empezar a responder: campaña inactiva, conversación de otra campaña, etc.
       let message = `La API respondió ${response.status}`;
+      let code: string | null = null;
       try {
         const body = await response.json();
         if (body?.message) message = body.message;
+        if (body?.code) code = body.code;
       } catch { /* el cuerpo no era JSON; se mantiene el mensaje genérico */ }
-      throw new Error(message);
+
+      // Se conserva el `code`, no solo el texto: quien recoge el error necesita
+      // distinguir "la campaña ya no admite consultas" de un fallo cualquiera para
+      // reaccionar distinto, y hacerlo comparando mensajes sería frágil.
+      throw new ApiError(message, code, response.status);
     }
 
     const reader = response.body.getReader();
