@@ -21,4 +21,19 @@ public interface IDocumentIngestionService
 
     /// <summary>Fase de fondo: extrae, trocea, vectoriza e indexa el documento.</summary>
     Task ProcessAsync(IngestionJob job, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Encola el reindexado de los documentos de una campaña: vuelve a trocear y
+    /// vectorizar a partir del texto ya guardado, sin necesitar los ficheros (ADR-012).
+    /// Es lo que hay que hacer tras cambiar el troceado o el modelo de embeddings.
+    ///
+    /// No reindexa los documentos que no tengan texto guardado (ingeridos antes de que
+    /// se persistiera) ni los que no estén indexados todavía: se devuelven aparte para
+    /// que quien lo pide sepa exactamente qué se ha quedado fuera y por qué.
+    ///
+    /// Lanza <see cref="KeyNotFoundException"/> si la campaña no existe y
+    /// <see cref="Campaigns.CampaignClosedException"/> si está cerrada.
+    /// </summary>
+    Task<ReindexResult> ReindexCampaignAsync(
+        Guid campaignId, CancellationToken cancellationToken = default);
 }

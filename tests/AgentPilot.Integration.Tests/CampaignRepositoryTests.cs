@@ -46,7 +46,8 @@ public class CampaignRepositoryTests(PgVectorFixture fixture) : IClassFixture<Pg
         var documento = new Documento(campaña.Id, "Doc", "doc.md");
         documento.MarcarProcesando();
         documento.MarcarIndexado(
-            "test", [new Chunk(0, "contenido", new float[AgentPilotDbContext.EmbeddingDimensions])]);
+            "test", [new Chunk(0, "contenido", new float[AgentPilotDbContext.EmbeddingDimensions])],
+            "contenido");
         db.Documentos.Add(documento);
         await db.SaveChangesAsync();
 
@@ -75,11 +76,11 @@ public class CampaignRepositoryTests(PgVectorFixture fixture) : IClassFixture<Pg
 
         var activo = new Documento(conDocumentos.Id, "Activo", "activo.md");
         activo.MarcarProcesando();
-        activo.MarcarIndexado("test", [new Chunk(0, "x", new float[AgentPilotDbContext.EmbeddingDimensions])]);
+        activo.MarcarIndexado("test", [new Chunk(0, "x", new float[AgentPilotDbContext.EmbeddingDimensions])], "x");
 
         var inactivo = new Documento(conDocumentos.Id, "Inactivo", "inactivo.md");
         inactivo.MarcarProcesando();
-        inactivo.MarcarIndexado("test", [new Chunk(0, "y", new float[AgentPilotDbContext.EmbeddingDimensions])]);
+        inactivo.MarcarIndexado("test", [new Chunk(0, "y", new float[AgentPilotDbContext.EmbeddingDimensions])], "y");
         inactivo.Desactivar();
 
         db.Documentos.AddRange(activo, inactivo);

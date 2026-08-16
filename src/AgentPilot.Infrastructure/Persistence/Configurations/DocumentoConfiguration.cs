@@ -27,6 +27,12 @@ public class DocumentoConfiguration : IEntityTypeConfiguration<Documento>
         builder.Property(d => d.ErrorMessage);
         builder.Property(d => d.CreatedAtUtc).IsRequired();
 
+        // Texto extraído: sin longitud máxima (un PDF largo no cabe en un varchar
+        // acotado) y anulable, porque los documentos anteriores a ADR-012 no lo tienen
+        // y no hay forma de recuperarlo. No se indexa: no participa en la búsqueda,
+        // solo es la fuente para regenerar los fragmentos al reindexar.
+        builder.Property(d => d.ExtractedText);
+
         // Los documentos existentes siguen activos tras la migración.
         builder.Property(d => d.IsActive).IsRequired().HasDefaultValue(true);
 

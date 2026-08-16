@@ -46,7 +46,7 @@ public class DocumentoTests
         };
 
         doc.MarcarProcesando();
-        doc.MarcarIndexado("text-embedding-3-small", chunks);
+        doc.MarcarIndexado("text-embedding-3-small", chunks, "texto del documento");
 
         Assert.Equal(EstadoIngesta.Ready, doc.Status);
         Assert.Equal(2, doc.ChunkCount);
@@ -61,7 +61,7 @@ public class DocumentoTests
 
         // No se puede saltar de Pending directamente a Ready
         Assert.Throws<InvalidOperationException>(
-            () => doc.MarcarIndexado("modelo", chunks));
+            () => doc.MarcarIndexado("modelo", chunks, "texto"));
     }
 
     [Fact]
@@ -96,7 +96,7 @@ public class DocumentoTests
         // vigente y se reactiva sin volver a vectorizar el documento.
         var doc = new Documento(Campaña, "Promociones de julio", "promos.md");
         doc.MarcarProcesando();
-        doc.MarcarIndexado("text-embedding-3-small", [new Chunk(0, "oferta", [0.1f])]);
+        doc.MarcarIndexado("text-embedding-3-small", [new Chunk(0, "oferta", [0.1f])], "oferta");
 
         doc.Desactivar();
         Assert.False(doc.IsActive);

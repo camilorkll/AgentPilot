@@ -743,6 +743,54 @@ paths:
         "409":
           $ref: "#/components/responses/CampaignClosed"
 
+  /documents/reindex:
+    post:
+      tags: [documents]
+      operationId: reindexCampaign
+      summary: Reindexa el corpus de una campaña sin volver a subir los ficheros
+      description: >
+        Requiere rol `admin`. Vuelve a trocear y vectorizar cada documento a
+        partir del **texto guardado en su ingesta**, así que no hace falta
+        conservar los ficheros originales. Es lo que hay que ejecutar después de
+        cambiar la estrategia de troceado o el modelo de *embeddings*.
+
+
+        Responde **202**: el trabajo va a la misma cola que la ingesta porque el
+        corpus entero puede llevar minutos. Los documentos pasan por
+        `processing` y sus fragmentos anteriores siguen sirviendo hasta que se
+        sustituyen, así que la campaña no se queda sin responder mientras tanto.
+
+
+        Los documentos ingeridos **antes de que se guardara el texto** no se
+        pueden reindexar y se devuelven en `skipped` con su motivo, en vez de
+        omitirse en silencio: de esos hay que volver a subir el fichero.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [campaignId]
+              properties:
+                campaignId: { type: string, format: uuid }
+      responses:
+        "202":
+          description: Reindexado encolado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReindexResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/CampaignClosed"
+
   /documents/active:
     post:
       tags: [documents]
@@ -1527,6 +1575,31 @@ components:
           description: Modelo con el que se indexó (los queries deben usar el mismo)
         errorMessage: { type: string, nullable: true }
         createdAtUtc: { type: string, format: date-time }
+
+    ReindexResult:
+      type: object
+      description: Qué documentos se han encolado para reindexar y cuáles no.
+      required: [queued, queuedDocumentIds, skipped]
+      properties:
+        queued:
+          type: integer
+          description: Cuántos documentos se van a reindexar en segundo plano
+        queuedDocumentIds:
+          type: array
+          items: { type: string, format: uuid }
+        skipped:
+          type: array
+          description: >
+            Documentos que no se pueden reindexar. Se devuelven con el motivo
+            para que el administrador sepa de cuáles tiene que volver a subir el
+            fichero, en vez de descubrirlo cuando esos documentos respondan peor.
+          items:
+            type: object
+            required: [documentId, fileName, reason]
+            properties:
+              documentId: { type: string, format: uuid }
+              fileName: { type: string }
+              reason: { type: string }
 
     DocumentChunk:
       type: object

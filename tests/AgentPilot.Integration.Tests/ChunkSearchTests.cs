@@ -52,7 +52,7 @@ public class ChunkSearchTests(PgVectorFixture fixture, ITestOutputHelper output)
         doc.MarcarIndexado("test", [
             new Chunk(0, "fragmento en la dimensión 0", UnitVector(0)),
             new Chunk(1, "fragmento en la dimensión 1", UnitVector(1)),
-        ]);
+        ], "fragmento en la dimensión 0\nfragmento en la dimensión 1");
         db.Documentos.Add(doc);
         await db.SaveChangesAsync();
 
@@ -93,11 +93,11 @@ public class ChunkSearchTests(PgVectorFixture fixture, ITestOutputHelper output)
         // promoción caducada): su contenido debe desaparecer de los resultados.
         var vigente = new Documento(Campaña, "Tarifas vigentes", "tarifas.md");
         vigente.MarcarProcesando();
-        vigente.MarcarIndexado("test", [new Chunk(0, "tarifa vigente", UnitVector(0))]);
+        vigente.MarcarIndexado("test", [new Chunk(0, "tarifa vigente", UnitVector(0))], "tarifa vigente");
 
         var caducado = new Documento(Campaña, "Promoción caducada", "promos.md");
         caducado.MarcarProcesando();
-        caducado.MarcarIndexado("test", [new Chunk(0, "promoción caducada", UnitVector(0))]);
+        caducado.MarcarIndexado("test", [new Chunk(0, "promoción caducada", UnitVector(0))], "promoción caducada");
         caducado.Desactivar();
 
         db.Documentos.AddRange(vigente, caducado);
@@ -134,12 +134,12 @@ public class ChunkSearchTests(PgVectorFixture fixture, ITestOutputHelper output)
 
         var mia = new Documento(Campaña, "Tarifas de mi campaña", "tarifas.md");
         mia.MarcarProcesando();
-        mia.MarcarIndexado("test", [new Chunk(0, "precio de MI campaña", UnitVector(0))]);
+        mia.MarcarIndexado("test", [new Chunk(0, "precio de MI campaña", UnitVector(0))], "precio de MI campaña");
 
         // Mismo nombre de fichero y mismo vector, en otra campaña: es el caso peligroso.
         var ajena = new Documento(OtraCampaña, "Tarifas de otra campaña", "tarifas.md");
         ajena.MarcarProcesando();
-        ajena.MarcarIndexado("test", [new Chunk(0, "precio de OTRA campaña", UnitVector(0))]);
+        ajena.MarcarIndexado("test", [new Chunk(0, "precio de OTRA campaña", UnitVector(0))], "precio de OTRA campaña");
 
         db.Documentos.AddRange(mia, ajena);
         await db.SaveChangesAsync();
@@ -190,7 +190,8 @@ public class ChunkSearchTests(PgVectorFixture fixture, ITestOutputHelper output)
         var doc = new Documento(Campaña, "Base de conocimiento", "kb.md");
         doc.MarcarProcesando();
         doc.MarcarIndexado(embeddings.ModelName,
-            textos.Select((t, i) => new Chunk(i, t, vectors[i])).ToList());
+            textos.Select((t, i) => new Chunk(i, t, vectors[i])).ToList(),
+            string.Join("\n", textos));
         db.Documentos.Add(doc);
         await db.SaveChangesAsync();
 

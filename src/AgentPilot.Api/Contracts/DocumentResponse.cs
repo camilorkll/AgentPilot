@@ -1,3 +1,4 @@
+using AgentPilot.Application.Ingestion;
 using AgentPilot.Domain.Documents;
 
 namespace AgentPilot.Api.Contracts;
@@ -35,8 +36,27 @@ public record SetActiveRequest(IReadOnlyList<Guid> DocumentIds, bool IsActive);
 /// <summary>Resultado del borrado múltiple.</summary>
 public record DeleteDocumentsResponse(int Deleted, IReadOnlyList<Guid> NotFound);
 
+/// <summary>Cuerpo de POST /documents/reindex: qué campaña se reindexa.</summary>
+public record ReindexRequest(Guid CampaignId);
+
+/// <summary>
+/// Qué se ha encolado y qué se ha quedado fuera. Los omitidos llevan su motivo para que
+/// el administrador sepa de cuáles tiene que volver a subir el fichero.
+/// </summary>
+public record ReindexResponse(
+    int Queued,
+    IReadOnlyList<Guid> QueuedDocumentIds,
+    IReadOnlyList<SkippedDocumentResponse> Skipped);
+
+public record SkippedDocumentResponse(Guid DocumentId, string FileName, string Reason);
+
 public static class DocumentMappings
 {
+    public static ReindexResponse ToResponse(this ReindexResult r) => new(
+        r.Encolados.Count,
+        r.Encolados,
+        r.Omitidos.Select(o => new SkippedDocumentResponse(o.DocumentId, o.FileName, o.Motivo)).ToList());
+
     public static DocumentResponse ToResponse(this Documento d) => new(
         d.Id,
         d.CampaignId,

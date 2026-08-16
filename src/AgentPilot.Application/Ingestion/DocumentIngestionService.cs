@@ -64,6 +64,47 @@ public class DocumentIngestionService(
         return document;
     }
 
+    public async Task<ReindexResult> ReindexCampaignAsync(
+        Guid campaignId, CancellationToken cancellationToken = default)
+    {
+        // Misma guarda que subir un documento: una campaña cerrada es de solo lectura,
+        // y reindexar reescribe sus fragmentos.
+        var campaign = await campaigns.ExigirEditableAsync(campaignId, cancellationToken);
+
+        var documentos = await repository.ListAsync(campaignId, cancellationToken: cancellationToken);
+
+        var encolados = new List<Guid>();
+        var omitidos = new List<DocumentoOmitido>();
+
+        foreach (var documento in documentos)
+        {
+            if (documento.Status is EstadoIngesta.Pending or EstadoIngesta.Processing)
+            {
+                omitidos.Add(new DocumentoOmitido(documento.Id, documento.FileName,
+                    "Su ingesta todavía está en curso; se reindexa solo cuando termine."));
+                continue;
+            }
+
+            if (!documento.PuedeReindexarse)
+            {
+                omitidos.Add(new DocumentoOmitido(documento.Id, documento.FileName,
+                    "Se ingirió antes de que se guardara el texto extraído, así que no hay " +
+                    "de dónde regenerar los fragmentos. Hay que volver a subir el fichero."));
+                continue;
+            }
+
+            await queue.EnqueueAsync(
+                IngestionJob.Reindexado(documento.Id, documento.FileName), cancellationToken);
+            encolados.Add(documento.Id);
+        }
+
+        logger.LogInformation(
+            "Reindexado de la campaña {Campaign}: {Encolados} encolados, {Omitidos} omitidos.",
+            campaign.Name, encolados.Count, omitidos.Count);
+
+        return new ReindexResult(encolados, omitidos);
+    }
+
     public async Task ProcessAsync(IngestionJob job, CancellationToken cancellationToken = default)
     {
         var document = await repository.GetByIdAsync(job.DocumentId, cancellationToken);
@@ -75,12 +116,24 @@ public class DocumentIngestionService(
 
         try
         {
-            document.MarcarProcesando();
-            await repository.SaveChangesAsync(cancellationToken);
+            string text;
+            if (job.EsReindexado)
+            {
+                // Reindexar: el texto ya está guardado, no hay fichero que extraer.
+                // MarcarReindexando rechaza los documentos sin texto persistido.
+                document.MarcarReindexando();
+                await repository.SaveChangesAsync(cancellationToken);
+                text = document.ExtractedText!;
+            }
+            else
+            {
+                document.MarcarProcesando();
+                await repository.SaveChangesAsync(cancellationToken);
 
-            // 1) Extraer texto plano del fichero.
-            using var stream = new MemoryStream(job.Content);
-            var text = await extractor.ExtractTextAsync(stream, job.FileName, cancellationToken);
+                // 1) Extraer texto plano del fichero.
+                using var stream = new MemoryStream(job.Content!);
+                text = await extractor.ExtractTextAsync(stream, job.FileName, cancellationToken);
+            }
 
             // 2) Trocear en fragmentos con solapamiento.
             var fragments = chunker.Split(text);
@@ -95,12 +148,15 @@ public class DocumentIngestionService(
                 .Select((fragment, i) => new Chunk(i, fragment, vectors[i]))
                 .ToList();
 
-            document.MarcarIndexado(embeddings.ModelName, chunks);
+            // El texto se guarda con el documento: es lo que permite reindexar más
+            // adelante sin el fichero (ADR-012).
+            document.MarcarIndexado(embeddings.ModelName, chunks, text);
             await repository.SaveChangesAsync(cancellationToken);
 
             logger.LogInformation(
-                "Documento {Id} indexado: {Count} chunks con el modelo {Model}.",
-                document.Id, chunks.Count, embeddings.ModelName);
+                "Documento {Id} {Accion}: {Count} chunks con el modelo {Model}.",
+                document.Id, job.EsReindexado ? "reindexado" : "indexado",
+                chunks.Count, embeddings.ModelName);
         }
         catch (Exception ex)
         {

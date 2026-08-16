@@ -34,8 +34,24 @@ public class Documento
     /// </summary>
     public string? EmbeddingModel { get; private set; }
 
+    /// <summary>
+    /// Texto plano extraído del fichero, tal como se troceó. Se guarda para poder
+    /// reindexar sin el fichero original (ADR-012): los fragmentos ya están cortados y
+    /// solapados, así que no sirven para volver a trocear con otro criterio.
+    ///
+    /// No participa en la búsqueda —no se vectoriza ni se indexa—, solo existe como
+    /// fuente para regenerar los fragmentos.
+    ///
+    /// Null en los documentos ingeridos antes de esta decisión: no hay de dónde
+    /// recuperarlo, y esos documentos no se pueden reindexar hasta volver a subirlos.
+    /// </summary>
+    public string? ExtractedText { get; private set; }
+
     public string? ErrorMessage { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
+
+    /// <summary>Se puede reindexar sin el fichero original.</summary>
+    public bool PuedeReindexarse => !string.IsNullOrWhiteSpace(ExtractedText);
 
     /// <summary>
     /// Si está inactivo, sus fragmentos quedan fuera de la búsqueda: el asistente no
@@ -83,8 +99,38 @@ public class Documento
         ErrorMessage = null;
     }
 
-    /// <summary>Ingesta completada: se fijan los chunks y el modelo usado.</summary>
-    public void MarcarIndexado(string embeddingModel, IEnumerable<Chunk> chunks)
+    /// <summary>
+    /// Vuelve a poner en proceso un documento ya indexado para regenerar sus fragmentos
+    /// desde el texto guardado. Es la única transición que sale de Ready, y existe
+    /// aparte de <see cref="MarcarProcesando"/> para que reindexar sea una intención
+    /// explícita y no un efecto colateral de reprocesar.
+    /// </summary>
+    public void MarcarReindexando()
+    {
+        if (!PuedeReindexarse)
+            throw new InvalidOperationException(
+                "No se puede reindexar este documento porque no se guardó su texto extraído " +
+                "(se ingirió antes de que se persistiera). Hay que volver a subir el fichero.");
+
+        if (Status is not (EstadoIngesta.Ready or EstadoIngesta.Failed))
+            throw new InvalidOperationException(
+                $"Solo se reindexa un documento ya indexado o fallido (estado actual: {Status}).");
+
+        Status = EstadoIngesta.Processing;
+        ErrorMessage = null;
+    }
+
+    /// <summary>
+    /// Ingesta completada: se fijan los chunks, el modelo usado y el texto del que
+    /// salieron.
+    /// </summary>
+    /// <param name="extractedText">
+    /// Texto plano que se troceó. Es obligatorio y no tiene valor por defecto a
+    /// propósito: si se pudiera omitir, un documento acabaría indexado sin la única
+    /// fuente que permite reindexarlo después, y el descuido no daría error hasta meses
+    /// más tarde, al intentar reindexar.
+    /// </param>
+    public void MarcarIndexado(string embeddingModel, IEnumerable<Chunk> chunks, string extractedText)
     {
         if (Status != EstadoIngesta.Processing)
             throw new InvalidOperationException(
@@ -98,6 +144,7 @@ public class Documento
 
         EmbeddingModel = embeddingModel;
         ChunkCount = _chunks.Count;
+        ExtractedText = extractedText;
         Status = EstadoIngesta.Ready;
         ErrorMessage = null;
     }

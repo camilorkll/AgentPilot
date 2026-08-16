@@ -212,4 +212,41 @@ public class DocumentsController(
         await repository.SaveChangesAsync(cancellationToken);
         return new DeleteDocumentsResponse(documents.Count, notFound);
     }
+
+    /// <summary>
+    /// Reindexa el corpus de una campaña: vuelve a trocear y vectorizar cada documento a
+    /// partir del texto guardado en la ingesta, **sin necesitar los ficheros originales**
+    /// (ADR-012). Es lo que hay que hacer después de cambiar la estrategia de troceado o
+    /// el modelo de embeddings.
+    ///
+    /// Responde 202 y trabaja en segundo plano por la misma cola que la ingesta: el
+    /// corpus entero puede llevar minutos. Mientras tanto los documentos pasan por
+    /// `processing` y sus fragmentos anteriores siguen sirviendo hasta que se sustituyen.
+    ///
+    /// Los documentos ingeridos antes de que se guardara el texto **no se pueden
+    /// reindexar** y se devuelven en `skipped` con el motivo, en vez de omitirse en
+    /// silencio: para esos hay que volver a subir el fichero.
+    /// </summary>
+    [HttpPost("reindex")]
+    [Authorize(Roles = "admin")]
+    public async Task<ActionResult<ReindexResponse>> Reindex(
+        [FromBody] ReindexRequest request, CancellationToken cancellationToken)
+    {
+        if (request.CampaignId == Guid.Empty)
+            return BadRequest(new { code = "validation_error", message = "La campaña es obligatoria." });
+
+        try
+        {
+            var result = await ingestion.ReindexCampaignAsync(request.CampaignId, cancellationToken);
+            return Accepted(result.ToResponse());
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { code = "campaign_not_found", message = ex.Message });
+        }
+        catch (CampaignClosedException ex)
+        {
+            return Conflict(new { code = "campaign_closed", message = ex.Message });
+        }
+    }
 }
