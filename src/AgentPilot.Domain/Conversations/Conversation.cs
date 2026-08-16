@@ -21,6 +21,17 @@ public class Conversation
     /// </summary>
     public Guid? CampaignId { get; private set; }
 
+    /// <summary>
+    /// Operador que mantuvo la conversación. Se fija al crearla y no cambia: es quien
+    /// preguntó, no quien la consulte después.
+    ///
+    /// Anulable por dos motivos distintos: las conversaciones anteriores a que se
+    /// registrara el operador (rellenadas desde llm_call_logs donde se pudo), y las
+    /// acciones sin usuario asociado. No se hace obligatorio en la base de datos para
+    /// no inventar un valor en el histórico que no consta.
+    /// </summary>
+    public string? UserName { get; private set; }
+
     public string? Title { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
 
@@ -28,7 +39,13 @@ public class Conversation
 
     private Conversation() { } // EF
 
-    public Conversation(Guid campaignId, string? title = null)
+    /// <param name="userName">
+    /// Operador que pregunta. Es un parámetro explícito y sin valor por defecto a
+    /// propósito: quien crea una conversación tiene que decidir qué identidad registra,
+    /// aunque la decisión sea "ninguna". Un valor por defecto convertiría un olvido en
+    /// una conversación anónima que luego no se puede atribuir.
+    /// </param>
+    public Conversation(Guid campaignId, string? userName, string? title = null)
     {
         if (campaignId == Guid.Empty)
             throw new ArgumentException(
@@ -36,6 +53,7 @@ public class Conversation
 
         Id = Guid.NewGuid();
         CampaignId = campaignId;
+        UserName = string.IsNullOrWhiteSpace(userName) ? null : userName.Trim();
         CreatedAtUtc = DateTime.UtcNow;
         Title = title;
     }

@@ -21,6 +21,7 @@ export class Review {
 
   readonly answers = signal<RatedAnswer[]>([]);
   readonly campaigns = signal<Campaign[]>([]);
+  readonly operators = signal<string[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
 
@@ -28,6 +29,9 @@ export class Review {
   // positivas están para poder contrastar, no para leerlas de una en una.
   rating: '' | 'positive' | 'negative' = 'negative';
   campaignId = '';
+  // Vacío por defecto a propósito: la pantalla sirve para corregir el asistente, no
+  // para vigilar a un agente. Filtrar por persona hay que pedirlo.
+  operator = '';
 
   /** Conversación desplegada, si el revisor pidió ver uno de los hilos completos. */
   readonly openConversation = signal<OpenConversation | null>(null);
@@ -40,9 +44,16 @@ export class Review {
 
   private async loadCampaigns(): Promise<void> {
     try {
-      this.campaigns.set(await this.api.listCampaigns());
+      // Los operadores salen de la telemetría, que es donde consta quién ha usado el
+      // copiloto; no hace falta un endpoint nuevo solo para poblar el desplegable.
+      const [campaigns, operators] = await Promise.all([
+        this.api.listCampaigns(),
+        this.api.getOperators(),
+      ]);
+      this.campaigns.set(campaigns);
+      this.operators.set(operators);
     } catch {
-      // El filtro por campaña es una comodidad: si falla, el listado sigue sirviendo.
+      // Los filtros son una comodidad: si fallan, el listado sigue sirviendo.
     }
   }
 
@@ -54,6 +65,7 @@ export class Review {
       this.answers.set(await this.api.listRatedAnswers({
         rating: this.rating || undefined,
         campaignId: this.campaignId || undefined,
+        operator: this.operator || undefined,
       }));
     } catch (e: any) {
       this.error.set(e?.error?.message ?? 'No se pudieron cargar las respuestas valoradas.');

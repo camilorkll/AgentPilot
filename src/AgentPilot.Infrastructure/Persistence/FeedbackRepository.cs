@@ -30,6 +30,9 @@ public class FeedbackRepository(AgentPilotDbContext db) : IFeedbackRepository
         if (filter.CampaignId is Guid campaignId)
             query = query.Where(x => x.c.CampaignId == campaignId);
 
+        if (!string.IsNullOrWhiteSpace(filter.Operator))
+            query = query.Where(x => x.c.UserName == filter.Operator);
+
         return await query
             .OrderByDescending(x => x.f.CreatedAtUtc)
             .Take(filter.Limit)
@@ -43,10 +46,17 @@ public class FeedbackRepository(AgentPilotDbContext db) : IFeedbackRepository
                 db.Campañas.Where(k => k.Id == x.c.CampaignId).Select(k => k.Name).FirstOrDefault(),
                 // La pregunta que provocó la respuesta: el último mensaje del agente
                 // anterior a ella dentro del mismo hilo.
+                //
+                // El <= no es un descuido: los mensajes se ordenan por marca de tiempo y
+                // DateTime.UtcNow tiene resolución de milisegundos, así que una pregunta y
+                // su respuesta pueden compartir marca. Con un < estricto ese empate
+                // descartaba la pregunta correcta y devolvía la anterior del hilo. No hay
+                // riesgo de que se seleccione la propia respuesta: solo se miran mensajes
+                // con Role == User y la valorada siempre es del asistente.
                 db.Set<Message>()
                     .Where(q => q.ConversationId == x.m.ConversationId
                              && q.Role == MessageRole.User
-                             && q.CreatedAtUtc < x.m.CreatedAtUtc)
+                             && q.CreatedAtUtc <= x.m.CreatedAtUtc)
                     .OrderByDescending(q => q.CreatedAtUtc)
                     .Select(q => q.Content)
                     .FirstOrDefault(),
@@ -54,7 +64,8 @@ public class FeedbackRepository(AgentPilotDbContext db) : IFeedbackRepository
                 x.f.Rating,
                 x.f.Comment,
                 x.f.CreatedBy,
-                x.f.CreatedAtUtc))
+                x.f.CreatedAtUtc,
+                x.c.UserName))
             .ToListAsync(cancellationToken);
     }
 

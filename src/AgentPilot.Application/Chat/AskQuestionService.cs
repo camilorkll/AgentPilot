@@ -50,7 +50,7 @@ public class AskQuestionService(
         }
         else
         {
-            conversation = new Conversation(campaign.Id);
+            conversation = new Conversation(campaign.Id, currentUser.UserName);
             await conversations.AddAsync(conversation, cancellationToken);
         }
         conversation.AddUserMessage(question);

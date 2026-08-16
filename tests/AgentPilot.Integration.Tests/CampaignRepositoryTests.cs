@@ -127,7 +127,7 @@ public class CampaignRepositoryTests(PgVectorFixture fixture) : IClassFixture<Pg
         var campaña = new Campaña("Campaña a borrar");
         db.Campañas.Add(campaña);
 
-        var conversacion = new Domain.Conversations.Conversation(campaña.Id);
+        var conversacion = new Domain.Conversations.Conversation(campaña.Id, "agente");
         conversacion.AddUserMessage("¿pregunta?");
         db.Conversations.Add(conversacion);
         await db.SaveChangesAsync();

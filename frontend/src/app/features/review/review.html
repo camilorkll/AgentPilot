@@ -33,6 +33,16 @@
       }
     </select>
   </label>
+
+  <label class="small">
+    Agente
+    <select name="operator" [(ngModel)]="operator" (ngModelChange)="refresh()">
+      <option value="">Todos</option>
+      @for (name of operators(); track name) {
+        <option [value]="name">{{ name }}</option>
+      }
+    </select>
+  </label>
 </div>
 
 @if (loading()) {
@@ -59,7 +69,11 @@
           </span>
           <span>{{ answer.campaignName ?? 'Sin campaña' }}</span>
           <span>{{ answer.ratedAtUtc | date:'short' }}</span>
-          <span>por {{ answer.ratedBy ?? 'desconocido' }}</span>
+          <span>agente: {{ answer.operator ?? 'sin registrar' }}</span>
+          <!-- Solo se dice quién valoró si no fue el propio agente de la conversación. -->
+          @if (answer.ratedBy && answer.ratedBy !== answer.operator) {
+            <span>valorada por {{ answer.ratedBy }}</span>
+          }
         </div>
 
         @if (answer.comment) {

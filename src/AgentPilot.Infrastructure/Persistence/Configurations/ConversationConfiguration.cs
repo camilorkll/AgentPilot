@@ -16,6 +16,11 @@ public class ConversationConfiguration : IEntityTypeConfiguration<Conversation>
         builder.Property(c => c.Title).HasMaxLength(200);
         builder.Property(c => c.CreatedAtUtc).IsRequired();
 
+        // Operador que mantuvo la conversación. Indexado porque la revisión filtra por
+        // él; anulable por el histórico anterior a registrarlo.
+        builder.Property(c => c.UserName).HasMaxLength(100);
+        builder.HasIndex(c => c.UserName);
+
         // Anulable por las conversaciones anteriores a las campañas. Al eliminar una
         // campaña la conversación NO se borra: no es corpus, es histórico, y perder
         // las preguntas ya atendidas dejaría los informes sin cuadrar.

@@ -948,6 +948,13 @@ paths:
           in: query
           required: false
           schema: { type: string, format: uuid }
+        - name: operator
+          in: query
+          required: false
+          description: >
+            Operador que **mantuvo** la conversación (no el que valoró). Los valores
+            posibles se obtienen de `GET /metrics/operators`.
+          schema: { type: string }
         - name: limit
           in: query
           required: false
@@ -1703,8 +1710,18 @@ components:
           type: string
           nullable: true
           description: Motivo escrito por el agente, normalmente solo en las negativas
-        ratedBy: { type: string, nullable: true }
+        ratedBy:
+          type: string
+          nullable: true
+          description: Quién valoró la respuesta
         ratedAtUtc: { type: string, format: date-time }
+        operator:
+          type: string
+          nullable: true
+          description: >
+            Quién mantuvo la conversación. Casi siempre coincide con `ratedBy`, pero
+            son acciones distintas. Null en las conversaciones anteriores a que se
+            registrara el operador y que no se pudieron atribuir desde la telemetría.
 
     FeedbackRequest:
       type: object

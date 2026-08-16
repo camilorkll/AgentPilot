@@ -203,6 +203,9 @@ export interface RatedAnswer {
   answer: string;
   rating: 'positive' | 'negative';
   comment: string | null;
+  /** Quién valoró la respuesta. */
   ratedBy: string | null;
   ratedAtUtc: string;
+  /** Quién mantuvo la conversación; normalmente el mismo que `ratedBy`, pero no siempre. */
+  operator: string | null;
 }

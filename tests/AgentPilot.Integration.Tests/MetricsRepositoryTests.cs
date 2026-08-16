@@ -37,7 +37,7 @@ public class MetricsRepositoryTests(PgVectorFixture fixture) : IClassFixture<PgV
             new LlmCallLog("gpt-5", 200, 80, 0.010, 300, null, "admin"));
 
         // Una conversación con respuesta y un feedback positivo sobre ella.
-        var conversation = new Conversation(Campaña);
+        var conversation = new Conversation(Campaña, "agente");
         conversation.AddUserMessage("¿pregunta?");
         var assistant = conversation.AddAssistantMessage("respuesta", []);
         db.Conversations.Add(conversation);

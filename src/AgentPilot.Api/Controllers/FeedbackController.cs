@@ -50,6 +50,7 @@ public class FeedbackController(
     public async Task<ActionResult<IReadOnlyList<RatedAnswerResponse>>> List(
         [FromQuery] string? rating,
         [FromQuery] Guid? campaignId,
+        [FromQuery(Name = "operator")] string? @operator,
         [FromQuery] int? limit,
         CancellationToken cancellationToken)
     {
@@ -66,7 +67,7 @@ public class FeedbackController(
         }
 
         var filter = new RatedAnswerFilter(
-            parsed, campaignId, Math.Clamp(limit ?? LimitePorDefecto, 1, LimiteMaximo));
+            parsed, campaignId, @operator, Math.Clamp(limit ?? LimitePorDefecto, 1, LimiteMaximo));
 
         var answers = await repository.ListRatedAnswersAsync(filter, cancellationToken);
         return answers.Select(a => a.ToResponse()).ToList();

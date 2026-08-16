@@ -12,13 +12,13 @@ public class ConversationTests
     {
         // El historial se reenvía al modelo en cada turno; sin campaña no se sabría con
         // qué corpus se está respondiendo.
-        Assert.Throws<ArgumentException>(() => new Conversation(Guid.Empty));
+        Assert.Throws<ArgumentException>(() => new Conversation(Guid.Empty, "agente"));
     }
 
     [Fact]
     public void AddUserMessage_DerivaElTituloDeLaPrimeraPregunta()
     {
-        var conversation = new Conversation(Campaña);
+        var conversation = new Conversation(Campaña, "agente");
 
         conversation.AddUserMessage("¿Puedo cambiar de tarifa?");
 
@@ -29,7 +29,7 @@ public class ConversationTests
     [Fact]
     public void Titulo_SeTruncaSiLaPreguntaEsMuyLarga()
     {
-        var conversation = new Conversation(Campaña);
+        var conversation = new Conversation(Campaña, "agente");
         var preguntaLarga = new string('a', 200);
 
         conversation.AddUserMessage(preguntaLarga);
@@ -41,7 +41,7 @@ public class ConversationTests
     [Fact]
     public void AddAssistantMessage_GuardaContenidoYCitas()
     {
-        var conversation = new Conversation(Campaña);
+        var conversation = new Conversation(Campaña, "agente");
         conversation.AddUserMessage("¿Cuánto cuesta la tarifa Nova Mini?");
         var citas = new[]
         {
@@ -59,7 +59,7 @@ public class ConversationTests
     [Fact]
     public void MensajeDeUsuario_NoTieneCitas()
     {
-        var conversation = new Conversation(Campaña);
+        var conversation = new Conversation(Campaña, "agente");
 
         var mensaje = conversation.AddUserMessage("hola");
 

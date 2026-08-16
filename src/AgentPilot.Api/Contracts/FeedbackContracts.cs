@@ -19,7 +19,8 @@ public record RatedAnswerResponse(
     string Rating,
     string? Comment,
     string? RatedBy,
-    DateTime RatedAtUtc);
+    DateTime RatedAtUtc,
+    string? Operator);
 
 public static class FeedbackMappings
 {
@@ -27,5 +28,5 @@ public static class FeedbackMappings
         a.MessageId, a.ConversationId, a.CampaignId, a.CampaignName,
         a.Question, a.Answer,
         a.Rating.ToString().ToLowerInvariant(), // positive/negative
-        a.Comment, a.RatedBy, a.RatedAtUtc);
+        a.Comment, a.RatedBy, a.RatedAtUtc, a.Operator);
 }

@@ -49,10 +49,22 @@ es proporcional, y se distingue explícitamente lo implementado de lo pendiente.
     (`GET /conversations/{id}`), no algo que ocurra por defecto al abrir la pantalla.
   - El filtro por defecto es **👎 no útiles**: el propósito es corregir el asistente, no
     leer la actividad de un agente. Nada impide listar las positivas, pero hay que pedirlo.
-  - **Límite conocido**: no hay registro de quién ha consultado qué. Si el proyecto pasara
-    a un entorno con datos reales de clientes, esta pantalla necesitaría traza de acceso
-    y una base legal explícita (interés legítimo o consentimiento, según jurisdicción),
-    además de informar a la plantilla de que existe.
+  - **Se puede filtrar por agente** (`conversations.UserName`, poblado desde la
+    telemetría para el histórico). Esto convierte la pantalla en algo que **sí permite
+    seguimiento individual**, así que el filtro viene **vacío por defecto** y hay que
+    elegir a alguien a propósito: la interfaz no ofrece de entrada una vista "qué ha
+    hecho fulano". El listado distingue además **quién conversó** de **quién valoró**,
+    para no atribuir a un agente el juicio de otro.
+  - **Límites conocidos**, ninguno mitigado hoy:
+    - No hay registro de quién ha consultado qué (sin traza de acceso).
+    - Nada impide a un administrador recorrer las conversaciones de un agente concreto
+      aunque no haya valoración negativa que lo justifique, si filtra por «todas».
+
+    Si el proyecto pasara a un entorno con datos reales de clientes, esta pantalla
+    necesitaría traza de acceso, una base legal explícita (interés legítimo o
+    consentimiento, según jurisdicción) e informar a la plantilla de que existe —
+    en España, además, la monitorización del trabajo exige información previa a la
+    representación de los trabajadores.
 
 ### A02 — Cryptographic Failures
 - Contraseñas almacenadas **solo como hash BCrypt** (sal automática y factor de coste), nunca en claro.

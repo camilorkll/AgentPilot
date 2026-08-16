@@ -146,7 +146,7 @@ public class AskQuestionServiceTests
     public async Task Ask_ContinuandoUnaConversacionDeOtraCampaña_SeRechaza()
     {
         var repo = new FakeConversationRepository();
-        var deOtraCampaña = new Conversation(Guid.NewGuid());
+        var deOtraCampaña = new Conversation(Guid.NewGuid(), "agente");
         await repo.AddAsync(deOtraCampaña);
 
         var service = Build(new FakeSearch([]), Activa, repo);

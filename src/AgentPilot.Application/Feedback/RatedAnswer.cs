@@ -24,13 +24,21 @@ public sealed record RatedAnswer(
     string? Comment,
     /// <summary>Operador que valoró.</summary>
     string? RatedBy,
-    DateTime RatedAtUtc);
+    DateTime RatedAtUtc,
+    /// <summary>
+    /// Operador que mantuvo la conversación. Casi siempre es el mismo que
+    /// <see cref="RatedBy"/>, pero no tiene por qué: valorar y conversar son acciones
+    /// distintas y la API admite que las haga gente distinta.
+    /// </summary>
+    string? Operator);
 
 /// <summary>Filtros del listado de respuestas valoradas.</summary>
 /// <param name="Rating">Solo las valoradas así; null para ambas.</param>
 /// <param name="CampaignId">Solo las de esa campaña; null para todas.</param>
+/// <param name="Operator">Solo las conversaciones de ese operador; null para todos.</param>
 /// <param name="Limit">Cuántas devolver como máximo, más recientes primero.</param>
 public sealed record RatedAnswerFilter(
     FeedbackRating? Rating = null,
     Guid? CampaignId = null,
+    string? Operator = null,
     int Limit = 50);

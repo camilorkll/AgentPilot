@@ -31,13 +31,13 @@ public class RatedAnswerQueryTests(PgVectorFixture fixture) : IClassFixture<PgVe
     /// <summary>Deja una conversación de dos turnos y valora la respuesta.</summary>
     private static Message SembrarValorada(
         AgentPilotDbContext db, Guid campaña, string pregunta, string respuesta,
-        FeedbackRating rating, string? motivo)
+        FeedbackRating rating, string? motivo, string? operador = "agente")
     {
-        var conversation = new Conversation(campaña);
+        var conversation = new Conversation(campaña, operador);
         conversation.AddUserMessage(pregunta);
         var assistant = conversation.AddAssistantMessage(respuesta, []);
         db.Conversations.Add(conversation);
-        db.Feedback.Add(new Feedback(assistant.Id, rating, motivo, "agente"));
+        db.Feedback.Add(new Feedback(assistant.Id, rating, motivo, operador));
         return assistant;
     }
 
@@ -68,10 +68,20 @@ public class RatedAnswerQueryTests(PgVectorFixture fixture) : IClassFixture<PgVe
 
         // Dos turnos en la MISMA conversación: la valorada es la segunda respuesta, así
         // que le corresponde la segunda pregunta, no la primera.
-        var conversation = new Conversation(CampañaA);
+        //
+        // Los turnos se separan en el tiempo a propósito. El orden de los mensajes se
+        // establece por su marca de tiempo, y DateTime.UtcNow tiene resolución de
+        // milisegundos: creados de golpe, los cuatro comparten marca y el orden entre
+        // ellos deja de estar definido. En producción no pasa —entre una pregunta y su
+        // respuesta media la llamada al modelo, cientos de milisegundos como mínimo—,
+        // así que el retardo hace el test realista, no indulgente.
+        var conversation = new Conversation(CampañaA, "agente");
         conversation.AddUserMessage("Primera pregunta");
+        await Task.Delay(5);
         conversation.AddAssistantMessage("Primera respuesta", []);
+        await Task.Delay(5);
         conversation.AddUserMessage("Segunda pregunta");
+        await Task.Delay(5);
         var segunda = conversation.AddAssistantMessage("Segunda respuesta", []);
         db.Conversations.Add(conversation);
         db.Feedback.Add(new Feedback(segunda.Id, FeedbackRating.Negative, null, "agente"));
@@ -102,6 +112,43 @@ public class RatedAnswerQueryTests(PgVectorFixture fixture) : IClassFixture<PgVe
         var soloA = await repo.ListRatedAnswersAsync(
             new RatedAnswerFilter(Rating: FeedbackRating.Negative, CampaignId: CampañaA));
         Assert.Equal("P negativa A", Assert.Single(soloA).Question);
+    }
+
+    [Fact]
+    public async Task ListRatedAnswers_FiltraPorOperadorQueMantuvoLaConversacion()
+    {
+        await using var db = await FreshContextAsync();
+        SembrarValorada(db, CampañaA, "Pregunta de Ana", "R", FeedbackRating.Negative, null, "ana");
+        SembrarValorada(db, CampañaA, "Pregunta de Luis", "R", FeedbackRating.Negative, null, "luis");
+        await db.SaveChangesAsync();
+
+        IFeedbackRepository repo = new FeedbackRepository(db);
+        var deAna = await repo.ListRatedAnswersAsync(new RatedAnswerFilter(Operator: "ana"));
+
+        var fila = Assert.Single(deAna);
+        Assert.Equal("Pregunta de Ana", fila.Question);
+        Assert.Equal("ana", fila.Operator);
+    }
+
+    [Fact]
+    public async Task ListRatedAnswers_DistingueQuienConversoDeQuienValoro()
+    {
+        await using var db = await FreshContextAsync();
+
+        // Un administrador valora la respuesta de una conversación que mantuvo Ana: el
+        // listado tiene que poder atribuir cada cosa a quien corresponde.
+        var conversation = new Conversation(CampañaA, "ana");
+        conversation.AddUserMessage("Pregunta de Ana");
+        var respuesta = conversation.AddAssistantMessage("Respuesta", []);
+        db.Conversations.Add(conversation);
+        db.Feedback.Add(new Feedback(respuesta.Id, FeedbackRating.Negative, "revisado", "admin"));
+        await db.SaveChangesAsync();
+
+        IFeedbackRepository repo = new FeedbackRepository(db);
+        var fila = Assert.Single(await repo.ListRatedAnswersAsync(new RatedAnswerFilter()));
+
+        Assert.Equal("ana", fila.Operator);   // quien conversó
+        Assert.Equal("admin", fila.RatedBy);  // quien valoró
     }
 
     [Fact]
