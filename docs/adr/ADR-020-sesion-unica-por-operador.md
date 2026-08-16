@@ -34,6 +34,16 @@ Tres cosas se rompen con dos sesiones a la vez, de más a menos evidente:
 - **Operadores distintos no se estorban**: `agente`, `laura` y `marcos` pueden trabajar a la vez. Verificado, porque el error fácil aquí es pasarse y romper el uso normal.
 - No hay cierre de sesión remoto para el administrador. Si hiciera falta, la pieza ya está: bastaría con poner `SessionId` a un valor nuevo.
 
+### Lo que salió al probarlo de verdad
+
+La regla del servidor estaba bien desde el principio —dos `curl` seguidos lo demostraban— y aun así **en el navegador no funcionaba**. Dos motivos, y ninguno se veía desde la API:
+
+1. **El frontend obedecía la regla por uno de dos caminos.** El cierre de sesión vivía en el interceptor de Angular, que solo ve lo que pasa por `HttpClient`. La pregunta del chat se envía con `fetch` —hace falta POST con cabecera y respuesta en *streaming*—, así que al agente desplazado le salía un `401` suelto al preguntar y se quedaba en una pantalla que ya no servía. Al refrescar sí funcionaba, porque el arranque de la aplicación carga las campañas con `HttpClient`. La lógica pasó a `AuthService.cerrarSesionPorTokenInvalido`, que usan los dos caminos, para que no puedan volver a divergir.
+
+2. **La pestaña desplazada no se enteraba hasta actuar.** Es inherente a un token autocontenido sin canal de aviso: el JWT ya está en el navegador y nadie le dice nada. La pantalla seguía a la vista, aparentando sesión abierta. Se comprueba ahora al volver a mirar la pestaña (`visibilitychange`), que es el momento en que le importa al agente; se descartó un temporizador para no pedir nada mientras nadie mira, con esta pantalla abierta toda la jornada.
+
+Queda una ventana, y conviene decirla: entre que un operador es desplazado y vuelve a mirar su pestaña o intenta algo, la pantalla sigue mostrando lo que hubiera. No hay sesión utilizable —cualquier petición devuelve `401`—, pero visualmente parece abierta. Cerrarla antes exigiría un canal del servidor al cliente (WebSocket o SSE permanente), desproporcionado para lo que resuelve.
+
 ## Alternativas descartadas
 
 - **Rechazar el segundo login.** Bloquea al agente hasta ocho horas por olvidarse de salir. El daño es mayor que el que evita.

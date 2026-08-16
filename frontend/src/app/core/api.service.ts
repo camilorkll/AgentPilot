@@ -83,6 +83,15 @@ export class ApiService {
     });
 
     if (!response.ok || !response.body) {
+      // Esta llamada NO pasa por el interceptor de Angular —usa fetch para poder hacer
+      // POST con cabecera y leer la respuesta en streaming—, así que el 401 hay que
+      // atenderlo aquí. Sin esto, al agente desplazado le salía un error suelto al
+      // preguntar y se quedaba en una pantalla que ya no servía para nada.
+      if (response.status === 401) {
+        this.auth.cerrarSesionPorTokenInvalido(
+          response.headers.get('X-Auth-Error') === 'session_superseded');
+      }
+
       // El error llega como JSON (no como SSE) cuando la petición se rechaza antes de
       // empezar a responder: campaña inactiva, conversación de otra campaña, etc.
       let message = `La API respondió ${response.status}`;
