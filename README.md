@@ -15,7 +15,7 @@ Toda la documentación pertenece a una **campaña** (un cliente, un producto): e
 |---|---|
 | 🌐 Despliegue | [agentpilot-crk.up.railway.app](https://agentpilot-crk.up.railway.app) (guía en [docs/DEPLOY.md](docs/DEPLOY.md)) |
 | 📊 Slides | *(pendiente — Fase 7)* |
-| 🎬 Vídeo | *(pendiente — Fase 7)* |
+| 🎬 Vídeo | *(pendiente — Fase 7)* · guion en [docs/GUION_DEMO.md](docs/GUION_DEMO.md) |
 
 ## 🔑 Usuario y contraseña de prueba
 
