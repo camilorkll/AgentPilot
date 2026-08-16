@@ -14,7 +14,10 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         // Chunker con tamaño 1000 / solapamiento 200 (valores por defecto).
-        services.AddSingleton<ITextChunker>(_ => new SlidingWindowChunker());
+        // Consciente de la estructura del Markdown (ADR-016): aísla tablas, corta por
+        // encabezados y antepone la ruta. Cae a la ventana deslizante cuando no hay
+        // estructura que respetar (un PDF extraído, prosa larga).
+        services.AddSingleton<ITextChunker>(_ => new MarkdownAwareChunker());
 
         // Guarda de campaña: la usan todos los comandos que tocan documentación.
         services.AddScoped<CampaignGuard>();

@@ -138,41 +138,46 @@ Informe completo y detalle por caso en [`RESULTS.md`](RESULTS.md).
 
 | Métrica | Resultado |
 |---|---|
-| Aciertos globales | **96,7%** (29/30) |
+| Aciertos globales | **100,0%** (30/30) |
 | Precisión de recuperación | **100,0%** |
-| Exactitud de la respuesta | **96,0%** |
+| Exactitud de la respuesta | **100,0%** |
 | Abstención correcta | **100,0%** |
-| Primer token, media / p95 | 776 ms / 1.420 ms |
-| Latencia total media | 918 ms |
-| Coste medio por pregunta | **$0,00022** (≈ $0,0066 el set completo) |
+| Primer token, media | ~640 ms |
+| Latencia total media | ~775 ms |
+| Coste medio por pregunta | **$0,00027** (≈ $0,0080 el set completo) |
 
-Cifras de tres pases. `gpt-5-mini` da exactamente la misma calidad pero tarda 4.199 ms en
-el primer token y cuesta 4,2 veces más; la comparativa completa, con el método, está en
-[`COMPARATIVA-MODELOS.md`](COMPARATIVA-MODELOS.md).
+Cifras de tres pases, tras el troceado por estructura y el reordenado
+([ADR-016](../docs/adr/ADR-016-troceado-estructural-y-reordenado.md)). `gpt-5-mini` daba
+la misma calidad que `gpt-4o-mini` pero tardaba 4.199 ms en el primer token y costaba 4,2
+veces más; la comparativa completa está en [`COMPARATIVA-MODELOS.md`](COMPARATIVA-MODELOS.md).
 
 ### Lectura de los resultados
 
-- **Recuperación 100%**: la búsqueda vectorial localizó el documento correcto en las 25
-  preguntas respondibles. El motor de *retrieval* (embeddings + pgvector) es sólido.
+- **Recuperación 100%**: la búsqueda localiza el documento correcto en las 25 preguntas
+  respondibles.
 - **Abstención 100%**: ninguna de las 5 preguntas fuera del corpus produjo una respuesta
   inventada. Es la evidencia de que el *grounding* funciona: **el sistema no alucina**.
-- **Coste**: ~0,0002 $ por consulta con `gpt-4o-mini`. Proyectado a 1.000 consultas/día son
-  ~7 $/mes, una cifra irrelevante frente al coste de un minuto de llamada.
+- **Coste**: ~0,0003 $ por consulta con `gpt-4o-mini`. Proyectado a 1.000 consultas/día son
+  ~8 $/mes, una cifra irrelevante frente al coste de un minuto de llamada.
 
-### Análisis del único fallo (caso 4)
+### Cómo se cerró el último fallo (caso 4)
 
-*"¿Se acumulan los datos no consumidos de un mes para el siguiente?"* → el asistente
-respondió "no dispongo de esa información" cuando el dato **sí** está en el corpus.
+*"¿Se acumulan los datos no consumidos de un mes para el siguiente?"* falló en las tres
+comparativas de modelo. El diagnóstico sobre la base de datos fue que el dato **sí** se
+recuperaba, pero dentro de un fragmento de ~1.000 caracteres dominado por la tabla de
+tarifas: la línea sobre acumulación quedaba diluida compitiendo con otros cuatro
+fragmentos. Un fallo de **atención sobre el contexto**, no de búsqueda.
 
-Diagnóstico realizado sobre la base de datos: el dato está en el chunk 0 del catálogo de
-tarifas y **ese chunk fue recuperado** (por eso la recuperación puntúa OK). No es un fallo
-de *chunking* ni de búsqueda: el fragmento son ~1.000 caracteres dominados por la tabla de
-tarifas, y la línea sobre acumulación queda diluida entre ese ruido compitiendo con otros
-cuatro fragmentos. Es un fallo de **atención sobre el contexto**.
+Se resolvió con las dos mitigaciones que se habían anotado como líneas futuras —troceado
+consciente de la estructura y *re-ranking*—, y el set pasa entero por primera vez.
 
-Mitigaciones candidatas (líneas futuras): *chunking* consciente de la estructura Markdown
-(separar tablas de prosa), *re-ranking* de los fragmentos recuperados, o reducir `TopK`
-para concentrar la atención del modelo.
+**La lección de la medición, que no era la esperada:** el troceado por estructura, aplicado
+solo, **empeoró** el resultado (28/30, recuperación 96%). Al aislar cada tabla y cada
+sección los fragmentos bajaron de ~1.000 a ~400 caracteres, y manteniendo `TopK` en 5 el
+contexto que llegaba al modelo se redujo a menos de la mitad. Subir `TopK` a 10 y reordenar
+sobre 30 candidatos es lo que convierte el cambio en una mejora. **Trocear más fino y
+recuperar más piezas son la misma decisión, no dos**; medirlas por separado fue el error de
+método que el arnés dejó a la vista.
 
 ### Nota metodológica
 

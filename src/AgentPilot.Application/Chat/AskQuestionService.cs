@@ -23,7 +23,20 @@ public class AskQuestionService(
     ICurrentUser currentUser,
     CampaignGuard campaigns) : IAskQuestionService
 {
-    private const int TopK = 5;
+    /// <summary>
+    /// Fragmentos que acaban en el contexto del modelo. Subió de 5 a 10 al trocear por
+    /// estructura (ADR-016): los fragmentos pasaron de ~1.000 a ~400 caracteres, así que
+    /// mantener 5 habría recortado el contexto a menos de la mitad. Medido: con 5 se
+    /// perdían dos casos del set dorado que antes acertaba.
+    /// </summary>
+    private const int TopK = 10;
+
+    /// <summary>
+    /// Candidatos que se traen de la búsqueda vectorial antes de reordenar. Se pide de
+    /// más para que el reordenado tenga margen: si el fragmento bueno no entra en el
+    /// pool, ningún reordenado lo rescata.
+    /// </summary>
+    private const int Candidatos = 30;
 
     public async IAsyncEnumerable<AskEvent> AskAsync(
         string question, Guid campaignId, Guid? conversationId,
@@ -59,7 +72,11 @@ public class AskQuestionService(
         // 3. Recuperación: embeber la pregunta y buscar los chunks más cercanos, solo
         //    dentro de la campaña.
         var queryVector = await embeddings.EmbedAsync(question, cancellationToken);
-        var matches = await search.SearchAsync(queryVector, campaign.Id, TopK, cancellationToken);
+        var candidatos = await search.SearchAsync(queryVector, campaign.Id, Candidatos, cancellationToken);
+
+        // Reordenado local (sin llamada al LLM): la búsqueda vectorial acierta el tema
+        // pero no siempre pone delante el fragmento que contiene el dato concreto.
+        var matches = ChunkReranker.Rerank(candidatos, question, TopK);
 
         var citations = matches
             .Select(m => new Citation(m.DocumentId, m.DocumentTitle, m.ChunkId, m.Content, m.Score))
