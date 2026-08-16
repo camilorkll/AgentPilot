@@ -19,8 +19,9 @@ Toda la documentación pertenece a una **campaña** (un cliente, un producto): e
 
 ## 🔑 Usuario y contraseña de prueba
 
-Se crean automáticamente al arrancar. Autentícate en `POST /api/v1/auth/login` y
-usa el token devuelto como `Authorization: Bearer <token>`.
+Se crean solos al arrancar. Entra en <http://localhost:8080> (o en el
+[despliegue](https://agentpilot-crk.up.railway.app)) con cualquiera de estos; el propio
+formulario de entrada tiene botones para rellenarlos.
 
 | Rol | Usuario | Contraseña | Puede |
 |---|---|---|---|
@@ -31,6 +32,11 @@ usa el token devuelto como `Authorization: Bearer <token>`.
 
 Hay tres agentes y no uno porque el filtro por operador de la pantalla de revisión y
 el desglose por agente de las métricas no se pueden probar con un único usuario.
+
+Para llamar a la API directamente: `POST /api/v1/auth/login` devuelve un JWT que se envía
+como `Authorization: Bearer <token>`. Ten en cuenta que **solo vale una sesión por
+operador**: entrar de nuevo con el mismo usuario invalida el token anterior
+([ADR-020](docs/adr/ADR-020-sesion-unica-por-operador.md)).
 
 ---
 
@@ -51,11 +57,15 @@ el desglose por agente de las métricas no se pueden probar con un único usuari
 
 ## 🚀 Instalación y ejecución
 
-### Requisitos
-- Docker Desktop
-- Una API key de OpenAI
+**Todo lo necesario son tres pasos y Docker.** La imagen contiene la API y la interfaz ya
+compilada, así que **no hace falta instalar Node ni .NET** para usar la aplicación.
 
-### Arranque
+### Requisitos
+- **Docker Desktop** (con Docker Compose).
+- **Una API key de OpenAI** — sin ella arranca, pero no se pueden indexar documentos ni
+  chatear: ambas cosas llaman a la API.
+
+### 1. Arrancar
 
 ```bash
 git clone https://github.com/camilorkll/AgentPilot.git
@@ -64,26 +74,49 @@ cp .env.example .env        # y rellena OPENAI_API_KEY
 docker compose up --build
 ```
 
-- API + Swagger UI: http://localhost:8080/swagger
-- Healthcheck: http://localhost:8080/api/v1/health
+La primera vez tarda unos minutos (compila la imagen y aplica las migraciones).
 
-Al arrancar en una base de datos nueva se siembran los usuarios de prueba y la campaña
-**TeleNova**, pero **vacía**: indexar exige llamadas de *embeddings* y no puede depender
-de que haya clave de OpenAI en el momento de migrar. Para poblarla:
+### 2. Entrar
+
+| Qué | Dónde |
+|---|---|
+| 🎧 **La aplicación** | **<http://localhost:8080>** — entra con `admin` / `admin1234` |
+| 📘 Contrato de la API (Swagger) | <http://localhost:8080/swagger> |
+| ❤️ Estado del servicio | <http://localhost:8080/api/v1/health> |
+
+Una sola URL sirve interfaz y API: el frontend va dentro de la misma imagen.
+
+### 3. Poblar la base de conocimiento
+
+Al arrancar con una base de datos nueva se siembran los usuarios de prueba y la campaña
+**TeleNova**, pero **vacía**: indexar exige llamadas de *embeddings*, y eso no puede
+depender de que haya clave de OpenAI configurada en el momento de migrar. Para poblarla:
 
 ```bash
 ./scripts/poblar-corpus.sh
 ```
 
-Sube los 12 documentos de [`corpus/`](corpus/) y los deja indexándose en segundo plano
-(se sigue desde `/documents` como `admin`). Hasta entonces el asistente responderá que no
-dispone de la información, que es su comportamiento correcto con un corpus vacío.
+> En Windows, ejecútalo desde **Git Bash**. Si da un error de permisos:
+> `chmod +x scripts/poblar-corpus.sh`.
 
-Para probar el aislamiento entre campañas: crea una campaña nueva desde `/campaigns`
-(como `admin`) y sube el corpus de ejemplo de [`corpus-luz-y-gas/`](corpus-luz-y-gas/)
-desde `/documents` — la misma pregunta se contesta en una y se rechaza en la otra.
+Sube los 12 documentos de [`corpus/`](corpus/) y los deja indexándose en segundo plano; el
+progreso se ve en `/documents` como `admin`. **Hasta que terminen, el asistente responderá
+que no dispone de la información** — es su comportamiento correcto con un corpus vacío, no
+un fallo.
 
-### Frontend (Angular)
+Ya puedes entrar como `agente` y preguntar, por ejemplo, *«¿Cuánto cuesta el Bono Viaje de
+10 GB?»*.
+
+Para ver el **aislamiento entre campañas**: crea una campaña nueva desde `/campaigns` (como
+`admin`) y sube el corpus de [`corpus-luz-y-gas/`](corpus-luz-y-gas/) desde `/documents`.
+La misma pregunta se contesta en una campaña y se rechaza en la otra.
+
+---
+
+### Frontend en modo desarrollo (opcional)
+
+Solo si vas a **modificar la interfaz**; para usarla basta con el paso 2. Requiere
+**Node 20+**.
 
 ```bash
 cd frontend
@@ -91,7 +124,7 @@ npm install
 npm start
 ```
 
-- Interfaz: http://localhost:4200 (el dev-server proxya `/api` al backend del 8080)
+- Interfaz en desarrollo: <http://localhost:4200> (el dev-server redirige `/api` al 8080)
 
 ### Modo embeddings 100% local (opcional)
 
@@ -111,12 +144,15 @@ ollama pull llama3.2:3b
 CHAT_PROVIDER=ollama docker compose up -d api
 ```
 
-Ollama es gratis y privado, pero en esta máquina (sin GPU dedicada) el primer token
-tarda 17-27 veces más que `gpt-4o-mini`: por eso se queda como herramienta de
-comparación medida, no como opción de producción. Método, cifras y hardware en
-[evals/COMPARATIVA-MODELOS.md](evals/COMPARATIVA-MODELOS.md).
+Ollama es gratis y privado, pero en esta máquina (sin GPU dedicada) tarda entre **17×**
+(primer token, en caliente) y **31×** (p95) más que `gpt-4o-mini`: por eso se queda como
+herramienta de comparación medida, no como opción de producción. Método, cifras y hardware
+en [evals/COMPARATIVA-MODELOS.md](evals/COMPARATIVA-MODELOS.md).
 
-### Desarrollo sin Docker
+### Backend sin Docker (opcional)
+
+Solo para desarrollar sobre el backend. Requiere el **SDK de .NET 8**; la base de datos
+sigue en Docker porque necesita la extensión `pgvector`.
 
 ```bash
 docker compose up postgres -d
@@ -129,7 +165,12 @@ dotnet run --project src/AgentPilot.Api
 ```
 ├── docs/
 │   ├── openapi.yaml          # Contrato de la API (fuente de verdad, contract-first)
-│   └── adr/                  # Decisiones de arquitectura (ADR-001..013)
+│   ├── adr/                  # Decisiones de arquitectura (ADR-001..020)
+│   ├── DEPLOY.md             # Guía de despliegue en Railway
+│   ├── GUION_DEMO.md         # Recorrido de la demo, con preguntas previsibles
+│   └── slides.html           # Diapositivas de la defensa (navegables e imprimibles)
+├── scripts/
+│   └── poblar-corpus.sh      # Sube el corpus de ejemplo a una campaña
 ├── src/
 │   ├── AgentPilot.Domain/          # Campaña, Documento, Chunk, Conversacion, PromptVersion...
 │   ├── AgentPilot.Application/     # Casos de uso y puertos (IChatCompletionService, IEmbeddingService)
@@ -173,7 +214,7 @@ Las reglas de dependencia entre capas se verifican con tests de arquitectura
 - [x] **Recuperación afinada**: troceado consciente de la estructura Markdown (cada tabla y cada sección por separado, con su ruta) y reordenado local de 30 candidatos a los 10 mejores, combinando similitud vectorial y solape léxico sin llamadas extra al LLM ([ADR-016](docs/adr/ADR-016-troceado-estructural-y-reordenado.md)). Cerró el último fallo del set dorado.
 - [x] **Campañas**: la documentación se organiza por campaña (cliente/producto) y el asistente solo responde con el corpus de la campaña activa — aislamiento verificado con un test automatizado de fuga cruzada. Ciclo de vida (activa/inactiva/**cerrada**, de solo lectura) y borrado reforzado con confirmación escrita. *(Fase 8 ✓)*
 - [x] **Prompt por capas**: instrucciones de negocio por campaña (tono, avisos, vocabulario) que se componen alrededor de un núcleo inmutable en código — verificado que ninguna instrucción de campaña logra anular el *grounding* ni las citas. Formulario estructurado, vista previa lado a lado antes de publicar e historial de versiones con restauración, comparación de cada versión con la vigente y un máximo de entradas configurable por campaña ([ADR-014](docs/adr/ADR-014-historial-de-prompt-acotado.md)). *(Fase 8 ✓)*
-- [x] **Comparativa de modelo local vs nube**: Ollama (`llama3.2:3b`, CPU) medido frente a `gpt-4o-mini` con el mismo arnés de evals — igualdad casi total en calidad, 17-27× más lento en el primer token. *(Fase 8 ✓)*
+- [x] **Comparativa de modelo local vs nube**: Ollama (`llama3.2:3b`, CPU) medido frente a `gpt-4o-mini` con el mismo arnés de evals — igualdad casi total en calidad, 17× más lento al primer token y 21× en latencia total. *(Fase 8 ✓)*
 
 ## 📏 Calidad medida (evals)
 
