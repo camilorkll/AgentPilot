@@ -39,6 +39,43 @@ public class AuthServiceTests
         Assert.Null(await service.LoginAsync("fantasma", "loquesea"));
     }
 
+    [Fact]
+    public async Task CadaLogin_DesplazaLaSesionAnterior()
+    {
+        // Un operador es una persona en un puesto: entrar por segunda vez —desde otro
+        // navegador u otro equipo— deja sin valor al token de la primera.
+        var user = new User("agente", FakeHasher.HashOf("agente1234"), UserRole.Agent);
+        var service = Build(user);
+
+        await service.LoginAsync("agente", "agente1234");
+        var primera = user.SessionId;
+
+        await service.LoginAsync("agente", "agente1234");
+        var segunda = user.SessionId;
+
+        Assert.NotNull(primera);
+        Assert.NotEqual(primera, segunda);
+        Assert.False(user.SesionVigente(primera));
+        Assert.True(user.SesionVigente(segunda));
+    }
+
+    [Fact]
+    public async Task UnLoginFallido_NoTocaLaSesionAbierta()
+    {
+        // Si una contraseña equivocada cerrara la sesión, cualquiera podría echar a un
+        // agente de su puesto sin saber sus credenciales, solo con teclear su usuario.
+        var user = new User("agente", FakeHasher.HashOf("agente1234"), UserRole.Agent);
+        var service = Build(user);
+
+        await service.LoginAsync("agente", "agente1234");
+        var abierta = user.SessionId;
+
+        Assert.Null(await service.LoginAsync("agente", "incorrecta"));
+
+        Assert.Equal(abierta, user.SessionId);
+        Assert.True(user.SesionVigente(abierta));
+    }
+
     // --- Dobles ---
     private sealed class FakeUsers(User[] users) : IUserRepository
     {

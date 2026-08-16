@@ -1,10 +1,15 @@
 using System.Text;
 using AgentPilot.Api.Startup;
 using AgentPilot.Application;
+using AgentPilot.Application.Abstractions;
 using AgentPilot.Infrastructure;
+using AgentPilot.Infrastructure.Auth;
 using AgentPilot.Infrastructure.Configuration;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+
+/// <summary>Motivo del 401 cuando otra sesión del mismo operador ha desplazado a esta.</summary>
+const string SesionDesplazada = "La sesión se abrió en otro sitio.";
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -109,6 +114,43 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey)),
             RoleClaimType = "role",
             NameClaimType = "sub",
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            // Un operador es una persona en un puesto: solo vale la última sesión que
+            // abrió. La firma del token sigue validándose sola; esto es lo ÚNICO que
+            // consulta la base de datos, y solo para comparar un Guid.
+            OnTokenValidated = async context =>
+            {
+                var usuario = context.Principal?.Identity?.Name;
+                if (string.IsNullOrEmpty(usuario)) return;
+
+                var users = context.HttpContext.RequestServices.GetRequiredService<IUserRepository>();
+                var registrado = await users.GetByUsernameAsync(usuario, context.HttpContext.RequestAborted);
+                if (registrado is null)
+                {
+                    // El usuario se borró después de emitirse el token.
+                    context.Fail("El usuario ya no existe.");
+                    return;
+                }
+
+                var delToken = Guid.TryParse(
+                    context.Principal!.FindFirst(JwtTokenGenerator.SesionClaim)?.Value, out var s)
+                    ? s : (Guid?)null;
+
+                if (!registrado.SesionVigente(delToken))
+                    context.Fail(SesionDesplazada);
+            },
+
+            // Sin esto el cliente recibe un 401 pelado y no puede distinguir "he caducado"
+            // de "me han desplazado", que necesitan mensajes distintos.
+            OnChallenge = context =>
+            {
+                if (context.AuthenticateFailure?.Message == SesionDesplazada)
+                    context.Response.Headers["X-Auth-Error"] = "session_superseded";
+                return Task.CompletedTask;
+            },
         };
     });
 builder.Services.AddAuthorization();

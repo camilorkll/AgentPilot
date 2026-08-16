@@ -18,7 +18,11 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     catchError((error: HttpErrorResponse) => {
       if (error.status === 401 && !req.url.includes('/auth/login')) {
         auth.logout();
-        router.navigate(['/login']);
+        // Que te echen sin explicación se lee como un fallo de la aplicación. Si el motivo
+        // es que el mismo operador entró en otro sitio, hay que decirlo: o fue él y lo
+        // entiende, o no fue él y es justo lo que le interesa saber.
+        const desplazada = error.headers.get('X-Auth-Error') === 'session_superseded';
+        router.navigate(['/login'], desplazada ? { queryParams: { motivo: 'sesion' } } : {});
       }
       return throwError(() => error);
     })

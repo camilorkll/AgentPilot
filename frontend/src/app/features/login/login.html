@@ -5,6 +5,10 @@
       Copiloto de conocimiento para agentes de contact center.
     </p>
 
+    @if (notice()) {
+      <p class="notice small">{{ notice() }}</p>
+    }
+
     <form (ngSubmit)="submit()">
       <label class="small muted" for="user">Usuario</label>
       <input id="user" name="username" [(ngModel)]="username" autocomplete="username" required />

@@ -12,6 +12,12 @@ namespace AgentPilot.Infrastructure.Auth;
 /// <summary>Genera JWT firmados (HMAC-SHA256) con el rol del usuario como claim.</summary>
 public class JwtTokenGenerator(IOptions<JwtOptions> options) : IJwtTokenGenerator
 {
+    /// <summary>
+    /// Claim con la sesión a la que pertenece el token. Se usa "sid" porque es el nombre
+    /// registrado en IANA para «Session ID», en vez de inventar uno propio.
+    /// </summary>
+    public const string SesionClaim = "sid";
+
     private readonly JwtOptions _options = options.Value;
 
     public (string AccessToken, DateTime ExpiresAtUtc) Generate(User user)
@@ -21,12 +27,18 @@ public class JwtTokenGenerator(IOptions<JwtOptions> options) : IJwtTokenGenerato
 
         var expiresAt = DateTime.UtcNow.AddMinutes(_options.ExpiryMinutes);
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Username),
-            new Claim("role", user.RoleName),                       // "agent" | "admin"
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new(JwtRegisteredClaimNames.Sub, user.Username),
+            new("role", user.RoleName),                       // "agent" | "admin"
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
+
+        // Sesión a la que pertenece el token. Es lo que permite que un login nuevo deje sin
+        // valor al anterior sin renunciar a que el JWT sea autocontenido: la firma sigue
+        // validándose sola y solo esta comprobación mira la base de datos.
+        if (user.SessionId is { } sesion)
+            claims.Add(new Claim(SesionClaim, sesion.ToString()));
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.SigningKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

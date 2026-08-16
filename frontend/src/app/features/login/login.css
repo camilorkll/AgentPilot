@@ -5,6 +5,16 @@
   padding: 1.5rem;
 }
 
+/* Explica por qué se ha cerrado la sesión anterior. Va en tono de aviso, no de error:
+   no ha fallado nada, es la regla de una sesión por operador haciendo su trabajo. */
+.notice {
+  color: var(--warn);
+  border: 1px solid var(--warn);
+  border-radius: 6px;
+  padding: .5rem .65rem;
+  margin: 0 0 1rem;
+}
+
 .login-card { width: 100%; max-width: 380px; }
 
 form { display: flex; flex-direction: column; gap: .35rem; margin-top: 1.25rem; }

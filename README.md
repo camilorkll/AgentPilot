@@ -26,6 +26,11 @@ usa el token devuelto como `Authorization: Bearer <token>`.
 |---|---|---|---|
 | Administrador | `admin` | `admin1234` | Todo, incluida la gestión de documentos |
 | Agente | `agente` | `agente1234` | Chat RAG y consulta de documentos |
+| Agente | `laura` | `laura1234` | Lo mismo que `agente` |
+| Agente | `marcos` | `marcos1234` | Lo mismo que `agente` |
+
+Hay tres agentes y no uno porque el filtro por operador de la pantalla de revisión y
+el desglose por agente de las métricas no se pueden probar con un único usuario.
 
 ---
 
@@ -152,6 +157,7 @@ Las reglas de dependencia entre capas se verifican con tests de arquitectura
 - [x] **Evals**: set dorado de 30 preguntas — **30/30: 100% de recuperación, exactitud y abstención correcta** (sin alucinaciones), a ~$0,0003 por consulta. *(Fase 6 ✓)*
 - [x] **Contexto conversacional acotado**: al modelo solo viajan los últimos intercambios, no la jornada entera, y el agente marca «Nueva llamada» al cambiar de cliente (con corte automático por inactividad que simula la señal de una centralita). Evita que el coste por pregunta crezca sin fin y que los datos de un cliente lleguen al contexto del siguiente ([ADR-017](docs/adr/ADR-017-contexto-conversacional-acotado.md)).
 - [x] **Reindexado sin ficheros**: el texto extraído se guarda con el documento, así que cambiar el troceado o el modelo de *embeddings* se resuelve con `POST /documents/reindex` en vez de pedir que alguien vuelva a subir todo el corpus ([ADR-012](docs/adr/ADR-012-texto-extraido-persistido.md)).
+- [x] **Una sesión por operador**: entrar desde otro sitio cierra la sesión anterior y se lo explica al agente. Un puesto es una persona: con dos sesiones a la vez, las conversaciones de dos clientes se mezclaban bajo el mismo nombre y el corte de llamada por inactividad dejaba de funcionar ([ADR-020](docs/adr/ADR-020-sesion-unica-por-operador.md)).
 - [x] **Respuestas legibles de un vistazo**: el formato con que responde el modelo (listas, negritas) se renderiza con un subconjunto propio que escapa el HTML *antes* de transformar y no genera enlaces ni imágenes — el texto lo escribe un LLM que ha leído documentación de campaña, así que se trata como contenido no confiable ([ADR-019](docs/adr/ADR-019-markdown-del-asistente-renderizado.md)).
 - [x] **Ingesta que falla sin perder conocimiento**: sustituir un documento reprocesa la misma fila en vez de borrarla, así que si la subida nueva falla el contenido anterior sigue respondiendo, con el motivo del fallo anotado; y al arrancar, un barrido saca del limbo los documentos que un reinicio dejó a medio procesar ([ADR-018](docs/adr/ADR-018-ingesta-que-falla-sin-perder-conocimiento.md)).
 - [x] **Recuperación afinada**: troceado consciente de la estructura Markdown (cada tabla y cada sección por separado, con su ruta) y reordenado local de 30 candidatos a los 10 mejores, combinando similitud vectorial y solape léxico sin llamadas extra al LLM ([ADR-016](docs/adr/ADR-016-troceado-estructural-y-reordenado.md)). Cerró el último fallo del set dorado.

@@ -66,7 +66,18 @@ info:
     `Citation` incorpora `relevance`, la puntuación que fija el orden de las
     fuentes; `score` sigue siendo la similitud del coseno, que no lo explica por
     sí sola. Cambio aditivo, compatible con la 1.5.0.
-  version: 1.6.0
+
+
+    **Sesión única por operador (v1.7.0):** `POST /auth/login` **invalida el token
+    anterior del mismo usuario**. Un puesto es una persona, y dos sesiones a la vez
+    mezclaban las conversaciones de dos clientes bajo el mismo operador, con lo que
+    la atribución de métricas y el corte de llamada por inactividad dejaban de
+    valer. Gana la última sesión: rechazar el login nuevo dejaría bloqueado hasta
+    ocho horas a quien cerrara el navegador sin salir. Las peticiones con un token
+    desplazado responden `401` con la cabecera `X-Auth-Error: session_superseded`,
+    para que el cliente pueda distinguirlo de un token caducado y decirlo. Cambio de
+    comportamiento, no de esquema: compatible con la 1.6.0.
+  version: 1.7.0
   contact:
     name: Camilo Rodríguez
     url: https://github.com/camilorkll/AgentPilot
@@ -106,6 +117,14 @@ paths:
         Único endpoint anónimo junto a los de estado. Devuelve un JWT firmado
         (HMAC-SHA256) con el rol en el claim `role`, válido 8 horas. El resto de la
         API espera ese token en la cabecera `Authorization: Bearer`.
+
+
+        **Abre una sesión nueva y desplaza a la anterior del mismo usuario**: el
+        token que hubiera emitido antes deja de valer al instante (claim `sid`). Un
+        operador es una persona en un puesto; dos sesiones simultáneas mezclarían las
+        conversaciones de dos clientes bajo el mismo nombre. Un intento fallido no
+        toca la sesión abierta, para que nadie pueda echar a un agente sabiendo solo
+        su usuario.
       security: []
       requestBody:
         required: true
@@ -1327,7 +1346,19 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
     Unauthorized:
-      description: Sin autenticar o token inválido
+      description: >
+        Sin autenticar, token inválido o **sesión desplazada** por un login posterior
+        del mismo usuario.
+      headers:
+        X-Auth-Error:
+          description: >
+            Presente solo cuando el motivo es que otra sesión del mismo operador ha
+            desplazado a esta (`session_superseded`). Sirve para distinguirlo de un
+            token caducado, que necesita otro mensaje: al agente hay que decirle que
+            su usuario ha entrado en otro sitio, no que vuelva a intentarlo.
+          schema:
+            type: string
+            enum: [session_superseded]
       content:
         application/json:
           schema:

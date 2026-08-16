@@ -25,6 +25,13 @@ public class AuthService(
         if (user is null || !passwordHasher.Verify(password, user.PasswordHash))
             return null;
         // CRK. Tenemos usuario y contraseña correctos, generamos el token.
+
+        // Abrir sesión ANTES de firmar: el token lleva dentro la sesión que acaba de
+        // quedar registrada, y con eso el anterior deja de valer. Se guarda primero para
+        // que no pueda entregarse un token cuya sesión no llegó a persistirse.
+        user.AbrirSesion();
+        await users.SaveChangesAsync(cancellationToken);
+
         var (token, expiresAt) = tokenGenerator.Generate(user);
 
         return new LoginResult(token, user.RoleName, expiresAt);
