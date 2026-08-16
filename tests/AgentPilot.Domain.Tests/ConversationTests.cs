@@ -45,7 +45,8 @@ public class ConversationTests
         conversation.AddUserMessage("¿Cuánto cuesta la tarifa Nova Mini?");
         var citas = new[]
         {
-            new Citation(Guid.NewGuid(), "Catálogo tarifas", Guid.NewGuid(), "Nova Mini: 9,90 €/mes", 0.82),
+            new Citation(Guid.NewGuid(), "Catálogo tarifas", Guid.NewGuid(), "Nova Mini: 9,90 €/mes",
+                score: 0.82, relevance: 0.79),
         };
 
         var respuesta = conversation.AddAssistantMessage("Cuesta 9,90 €/mes.", citas);

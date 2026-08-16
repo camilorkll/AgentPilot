@@ -29,6 +29,45 @@ public class ChunkRerankerTests
         Assert.Contains("NO se acumulan", reordenado[0].Content);
     }
 
+    /// <summary>
+    /// Regresión de un fallo que solo se veía en pantalla: la lista salía ordenada por la
+    /// puntuación del reordenado pero etiquetada con el coseno, así que un resultado podía
+    /// mostrar menos similitud que el siguiente y la recuperación parecía rota. Este es
+    /// exactamente ese caso — el segundo candidato gana pese a tener MENOS similitud — y
+    /// lo que se exige es que la puntuación que decide el orden viaje con el fragmento.
+    /// </summary>
+    [Fact]
+    public void LaPuntuacionQueDecideElOrden_ViajaConElFragmento()
+    {
+        var candidatos = new[]
+        {
+            Fragmento("Tarifa | Datos | Precio. Nova Mini 10 GB 9,90 €. Nova Max 120 GB.", 0.82),
+            Fragmento("Los datos no consumidos NO se acumulan al mes siguiente, salvo Nova Max.", 0.80),
+        };
+
+        var reordenado = ChunkReranker.Rerank(candidatos, "¿Se acumulan los datos no consumidos?", 2);
+
+        // El primero tiene menos similitud que el segundo: el coseno NO explica este orden.
+        Assert.True(reordenado[0].Score < reordenado[1].Score);
+        // La relevancia sí, y va en orden decreciente.
+        Assert.True(reordenado[0].Relevance > reordenado[1].Relevance);
+        // Y no es una copia del coseno: el solape léxico la ha separado de él.
+        Assert.NotEqual(reordenado[0].Score, reordenado[0].Relevance, precision: 6);
+    }
+
+    [Fact]
+    public void SinReordenado_LaRelevanciaEsLaSimilitud()
+    {
+        // Un solo candidato sale por el atajo, sin reordenar. Su relevancia debe quedar
+        // igualada a la similitud y no en cero por omisión, que se leería como "sin
+        // relación" en la lista de fuentes.
+        var unico = new[] { Fragmento("Nova Mini: 9,90 €/mes.", 0.77) };
+
+        var reordenado = ChunkReranker.Rerank(unico, "¿Cuánto cuesta Nova Mini?", 5);
+
+        Assert.Equal(0.77, Assert.Single(reordenado).Relevance);
+    }
+
     [Fact]
     public void ConVocabularioDistinto_MandaLaSimilitudVectorial()
     {

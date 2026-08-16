@@ -73,7 +73,13 @@ export interface Citation {
   documentTitle: string;
   chunkId: string;
   snippet: string;
+  /** Similitud del coseno: parecido de significado con la pregunta. */
   score: number;
+  /**
+   * Puntuación que fijó el orden de la lista (similitud + solape léxico). Null en las
+   * citas guardadas antes de registrarla.
+   */
+  relevance: number | null;
 }
 
 export interface Usage {
@@ -150,6 +156,10 @@ export interface MonthlyTotal {
 export interface MetricsSummary {
   totalQuestions: number;
   positiveFeedbackRate: number | null;
+  /** Denominador de `positiveFeedbackRate`: respuestas que alguien llegó a valorar. */
+  ratedAnswers: number;
+  /** Numerador: de las valoradas, las marcadas como útiles. */
+  positiveAnswers: number;
   avgLatencyMs: number;
   p95LatencyMs: number;
   totalCostUsd: number;

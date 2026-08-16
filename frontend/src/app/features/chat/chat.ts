@@ -2,6 +2,7 @@ import { DecimalPipe } from '@angular/common';
 import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
+import { renderMarkdown } from '../../core/markdown';
 import { CampaignSummary, ChatMessage } from '../../core/models';
 
 const CAMPAIGN_KEY = 'agentpilot.chat.campaignId';
@@ -50,6 +51,14 @@ export class Chat {
   readonly selectedCampaign = computed(() =>
     this.campaigns().find((c) => c.id === this.campaignId()) ?? null
   );
+
+  /**
+   * Respuesta del asistente lista para pintar. Se aplica también mientras se escribe: las
+   * marcas sin cerrar se quedan literales hasta que cierran, como en cualquier chat.
+   */
+  comoHtml(texto: string): string {
+    return renderMarkdown(texto);
+  }
 
   /** Sugerencias para arrancar la demo sin escribir. */
   readonly examples = [

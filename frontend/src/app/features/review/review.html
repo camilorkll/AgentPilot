@@ -84,7 +84,9 @@
 
         <div class="exchange">
           <p class="question"><strong>Pregunta:</strong> {{ answer.question ?? '(no encontrada)' }}</p>
-          <p class="answer-text">{{ answer.answer }}</p>
+          <!-- La pregunta la escribió el agente y va tal cual; la respuesta la escribió el
+               modelo, con su formato, y se renderiza. -->
+          <div class="answer-text markdown" [innerHTML]="comoHtml(answer.answer)"></div>
         </div>
 
         <button class="small" [disabled]="openingId() === answer.conversationId"
@@ -107,10 +109,15 @@
                   {{ message.role === 'user' ? 'Agente' : 'Asistente' }}
                   @if (isRatedMessage(answer, message)) { <span>· valorada</span> }
                 </div>
-                <p class="small">{{ message.content }}</p>
+                @if (message.role === 'assistant') {
+                  <div class="small markdown" [innerHTML]="comoHtml(message.content)"></div>
+                } @else {
+                  <p class="small">{{ message.content }}</p>
+                }
                 @if (message.citations?.length) {
                   <p class="small muted">
-                    📎 {{ message.citations!.length }} fuente(s):
+                    📎 {{ message.citations!.length }}
+                    {{ message.citations!.length === 1 ? 'fragmento consultado' : 'fragmentos consultados' }}:
                     {{ message.citations![0].documentTitle }}@if (message.citations!.length > 1) { …}
                   </p>
                 }

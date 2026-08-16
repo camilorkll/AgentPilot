@@ -43,11 +43,11 @@ public static class ChunkReranker
         IReadOnlyList<ChunkMatch> candidatos, string pregunta, int quedarse)
     {
         if (candidatos.Count <= 1 || quedarse <= 0)
-            return candidatos.Take(Math.Max(quedarse, 0)).ToList();
+            return candidatos.Take(Math.Max(quedarse, 0)).Select(SinReordenar).ToList();
 
         var terminos = Terminos(pregunta);
         if (terminos.Count == 0)
-            return candidatos.Take(quedarse).ToList();
+            return candidatos.Take(quedarse).Select(SinReordenar).ToList();
 
         // El score de coseno ya viene en 0-1, así que se usa tal cual. Se probó a
         // normalizarlo min-max sobre el conjunto de candidatos y era peor: con
@@ -65,9 +65,18 @@ public static class ChunkReranker
             .OrderByDescending(x => x.Puntuacion)
             .ThenByDescending(x => x.Chunk.Score)
             .Take(quedarse)
-            .Select(x => x.Chunk)
+            // La puntuación viaja con el fragmento: es la que explica este orden, y sin
+            // ella quien mire la lista solo ve el coseno, que no lo explica.
+            .Select(x => x.Chunk with { Relevance = x.Puntuacion })
             .ToList();
     }
+
+    /// <summary>
+    /// Fragmento que sale sin pasar por el reordenado: su relevancia es la similitud, sin
+    /// más. Se marca explícitamente para que <c>Relevance</c> nunca quede en cero por
+    /// omisión y aparezca como "sin relación" algo que sí la tiene.
+    /// </summary>
+    private static ChunkMatch SinReordenar(ChunkMatch c) => c with { Relevance = c.Score };
 
     /// <summary>Proporción de términos de la pregunta que aparecen en el fragmento.</summary>
     private static double Solape(string contenido, IReadOnlyCollection<string> terminos)

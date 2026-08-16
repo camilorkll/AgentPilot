@@ -26,20 +26,35 @@ public class ChunkSearchService(AgentPilotDbContext db) : IChunkSearchService
             "[" + string.Join(",", queryEmbedding.Select(f => f.ToString(CultureInfo.InvariantCulture))) + "]";
 
         // <=> es la distancia coseno (0 = idéntico). Similitud = 1 - distancia.
+        // La similitud se calcula una vez en la subconsulta y se proyecta dos veces fuera:
+        // ""Score"" es lo que mide, y ""Relevance"" arranca valiendo lo mismo porque aquí
+        // todavía no ha reordenado nadie (el reordenado la sustituye después por su propia
+        // puntuación). Repetir la expresión en el SELECT costaría una operación vectorial
+        // más por fila, en el camino que el agente espera durante la llamada.
         FormattableString sql = $@"
-            SELECT c.""Id""          AS ""ChunkId"",
-                   c.""DocumentId""  AS ""DocumentId"",
-                   d.""Title""       AS ""DocumentTitle"",
-                   c.""Ordinal""     AS ""Ordinal"",
-                   c.""Content""     AS ""Content"",
-                   1 - (c.""Embedding"" <=> CAST({vectorLiteral} AS vector)) AS ""Score""
-            FROM chunks c
-            JOIN documents d ON d.""Id"" = c.""DocumentId""
-            WHERE d.""CampaignId"" = {campaignId}
-              AND d.""Status"" = 'Ready'
-              AND d.""IsActive"" = true
-            ORDER BY c.""Embedding"" <=> CAST({vectorLiteral} AS vector)
-            LIMIT {topK}";
+            SELECT t.""ChunkId"",
+                   t.""DocumentId"",
+                   t.""DocumentTitle"",
+                   t.""Ordinal"",
+                   t.""Content"",
+                   t.""Similitud"" AS ""Score"",
+                   t.""Similitud"" AS ""Relevance""
+            FROM (
+                SELECT c.""Id""          AS ""ChunkId"",
+                       c.""DocumentId""  AS ""DocumentId"",
+                       d.""Title""       AS ""DocumentTitle"",
+                       c.""Ordinal""     AS ""Ordinal"",
+                       c.""Content""     AS ""Content"",
+                       1 - (c.""Embedding"" <=> CAST({vectorLiteral} AS vector)) AS ""Similitud""
+                FROM chunks c
+                JOIN documents d ON d.""Id"" = c.""DocumentId""
+                WHERE d.""CampaignId"" = {campaignId}
+                  AND d.""Status"" = 'Ready'
+                  AND d.""IsActive"" = true
+                ORDER BY c.""Embedding"" <=> CAST({vectorLiteral} AS vector)
+                LIMIT {topK}
+            ) t
+            ORDER BY t.""Similitud"" DESC";
 
         return await db.Database
             .SqlQuery<ChunkMatch>(sql)

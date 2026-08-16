@@ -36,16 +36,49 @@ info:
     concreta con `DELETE /campaigns/{campaignId}/prompt/versions/{versionId}`;
     ninguna de las dos vías de borrado afecta a las instrucciones vigentes de
     la campaña, solo a su histórico. Cambio aditivo, compatible con la 1.2.0.
-  version: 1.3.0
+
+
+    **Reindexado sin los ficheros (v1.4.0):** de cada documento se guarda el
+    texto extraído, no el fichero original, así que cambiar el troceado o el
+    modelo de *embeddings* ya no obliga a que alguien vuelva a subir el corpus
+    entero: `POST /documents/reindex` regenera los fragmentos de una campaña a
+    partir de ese texto. Los documentos ingeridos antes de que se guardara se
+    devuelven en `skipped` con el motivo, porque de esos no hay de dónde
+    regenerar nada. Cambio aditivo, compatible con la 1.3.0.
+
+
+    **Revisión de respuestas valoradas (v1.5.0):** `GET /feedback` (solo
+    administrador) devuelve las respuestas que los agentes valoraron, con la
+    pregunta, la respuesta y el motivo escrito, filtrables por valoración,
+    campaña y operador. Sirve para que un 👎 con motivo llegue a quien puede
+    corregir el corpus o el prompt, en vez de morir en la pantalla del agente.
+    El listado no expone la conversación completa: el hilo se abre bajo demanda
+    con `GET /conversations/{conversationId}`. Cambio aditivo, compatible con
+    la 1.4.0.
+
+
+    **Sustitución no destructiva y orden de las fuentes (v1.6.0):** subir un
+    documento con `replace=true` ahora **reprocesa la misma fila** en vez de
+    borrarla y crear otra, así que conserva su `id` y sus fragmentos siguen
+    respondiendo mientras se procesa el sustituto. Si la ingesta nueva falla, el
+    documento se queda en `ready` con el motivo en `errorMessage`: la
+    actualización no se aplicó, pero no se ha perdido nada. Además, cada
+    `Citation` incorpora `relevance`, la puntuación que fija el orden de las
+    fuentes; `score` sigue siendo la similitud del coseno, que no lo explica por
+    sí sola. Cambio aditivo, compatible con la 1.5.0.
+  version: 1.6.0
   contact:
     name: Camilo Rodríguez
     url: https://github.com/camilorkll/AgentPilot
 
+# Producción primero a propósito: Swagger UI preselecciona el primer servidor, y se
+# sirve también desde producción (/swagger). Con el orden inverso, un «Try it out»
+# desde la Swagger pública salía contra el localhost de quien mirara, y fallaba.
 servers:
-  - url: http://localhost:8080/api/v1
-    description: Desarrollo local (Docker Compose)
   - url: https://agentpilot-crk.up.railway.app/api/v1
     description: Producción (Railway)
+  - url: http://localhost:8080/api/v1
+    description: Desarrollo local (Docker Compose)
 
 tags:
   - name: auth
@@ -1673,7 +1706,20 @@ components:
         score:
           type: number
           format: double
-          description: Similitud del retrieval (0..1)
+          description: >
+            Similitud del coseno entre la pregunta y el fragmento (0..1). Mide
+            parecido de significado, y por sí sola NO explica el orden de la
+            lista: para eso está `relevance`.
+        relevance:
+          type: number
+          format: double
+          nullable: true
+          description: >
+            Puntuación con la que se ordenaron las fuentes: combina la similitud
+            vectorial con el solape léxico respecto a la pregunta. Es la que
+            explica por qué una cita va antes que otra — ordenar por una y
+            mostrar la otra hacía parecer desordenada una lista que no lo
+            estaba. Null en las citas guardadas antes de registrarla.
 
     LlmUsage:
       type: object
@@ -1861,7 +1907,21 @@ components:
       type: object
       properties:
         totalQuestions: { type: integer }
-        positiveFeedbackRate: { type: number, format: double, nullable: true }
+        positiveFeedbackRate:
+          type: number
+          format: double
+          nullable: true
+          description: >
+            Proporción de respuestas útiles sobre las **valoradas**
+            (`positiveAnswers` / `ratedAnswers`), no sobre `totalQuestions`.
+            Valorar es voluntario, así que el denominador suele ser mucho menor
+            que el total de preguntas. Null si nadie ha valorado todavía.
+        ratedAnswers:
+          type: integer
+          description: Denominador de `positiveFeedbackRate`.
+        positiveAnswers:
+          type: integer
+          description: Numerador de `positiveFeedbackRate`.
         avgLatencyMs: { type: number, format: double }
         p95LatencyMs: { type: number, format: double }
         totalCostUsd: { type: number, format: double }

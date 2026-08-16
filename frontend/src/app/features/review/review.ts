@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
+import { renderMarkdown } from '../../core/markdown';
 import { Campaign, ChatMessage, RatedAnswer } from '../../core/models';
 
 /** Turnos de una conversación ya abierta, para mostrarla bajo la respuesta valorada. */
@@ -17,6 +18,11 @@ interface OpenConversation {
   styleUrl: './review.css',
 })
 export class Review {
+  /** Respuesta del asistente lista para pintar: la escribió el modelo, con su formato. */
+  comoHtml(texto: string): string {
+    return renderMarkdown(texto);
+  }
+
   private readonly api = inject(ApiService);
 
   readonly answers = signal<RatedAnswer[]>([]);

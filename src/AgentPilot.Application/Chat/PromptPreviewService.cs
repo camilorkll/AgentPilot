@@ -41,7 +41,7 @@ public class PromptPreviewService(
         var matches = Retrieval.ChunkReranker.Rerank(candidatos, question, TopK);
 
         var citations = matches
-            .Select(m => new Citation(m.DocumentId, m.DocumentTitle, m.ChunkId, m.Content, m.Score))
+            .Select(m => new Citation(m.DocumentId, m.DocumentTitle, m.ChunkId, m.Content, m.Score, m.Relevance))
             .ToList();
 
         var currentAnswer = await GenerateAsync(campaign.AssistantPrompt, question, matches, cancellationToken);

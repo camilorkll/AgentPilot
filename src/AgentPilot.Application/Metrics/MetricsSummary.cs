@@ -54,6 +54,21 @@ public sealed record MetricsSummary
     /// <summary>Ratio de feedback positivo (0..1); null si aún no hay valoraciones.</summary>
     public double? PositiveFeedbackRate { get; init; }
 
+    /// <summary>
+    /// Respuestas que alguien valoró, y de ellas las positivas. Son el denominador y el
+    /// numerador de <see cref="PositiveFeedbackRate"/>.
+    ///
+    /// Se publican porque sin ellos el porcentaje engaña: aparecía junto a
+    /// <see cref="TotalQuestions"/> y se leía como "la mitad de las respuestas no
+    /// sirvieron", cuando en realidad valoradas había cuatro. Valorar es voluntario, así
+    /// que este denominador es siempre mucho menor que el total de preguntas y no debe
+    /// confundirse con él.
+    /// </summary>
+    public int RatedAnswers { get; init; }
+
+    /// <inheritdoc cref="RatedAnswers"/>
+    public int PositiveAnswers { get; init; }
+
     public double AvgLatencyMs { get; init; }
     public double P95LatencyMs { get; init; }
     public double TotalCostUsd { get; init; }

@@ -78,3 +78,23 @@ th { color: var(--muted); font-weight: 600; font-size: .85rem; }
 /* Consultable, pero su última actualización no llegó a aplicarse: sirve la versión
    anterior. Va en tono de aviso, no de error: el documento funciona. */
 .badge.stale { color: var(--warn); border-color: var(--warn); margin-left: .35rem; }
+
+/* Dato secundario dentro de un texto ya atenuado: la similitud junto a la relevancia,
+   que es la que manda. Se distingue por opacidad para no inventar otro color. */
+.faint { opacity: .65; }
+
+/* Respuesta del asistente ya renderizada. El conjunto de etiquetas que puede aparecer
+   está cerrado en core/markdown.ts, así que basta con darles forma a esas. */
+.markdown > :first-child { margin-top: 0; }
+.markdown > :last-child { margin-bottom: 0; }
+.markdown p { margin: 0 0 .6rem; }
+.markdown ul, .markdown ol { margin: .2rem 0 .6rem; padding-left: 1.4rem; }
+.markdown li { margin: .15rem 0; }
+.markdown strong { font-weight: 600; }
+.markdown code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .92em;
+  padding: .05rem .3rem;
+  border-radius: 4px;
+  background: rgba(127, 127, 127, .18);
+}

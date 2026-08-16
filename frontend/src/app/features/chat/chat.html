@@ -46,8 +46,8 @@
           <h2>¿En qué te ayudo?</h2>
           <p class="muted">
             Pregunta en lenguaje natural sobre la base de conocimiento de
-            <strong>{{ selectedCampaign()?.name }}</strong>. Cada respuesta incluye las
-            fuentes utilizadas.
+            <strong>{{ selectedCampaign()?.name }}</strong>. Cada respuesta cita entre
+            corchetes los fragmentos en que se apoya.
           </p>
           <div class="examples">
             @for (example of examples; track example) {
@@ -73,7 +73,14 @@
               }
             </span>
           }
-          <span class="content">{{ message.content }}</span>
+          <!-- Solo se renderiza el Markdown del asistente. Lo que escribe el operador es
+               entrada de usuario y se pinta tal cual: no tiene por qué llevar formato, y
+               darle un camino a HTML sería regalar superficie sin ganar nada. -->
+          @if (message.role === 'assistant') {
+            <span class="content markdown" [innerHTML]="comoHtml(message.content)"></span>
+          } @else {
+            <span class="content">{{ message.content }}</span>
+          }
           @if (message.streaming && message.content) { <span class="caret"></span> }
         </div>
 
@@ -81,14 +88,29 @@
           <!-- Fuentes: llegan en cuanto se recuperan, antes de que el modelo responda -->
           @if (message.citations?.length) {
             <details class="citations">
+              <!-- «Consultados», no «utilizados»: son los fragmentos que se le pasaron al
+                   modelo, y siempre son los mismos TopK. La respuesta puede citar solo uno,
+                   o ninguno si se abstiene; decir «utilizados» contradecía a la vista un
+                   «No dispongo de esa información». -->
               <summary class="small">
-                📎 {{ message.citations!.length }} fuentes utilizadas
+                📎 {{ message.citations!.length }}
+                {{ message.citations!.length === 1 ? 'fragmento consultado' : 'fragmentos consultados' }}
               </summary>
               @for (citation of message.citations; track citation.chunkId; let i = $index) {
                 <div class="citation">
                   <div class="small">
                     <strong>[{{ i + 1 }}] {{ citation.documentTitle }}</strong>
-                    <span class="muted"> · similitud {{ citation.score | number:'1.2-2' }}</span>
+                    <!-- La relevancia es lo que decide este orden (similitud vectorial +
+                         solape léxico). Antes se mostraba el coseno a secas y la lista
+                         parecía desordenada: el [3] tenía menos similitud que el [4]. -->
+                    <span class="muted">
+                      @if (citation.relevance !== null) {
+                        · relevancia {{ citation.relevance | number:'1.2-2' }}
+                        <span class="faint">(similitud {{ citation.score | number:'1.2-2' }})</span>
+                      } @else {
+                        · similitud {{ citation.score | number:'1.2-2' }}
+                      }
+                    </span>
                   </div>
                   <p class="small muted snippet">{{ citation.snippet }}</p>
                 </div>
@@ -102,8 +124,8 @@
             @if (message.usage) {
               <span class="small muted">
                 {{ message.usage.model }} ·
-                {{ message.usage.promptTokens + message.usage.completionTokens }} tokens ·
-                {{ message.usage.latencyMs }} ms ·
+                {{ message.usage.promptTokens + message.usage.completionTokens | number }} tokens ·
+                {{ message.usage.latencyMs | number }} ms ·
                 ${{ message.usage.estimatedCostUsd | number:'1.6-6' }}
               </span>
             }

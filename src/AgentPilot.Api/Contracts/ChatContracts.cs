@@ -9,9 +9,15 @@ namespace AgentPilot.Api.Contracts;
 /// </summary>
 public record AskRequest(string Question, Guid? CampaignId, Guid? ConversationId);
 
-/// <summary>Cita emitida en el evento SSE 'citations' (esquema Citation del OpenAPI).</summary>
+/// <summary>
+/// Cita emitida en el evento SSE 'citations' (esquema Citation del OpenAPI).
+/// <see cref="Score"/> es la similitud del coseno; <see cref="Relevance"/>, la puntuación
+/// que fijó el orden de la lista. Van las dos porque no coinciden y solo la segunda
+/// explica por qué una cita va antes que otra.
+/// </summary>
 public record CitationDto(
-    Guid DocumentId, string DocumentTitle, Guid ChunkId, string Snippet, double Score);
+    Guid DocumentId, string DocumentTitle, Guid ChunkId, string Snippet,
+    double Score, double? Relevance);
 
 /// <summary>Telemetría emitida en el evento SSE 'usage'.</summary>
 public record UsageDto(
@@ -37,7 +43,8 @@ public static class ChatMappings
     public static CitationDto ToDto(this Citation c) => new(
         c.DocumentId, c.DocumentTitle, c.ChunkId,
         c.Snippet.Length <= 300 ? c.Snippet : c.Snippet[..300] + "…",
-        Math.Round(c.Score, 4));
+        Math.Round(c.Score, 4),
+        c.Relevance is null ? null : Math.Round(c.Relevance.Value, 4));
 
     public static FeedbackDto ToDto(this Feedback f) => new(
         f.Rating.ToString().ToLowerInvariant(), // positive/negative

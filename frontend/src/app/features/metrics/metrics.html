@@ -54,11 +54,21 @@
       <span class="small muted">Preguntas</span>
       <strong>{{ m.totalQuestions }}</strong>
     </div>
+    <!-- El porcentaje es sobre las respuestas VALORADAS, no sobre el total de preguntas.
+         Estaba junto a «Preguntas» sin decirlo y se leía como si la mitad de todas las
+         respuestas no hubieran servido; valorar es voluntario y lo hace poca gente. -->
     <div class="card kpi">
       <span class="small muted">Respuestas útiles</span>
       <strong>
         {{ m.positiveFeedbackRate !== null ? (m.positiveFeedbackRate | percent:'1.0-0') : '—' }}
       </strong>
+      <span class="small muted">
+        @if (m.ratedAnswers > 0) {
+          {{ m.positiveAnswers }} de {{ m.ratedAnswers }} valoradas
+        } @else {
+          sin valoraciones todavía
+        }
+      </span>
     </div>
     <div class="card kpi">
       <span class="small muted">Latencia media</span>

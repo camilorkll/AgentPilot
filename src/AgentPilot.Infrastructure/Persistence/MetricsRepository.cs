@@ -185,6 +185,8 @@ public class MetricsRepository(AgentPilotDbContext db) : IMetricsRepository
         {
             TotalQuestions = total,
             PositiveFeedbackRate = feedbackTotal > 0 ? (double)feedbackPositive / feedbackTotal : null,
+            RatedAnswers = feedbackTotal,
+            PositiveAnswers = feedbackPositive,
             AvgLatencyMs = Math.Round(avgLatency, 1),
             P95LatencyMs = p95,
             TotalCostUsd = Math.Round(totalCost, 6),

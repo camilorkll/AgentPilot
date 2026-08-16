@@ -96,7 +96,7 @@ public class AskQuestionService(
         var matches = ChunkReranker.Rerank(candidatos, question, TopK);
 
         var citations = matches
-            .Select(m => new Citation(m.DocumentId, m.DocumentTitle, m.ChunkId, m.Content, m.Score))
+            .Select(m => new Citation(m.DocumentId, m.DocumentTitle, m.ChunkId, m.Content, m.Score, m.Relevance))
             .ToList();
 
         // Las fuentes se emiten en cuanto se recuperan, sin esperar al modelo: el agente
