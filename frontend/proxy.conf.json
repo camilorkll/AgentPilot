@@ -1,6 +1,7 @@
 {
+  "//": "El dev-server de Angular redirige /api al backend. El destino es el contenedor que levanta 'docker compose up' (puerto 8080), que es el backend documentado en el README. Antes apuntaba a https://localhost:44338, un puerto de IIS Express que ningún modo de ejecución documentado usa: el frontend cargaba en 4200 y todas las llamadas fallaban sin pista de por qué. Si arrancas la API con 'dotnet run' en vez de Docker, cambia el target a http://localhost:5064.",
   "/api": {
-    "target": "https://localhost:44338",
+    "target": "http://localhost:8080",
     "secure": false,
     "changeOrigin": true,
     "logLevel": "debug"

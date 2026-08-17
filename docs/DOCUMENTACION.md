@@ -181,7 +181,14 @@ cabeza.
 ### Métricas y coste
 
 Preguntas atendidas, latencia media y p95, coste total y por pregunta, desglose por modelo y
-por campaña, actividad por operador y por día, y exportación a CSV.
+por campaña, y exportación a CSV.
+
+El desglose por operador tiene **dos vistas** de los mismos datos, porque responden a preguntas
+distintas: *agente → días* («¿cómo ha ido esta persona esta semana?») y *día → agentes*
+(«¿quién estuvo activo el martes?»). Se filtra por **rango de meses**, por campaña y por
+operador —este último con **selección múltiple**, para comparar a dos o tres personas sin ver a
+todas—. Los totales mensuales los calcula el servidor y no son la suma de los días: la latencia
+media y el porcentaje de útiles no son aditivos.
 
 Un detalle sobre cómo leer el panel: el porcentaje de **«respuestas útiles» es sobre las
 valoradas, no sobre el total** de preguntas. Valorar es voluntario y lo hace poca gente, así
@@ -733,7 +740,6 @@ centralita para que la señal de «nueva llamada» sea automática.
 | [`docs/openapi.yaml`](openapi.yaml) | Contrato de la API, fuente de verdad. |
 | [`evals/`](../evals/) | Set dorado, metodología, resultados y comparativa de modelos. |
 | [`docs/DEPLOY.md`](DEPLOY.md) | Despliegue en un proveedor PaaS. |
-| [`docs/GUION_DEMO.md`](GUION_DEMO.md) | Recorrido de demostración con preguntas previsibles. |
 
 Los **ADR** son la mejor puerta de entrada para entender el *por qué* de cada decisión: cada
 uno registra el problema, la opción elegida, las descartadas y las consecuencias asumidas,
