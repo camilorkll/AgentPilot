@@ -385,10 +385,26 @@ Dos roles, y la diferencia es deliberada:
 | | Agente | Administrador |
 |---|---|---|
 | Preguntar en las campañas activas | ✅ | ✅ |
-| Ver los documentos de una campaña | ✅ | ✅ |
+| Ver los fragmentos que citó una respuesta | ✅ | ✅ |
+| Valorar una respuesta y escribir el motivo | ✅ | ✅ |
+| Entrar en la pantalla de documentación | ❌ | ✅ |
 | Subir, sustituir o retirar documentos | ❌ | ✅ |
 | Crear campañas y editar instrucciones | ❌ | ✅ |
 | Ver respuestas valoradas y métricas | ❌ | ✅ |
+
+El agente **no tiene pantalla de documentación**: la ruta exige rol de administrador, y su
+interfaz es solo el chat. Lo que sí ve de cada documento son **los fragmentos que la respuesta
+citó**, con su texto y su procedencia, que es lo que necesita para verificar lo que va a decir
+al cliente.
+
+> **Un matiz que conviene conocer**, porque es una incoherencia real del sistema y no una
+> decisión: la pantalla está cerrada al agente, pero los tres `GET` de documentos de la API
+> (`/documents`, `/documents/{id}` y `/documents/{id}/content`) solo exigen estar autenticado,
+> así que un token de agente puede leerlos llamando directamente a la API. No es un problema de
+> confidencialidad —son documentos de una campaña en la que ese agente ya trabaja, y el
+> aislamiento entre campañas sí se respeta—, pero la restricción de la interfaz y la de la API
+> no coinciden. Lo coherente sería decidir una de las dos: abrir la pantalla en modo lectura, o
+> exigir rol de administrador también en la API.
 
 Sobre la pantalla de revisión se tomaron **dos decisiones de privacidad** explícitas, porque
 un administrador viendo conversaciones de agentes es material sensible:
@@ -495,7 +511,7 @@ error genérico.
 ### El corpus está vacío
 
 El asistente responde que no dispone de la información. Es correcto, no un fallo: no hay nada
-sobre lo que responder. La pantalla de documentos muestra que no hay ninguno indexado.
+sobre lo que responder. El administrador lo ve en su pantalla de documentación: ninguno indexado.
 
 ### El modelo devuelve un error o tarda demasiado
 

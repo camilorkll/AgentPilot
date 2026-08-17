@@ -26,6 +26,17 @@ es proporcional, y se distingue explícitamente lo implementado de lo pendiente.
 - **Autorización por rol** (`agent` / `admin`) declarativa con `[Authorize(Roles = "admin")]`:
   la gestión de documentos y las métricas son solo de administradores.
 - Verificado: un agente autenticado recibe **403** al intentar subir un documento.
+- **Asimetría conocida entre la interfaz y la API, en lectura de documentos.** La ruta
+  `/documents` del cliente exige rol de administrador (`adminGuard`), así que un agente no
+  tiene pantalla de documentación. Pero los tres `GET` de documentos
+  (`/documents`, `/documents/{documentId}` y `/documents/{documentId}/content`) heredan solo el
+  `[Authorize]` de la clase, sin restricción de rol: **un token de agente puede leerlos
+  llamando a la API directamente** (verificado: `200`, frente al `403` de `GET /campaigns`).
+  No es una fuga de confidencialidad —son documentos de una campaña en la que ese agente ya
+  trabaja, y el aislamiento entre campañas se sigue respetando en la consulta—, pero las dos
+  capas no dicen lo mismo, y eso es precisamente lo que A01 vigila. Queda registrado como
+  incoherencia, no como decisión: lo correcto es unificarlas, abriendo la pantalla en modo
+  lectura o exigiendo rol de administrador también en la API.
 - **Aislamiento horizontal entre campañas** (multi-tenant dentro del mismo rol): toda la
   documentación pertenece a una campaña, y el asistente de una campaña no debe poder
   responder con el corpus de otra. `IChunkSearchService.SearchAsync` exige `campaignId`

@@ -43,7 +43,7 @@ Se crean solos al arrancar con una base de datos nueva. Entra en <http://localho
 | Rol | Usuario | Contraseña | Puede |
 |---|---|---|---|
 | Administrador | `admin` | `admin1234` | Todo, incluida la gestión de documentación |
-| Agente | `agente` | `agente1234` | Chat RAG y consulta de documentos |
+| Agente | `agente` | `agente1234` | Solo el chat: preguntar, ver las fuentes de cada respuesta y valorarlas |
 | Agente | `laura` | `laura1234` | Lo mismo que `agente` |
 | Agente | `marcos` | `marcos1234` | Lo mismo que `agente` |
 
