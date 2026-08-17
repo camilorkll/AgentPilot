@@ -34,9 +34,15 @@ es proporcional, y se distingue explícitamente lo implementado de lo pendiente.
   llamando a la API directamente** (verificado: `200`, frente al `403` de `GET /campaigns`).
   No es una fuga de confidencialidad —son documentos de una campaña en la que ese agente ya
   trabaja, y el aislamiento entre campañas se sigue respetando en la consulta—, pero las dos
-  capas no dicen lo mismo, y eso es precisamente lo que A01 vigila. Queda registrado como
-  incoherencia, no como decisión: lo correcto es unificarlas, abriendo la pantalla en modo
-  lectura o exigiendo rol de administrador también en la API.
+  capas no dicen lo mismo, y eso es precisamente lo que A01 vigila.
+
+  **Resolución decidida, pendiente de implementar:** añadir `[Authorize(Roles = "admin")]` a
+  los tres `GET`, de modo que la API diga lo mismo que la interfaz. Se descartó la alternativa
+  —abrir la pantalla al agente en modo lectura— porque el agente no necesita hojear el
+  catálogo: lo que necesita para verificar una respuesta son los fragmentos citados, y esos ya
+  los recibe en el chat. Ampliar el acceso para que coincida con un permiso que nadie eligió
+  sería justificar la incoherencia en vez de corregirla; cerrar es además la opción que respeta
+  el principio de mínimo privilegio.
 - **Aislamiento horizontal entre campañas** (multi-tenant dentro del mismo rol): toda la
   documentación pertenece a una campaña, y el asistente de una campaña no debe poder
   responder con el corpus de otra. `IChunkSearchService.SearchAsync` exige `campaignId`

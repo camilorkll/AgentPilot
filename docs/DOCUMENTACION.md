@@ -403,8 +403,13 @@ al cliente.
 > así que un token de agente puede leerlos llamando directamente a la API. No es un problema de
 > confidencialidad —son documentos de una campaña en la que ese agente ya trabaja, y el
 > aislamiento entre campañas sí se respeta—, pero la restricción de la interfaz y la de la API
-> no coinciden. Lo coherente sería decidir una de las dos: abrir la pantalla en modo lectura, o
-> exigir rol de administrador también en la API.
+> no coinciden.
+>
+> **Se ha decidido cerrar la API** (exigir rol de administrador en esos tres `GET`) en lugar de
+> abrir la pantalla al agente: para verificar una respuesta le bastan los fragmentos citados,
+> que ya recibe en el chat, así que ampliar el acceso sería justificar la incoherencia en vez de
+> corregirla. Está **pendiente de implementar**; figura en los
+> [límites conocidos](#12-límites-conocidos).
 
 Sobre la pantalla de revisión se tomaron **dos decisiones de privacidad** explícitas, porque
 un administrador viendo conversaciones de agentes es material sensible:
@@ -731,6 +736,7 @@ Los límites documentados son parte de la documentación, no una omisión.
 
 | Límite | Detalle | Alternativa descartada |
 |---|---|---|
+| **La API permite al agente leer documentos que su interfaz no le muestra** | Los tres `GET` de documentos solo exigen estar autenticado, mientras la pantalla exige rol de administrador. Sin impacto de confidencialidad —misma campaña, aislamiento respetado—, pero las dos capas no coinciden. **Decidido: cerrar la API** con `[Authorize(Roles = "admin")]`; pendiente de implementar. Ver [`SECURITY.md`](../SECURITY.md), A01. | Abrir la pantalla al agente en modo lectura: no necesita el catálogo, le bastan los fragmentos citados, y ampliar el acceso justificaría la incoherencia en vez de corregirla. |
 | **La cola de ingesta vive en memoria** | Un reinicio pierde los trabajos encolados. El estado se rescata al arrancar, pero el trabajo hay que relanzarlo. | Una cola persistente (Redis, RabbitMQ): correcta a escala, desproporcionada para decenas de documentos que sube una persona que está delante. |
 | **La dimensión del vector está fijada** | El índice HNSW exige una dimensión fija (1.536), así que cambiar a un modelo de *embeddings* con otra dimensión requiere migrar la columna. | — Es la línea futura más concreta. El reindexado sin ficheros originales ya existe; falta esta pieza. |
 | **La ventana de sesión desplazada** | Entre que un operador es desplazado y vuelve a su pantalla o intenta algo, la interfaz sigue mostrando lo que hubiera. No hay sesión utilizable, pero visualmente parece abierta. | Un canal permanente servidor→cliente (WebSocket): desproporcionado para lo que resuelve. |
