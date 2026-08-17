@@ -1,6 +1,6 @@
 # ADR-012 — Persistir el texto extraído del documento
 
-**Estado:** Aceptada (04/08/2026) — **implementada** (16/08/2026)
+**Estado:** Aceptada (08/2026) — **implementada** (16/08/2026)
 
 ## Contexto
 Cambiar de modelo de *embeddings* (por ejemplo, de OpenAI `text-embedding-3-small` a Ollama `nomic-embed-text`) exige reindexar todo el corpus: los vectores de dos modelos no son comparables entre sí (fallo semántico, sin excepción ni log) y además tienen dimensión distinta (1536 frente a 768), fijada en la columna `vector(1536)` de Postgres (fallo físico, el `INSERT` falla directamente). Hoy `Documento` solo guarda sus fragmentos ya vectorizados, no el texto original: reindexar obligaría a que alguien conservara y volviera a subir a mano cada PDF o Markdown ya ingerido.

@@ -1,6 +1,6 @@
 # ADR-016 — Troceado consciente de la estructura y reordenado local de la recuperación
 
-**Estado:** Aceptada (16/08/2026)
+**Estado:** Aceptada (08/2026)
 
 ## Contexto
 Dos fallos observados, uno medido y otro visto en uso real:

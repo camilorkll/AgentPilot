@@ -1,6 +1,6 @@
 # ADR-014 — El historial de prompts es acotado y purgable
 
-**Estado:** Aceptada (15/08/2026) — revisa parcialmente a [ADR-011](ADR-011-prompt-por-capas.md)
+**Estado:** Aceptada (08/2026) — revisa parcialmente a [ADR-011](ADR-011-prompt-por-capas.md)
 
 ## Contexto
 [ADR-011](ADR-011-prompt-por-capas.md) decidió que cada cambio de las instrucciones de campaña (incluida una restauración) añadiera una fila a un historial *append-only*, sin límite y sin borrado. Al usarlo con datos reales apareció el problema: **TeleNova acumuló 13 versiones en pocos días**, casi todas ajustes finos de una misma sesión de pruebas. El panel de administración muestra el historial completo, así que crece hasta volverse ilegible justo en la pantalla donde hay que decidir qué restaurar.

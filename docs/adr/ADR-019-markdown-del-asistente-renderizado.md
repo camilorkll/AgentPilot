@@ -1,6 +1,6 @@
 # ADR-019 — El formato del asistente se renderiza con un subconjunto propio, no con una librería
 
-**Estado:** Aceptada (16/08/2026)
+**Estado:** Aceptada (08/2026)
 
 ## Contexto
 

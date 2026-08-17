@@ -1,6 +1,6 @@
 # ADR-009 — La campaña es una frontera obligatoria de recuperación
 
-**Estado:** Aceptada (04/08/2026)
+**Estado:** Aceptada (08/2026)
 
 ## Contexto
 La Fase 8 introduce campañas: cada una agrupa su propia documentación, y el asistente de una campaña no debe poder responder con el corpus de otra (piénsese en dos clientes del contact center con argumentarios distintos y confidenciales entre sí). Un filtro *opcional* de campaña en la búsqueda convertiría un olvido del programador en una fuga de datos: el código seguiría compilando y funcionando en el caso feliz, y solo fallaría en producción cuando alguien se olvidara de pasarlo.

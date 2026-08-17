@@ -1,6 +1,6 @@
 # ADR-020 — Un operador, una sesión: el último login desplaza al anterior
 
-**Estado:** Aceptada (16/08/2026)
+**Estado:** Aceptada (08/2026)
 
 ## Contexto
 

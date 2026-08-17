@@ -1,6 +1,6 @@
 # ADR-017 — El contexto conversacional que viaja al modelo está acotado, y la llamada tiene principio
 
-**Estado:** Aceptada (16/08/2026)
+**Estado:** Aceptada (08/2026)
 
 ## Contexto
 El agente trabaja horas seguidas en la misma pantalla, atendiendo a clientes distintos. Hasta ahora, cada pregunta reenviaba al modelo **la conversación entera**, sin límite. Medido sobre una conversación real (`llm_call_logs`):

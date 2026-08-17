@@ -1,6 +1,6 @@
 # ADR-011 — El prompt de sistema se compone en capas: núcleo + bloque de campaña + reafirmación
 
-**Estado:** Aceptada (05/08/2026) — la parte del historial la revisa [ADR-014](ADR-014-historial-de-prompt-acotado.md) (15/08/2026)
+**Estado:** Aceptada (08/2026) — la parte del historial la revisa [ADR-014](ADR-014-historial-de-prompt-acotado.md) (15/08/2026)
 
 ## Contexto
 Cada campaña necesita poder ajustar el tono, un aviso obligatorio o el vocabulario del asistente sin dar acceso a un administrador (que no es ingeniero de prompts) a un *textarea* en blanco que reescriba el prompt de sistema entero. Las reglas de *grounding*, citas y anti-inyección (LLM01 en [`SECURITY.md`](../../SECURITY.md)) son la base de las métricas de calidad ya medidas (100&nbsp;% de abstención correcta) y no pueden quedar a merced de una edición descuidada o de una instrucción de campaña adversaria.

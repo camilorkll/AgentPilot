@@ -1,6 +1,6 @@
 # ADR-018 — Una ingesta que falla no puede dejar a la campaña sabiendo menos que antes
 
-**Estado:** Aceptada (16/08/2026)
+**Estado:** Aceptada (08/2026)
 
 ## Contexto
 

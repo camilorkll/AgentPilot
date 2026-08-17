@@ -1,6 +1,6 @@
 # ADR-010 — Los modelos (chat y embeddings) son globales, no por campaña
 
-**Estado:** Aceptada (04/08/2026)
+**Estado:** Aceptada (08/2026)
 
 ## Contexto
 Al diseñar las campañas surgió la pregunta de si cada una debería poder elegir su propio modelo de chat o de *embeddings* (por ejemplo, una campaña más exigente con `gpt-5-mini` y otra con `gpt-4o-mini`). Se evaluó como opción y se descarta.

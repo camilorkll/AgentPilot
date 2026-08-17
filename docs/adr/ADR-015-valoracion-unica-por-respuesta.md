@@ -1,6 +1,6 @@
 # ADR-015 — Una valoración por respuesta, rectificable
 
-**Estado:** Aceptada (15/08/2026)
+**Estado:** Aceptada (08/2026)
 
 ## Contexto
 El indicador **«Respuestas útiles»** del panel de métricas se calcula como *positivos ÷ valoradas* (`MetricsRepository`). El denominador son las respuestas que alguien puntuó, no todas: es una señal de calidad sobre una muestra que se elige sola, y ya por eso hay que leerla con cuidado.

@@ -1,6 +1,6 @@
 # ADR-013 — No hay documentación común a varias campañas: se descarta
 
-**Estado:** Aceptada (04/08/2026)
+**Estado:** Aceptada (08/2026)
 
 ## Contexto
 Si un mismo documento aplica a varias campañas (por ejemplo, una política de verificación de identidad válida para todos los clientes), la alternativa obvia es un corpus "común" que todas las campañas puedan consultar además del suyo. Se llegó a diseñar esa función (activación de documentos comunes, migración de documentos existentes a "común") antes de descartarla.
