@@ -7,6 +7,11 @@ Los agentes de un call center pierden entre 30 y 60 segundos por llamada buscand
 
 Toda la documentación pertenece a una **campaña** (un cliente, un producto): el asistente responde únicamente con el corpus de la campaña activa, nunca mezcla clientes. Cada campaña tiene su propio ciclo de vida (activa → inactiva → cerrada, solo eliminable estando cerrada) y sus propias instrucciones de negocio para el asistente (tono, avisos obligatorios, vocabulario), compuestas siempre alrededor de un núcleo de reglas inmutable que ninguna instrucción de campaña puede anular.
 
+> 📖 **[Documentación funcional y técnica completa](docs/DOCUMENTACION.md)** — qué hace, cómo
+> lo hace, **cómo trata la información** (qué se guarda, qué sale del sistema, quién ve qué) y
+> qué ocurre cuando algo falla. Este README es la puesta en marcha; ese documento es la
+> referencia.
+
 ---
 
 ## 🔗 Enlaces de entrega
@@ -166,6 +171,7 @@ dotnet run --project src/AgentPilot.Api
 ├── docs/
 │   ├── openapi.yaml          # Contrato de la API (fuente de verdad, contract-first)
 │   ├── adr/                  # Decisiones de arquitectura (ADR-001..020)
+│   ├── DOCUMENTACION.md      # Documentación funcional y técnica completa
 │   ├── DEPLOY.md             # Guía de despliegue en Railway
 │   └── GUION_DEMO.md         # Recorrido de la demo, con preguntas previsibles
 ├── scripts/
