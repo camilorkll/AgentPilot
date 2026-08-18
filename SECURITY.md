@@ -26,23 +26,27 @@ es proporcional, y se distingue explícitamente lo implementado de lo pendiente.
 - **Autorización por rol** (`agent` / `admin`) declarativa con `[Authorize(Roles = "admin")]`:
   la gestión de documentos y las métricas son solo de administradores.
 - Verificado: un agente autenticado recibe **403** al intentar subir un documento.
-- **Asimetría conocida entre la interfaz y la API, en lectura de documentos.** La ruta
+- **Asimetría corregida entre la interfaz y la API, en lectura de documentos.** La ruta
   `/documents` del cliente exige rol de administrador (`adminGuard`), así que un agente no
   tiene pantalla de documentación. Pero los tres `GET` de documentos
-  (`/documents`, `/documents/{documentId}` y `/documents/{documentId}/content`) heredan solo el
-  `[Authorize]` de la clase, sin restricción de rol: **un token de agente puede leerlos
-  llamando a la API directamente** (verificado: `200`, frente al `403` de `GET /campaigns`).
-  No es una fuga de confidencialidad —son documentos de una campaña en la que ese agente ya
-  trabaja, y el aislamiento entre campañas se sigue respetando en la consulta—, pero las dos
-  capas no dicen lo mismo, y eso es precisamente lo que A01 vigila.
+  (`/documents`, `/documents/{documentId}` y `/documents/{documentId}/content`) heredaban solo
+  el `[Authorize]` de la clase, sin restricción de rol: **un token de agente podía leerlos
+  llamando a la API directamente** (se verificó: `200`, frente al `403` de `GET /campaigns`).
+  No era una fuga de confidencialidad —son documentos de una campaña en la que ese agente ya
+  trabaja, y el aislamiento entre campañas se respetaba en la consulta—, pero las dos capas
+  no decían lo mismo, y eso es precisamente lo que A01 vigila.
 
-  **Resolución decidida, pendiente de implementar:** añadir `[Authorize(Roles = "admin")]` a
-  los tres `GET`, de modo que la API diga lo mismo que la interfaz. Se descartó la alternativa
-  —abrir la pantalla al agente en modo lectura— porque el agente no necesita hojear el
-  catálogo: lo que necesita para verificar una respuesta son los fragmentos citados, y esos ya
-  los recibe en el chat. Ampliar el acceso para que coincida con un permiso que nadie eligió
-  sería justificar la incoherencia en vez de corregirla; cerrar es además la opción que respeta
-  el principio de mínimo privilegio.
+  **Resuelto cerrando la API**: todo `DocumentsController` exige ahora
+  `[Authorize(Roles = "admin")]` a nivel de clase, lectura incluida, de modo que la API dice
+  lo mismo que la interfaz (contrato v1.8.0). Se descartó la alternativa —abrir la pantalla
+  al agente en modo lectura— porque el agente no necesita hojear el catálogo: lo que necesita
+  para verificar una respuesta son los fragmentos citados, y esos ya los recibe en el chat.
+  Ampliar el acceso para que coincidiera con un permiso que nadie eligió habría sido
+  justificar la incoherencia en vez de corregirla; cerrar es además la opción que respeta el
+  principio de mínimo privilegio. Verificado con un test de integración contra la API real y
+  un token de agente emitido por el login de verdad
+  ([DocumentsAuthorizationTests.cs](tests/AgentPilot.Integration.Tests/DocumentsAuthorizationTests.cs)):
+  los tres `GET` responden `403` al agente y siguen respondiendo al administrador.
 - **Aislamiento horizontal entre campañas** (multi-tenant dentro del mismo rol): toda la
   documentación pertenece a una campaña, y el asistente de una campaña no debe poder
   responder con el corpus de otra. `IChunkSearchService.SearchAsync` exige `campaignId`

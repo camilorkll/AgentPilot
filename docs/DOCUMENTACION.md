@@ -397,19 +397,20 @@ interfaz es solo el chat. Lo que sí ve de cada documento son **los fragmentos q
 citó**, con su texto y su procedencia, que es lo que necesita para verificar lo que va a decir
 al cliente.
 
-> **Un matiz que conviene conocer**, porque es una incoherencia real del sistema y no una
-> decisión: la pantalla está cerrada al agente, pero los tres `GET` de documentos de la API
-> (`/documents`, `/documents/{id}` y `/documents/{id}/content`) solo exigen estar autenticado,
-> así que un token de agente puede leerlos llamando directamente a la API. No es un problema de
-> confidencialidad —son documentos de una campaña en la que ese agente ya trabaja, y el
-> aislamiento entre campañas sí se respeta—, pero la restricción de la interfaz y la de la API
-> no coinciden.
+> **Una incoherencia que existió y se corrigió**: hasta la versión 1.8.0 del contrato, la
+> pantalla estaba cerrada al agente pero los tres `GET` de documentos de la API
+> (`/documents`, `/documents/{id}` y `/documents/{id}/content`) solo exigían estar
+> autenticado, así que un token de agente podía leerlos llamando directamente a la API. No
+> era un problema de confidencialidad —son documentos de una campaña en la que ese agente ya
+> trabaja, y el aislamiento entre campañas sí se respetaba—, pero la restricción de la
+> interfaz y la de la API no coincidían.
 >
-> **Se ha decidido cerrar la API** (exigir rol de administrador en esos tres `GET`) en lugar de
-> abrir la pantalla al agente: para verificar una respuesta le bastan los fragmentos citados,
-> que ya recibe en el chat, así que ampliar el acceso sería justificar la incoherencia en vez de
-> corregirla. Está **pendiente de implementar**; figura en los
-> [límites conocidos](#12-límites-conocidos).
+> **Se cerró la API** (toda la gestión documental exige rol de administrador, lectura
+> incluida) en lugar de abrir la pantalla al agente: para verificar una respuesta le bastan
+> los fragmentos citados, que ya recibe en el chat, así que ampliar el acceso habría sido
+> justificar la incoherencia en vez de corregirla. Un test de integración fija la frontera:
+> los tres `GET` responden `403` a un token de agente. Ver [`SECURITY.md`](../SECURITY.md),
+> A01.
 
 Sobre la pantalla de revisión se tomaron **dos decisiones de privacidad** explícitas, porque
 un administrador viendo conversaciones de agentes es material sensible:
@@ -629,7 +630,7 @@ sostiene el diseño del prompt y la recuperación, no la potencia del modelo.
 
 ### Tests automatizados
 
-199 tests: dominio puro, casos de uso con el modelo simulado, integración contra un
+201 tests: dominio puro, casos de uso con el modelo simulado, integración contra un
 PostgreSQL real levantado con Testcontainers, arquitectura, contrato y frontend. Varios de
 ellos existen porque un fallo concreto los hizo necesarios, y están anotados con el caso que
 los motivó.
@@ -736,7 +737,6 @@ Los límites documentados son parte de la documentación, no una omisión.
 
 | Límite | Detalle | Alternativa descartada |
 |---|---|---|
-| **La API permite al agente leer documentos que su interfaz no le muestra** | Los tres `GET` de documentos solo exigen estar autenticado, mientras la pantalla exige rol de administrador. Sin impacto de confidencialidad —misma campaña, aislamiento respetado—, pero las dos capas no coinciden. **Decidido: cerrar la API** con `[Authorize(Roles = "admin")]`; pendiente de implementar. Ver [`SECURITY.md`](../SECURITY.md), A01. | Abrir la pantalla al agente en modo lectura: no necesita el catálogo, le bastan los fragmentos citados, y ampliar el acceso justificaría la incoherencia en vez de corregirla. |
 | **La cola de ingesta vive en memoria** | Un reinicio pierde los trabajos encolados. El estado se rescata al arrancar, pero el trabajo hay que relanzarlo. | Una cola persistente (Redis, RabbitMQ): correcta a escala, desproporcionada para decenas de documentos que sube una persona que está delante. |
 | **La dimensión del vector está fijada** | El índice HNSW exige una dimensión fija (1.536), así que cambiar a un modelo de *embeddings* con otra dimensión requiere migrar la columna. | — Es la línea futura más concreta. El reindexado sin ficheros originales ya existe; falta esta pieza. |
 | **La ventana de sesión desplazada** | Entre que un operador es desplazado y vuelve a su pantalla o intenta algo, la interfaz sigue mostrando lo que hubiera. No hay sesión utilizable, pero visualmente parece abierta. | Un canal permanente servidor→cliente (WebSocket): desproporcionado para lo que resuelve. |

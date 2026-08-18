@@ -115,11 +115,11 @@ es correcto con un corpus a medio indexar, no un fallo.
 ### Verificar la instalación
 
 ```bash
-dotnet test                                   # 191 tests de backend (requiere SDK de .NET 8 y Docker en marcha)
+dotnet test                                   # 193 tests de backend (requiere SDK de .NET 8 y Docker en marcha)
 cd frontend && npm test -- --watch=false      # 12 tests de frontend (requiere Node y Chrome)
 ```
 
-De los de backend, **187 pasan y 4 se omiten** si no hay `OPENAI_API_KEY` en el entorno: son los
+De los de backend, **189 pasan y 4 se omiten** si no hay `OPENAI_API_KEY` en el entorno: son los
 que llaman de verdad al proveedor.
 
 ### Ver el aislamiento entre campañas
@@ -305,9 +305,9 @@ en [evals/README.md](evals/README.md); comparativa de `gpt-5-mini`, `gpt-4o-mini
 `llama3.2:3b` con el mismo set en
 [evals/COMPARATIVA-MODELOS.md](evals/COMPARATIVA-MODELOS.md).
 
-Además, **203 tests** automatizados: 191 de backend —dominio, casos de uso con el LLM simulado,
+Además, **205 tests** automatizados: 193 de backend —dominio, casos de uso con el LLM simulado,
 integración contra un PostgreSQL real (Testcontainers) y arquitectura— y 12 de frontend. Pasan
-199; los 4 restantes se omiten sin `OPENAI_API_KEY`, porque llaman de verdad al proveedor. Los
+201; los 4 restantes se omiten sin `OPENAI_API_KEY`, porque llaman de verdad al proveedor. Los
 comandos para lanzarlos están en [Verificar la instalación](#verificar-la-instalación).
 
 ## 🔒 Seguridad

@@ -77,7 +77,19 @@ info:
     desplazado responden `401` con la cabecera `X-Auth-Error: session_superseded`,
     para que el cliente pueda distinguirlo de un token caducado y decirlo. Cambio de
     comportamiento, no de esquema: compatible con la 1.6.0.
-  version: 1.7.0
+
+
+    **Lectura de documentos solo para administradores (v1.8.0):** los tres `GET`
+    de documentos (`/documents`, `/documents/{documentId}` y
+    `/documents/{documentId}/content`) exigen ahora rol `admin`, igual que el
+    resto de su controlador. Dos de ellos ya lo documentaban aquí sin que la API
+    lo cumpliera: un token de agente los leía con `200` aunque su interfaz no
+    tenga pantalla de documentación. Se cierra la API en lugar de abrir la
+    pantalla porque el agente no necesita el catálogo —los fragmentos citados le
+    llegan en la respuesta del chat— y porque es lo que respeta el mínimo
+    privilegio. Cambio restrictivo solo para tokens de agente; ninguna pantalla
+    del cliente usaba estos endpoints sin ser ya de administrador.
+  version: 1.8.0
   contact:
     name: Camilo Rodríguez
     url: https://github.com/camilorkll/AgentPilot
@@ -697,7 +709,8 @@ paths:
       operationId: getDocument
       summary: Consulta un documento y el estado de su ingesta
       description: >
-        Es la forma de seguir una ingesta asíncrona: el documento pasa por
+        Requiere rol `admin`, como la subida cuyo estado permite seguir. Es la
+        forma de seguir una ingesta asíncrona: el documento pasa por
         `pending` → `processing` → `ready`, o a `failed` con el motivo en
         `errorMessage`.
       parameters:
@@ -711,6 +724,8 @@ paths:
                 $ref: "#/components/schemas/Document"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
     delete:

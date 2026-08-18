@@ -10,7 +10,10 @@ namespace AgentPilot.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/documents")]
-[Authorize] // cualquier usuario autenticado; la escritura exige rol admin
+// Todo el controlador exige rol admin, lectura incluida: la pantalla /documents del
+// cliente ya lo exigía (adminGuard) y las dos capas deben decir lo mismo. El agente no
+// necesita el catálogo: los fragmentos citados le llegan en el chat (SECURITY.md, A01).
+[Authorize(Roles = "admin")]
 public class DocumentsController(
     IDocumentIngestionService ingestion,
     IDocumentRepository repository,
@@ -18,7 +21,6 @@ public class DocumentsController(
 {
     /// <summary>Sube un documento; la ingesta se procesa en segundo plano.</summary>
     [HttpPost]
-    [Authorize(Roles = "admin")]
     public async Task<IActionResult> Upload(
         IFormFile file, [FromForm] Guid? campaignId, [FromForm] string? title,
         [FromForm] bool replace, CancellationToken cancellationToken)
@@ -108,7 +110,6 @@ public class DocumentsController(
     }
 
     [HttpDelete("{documentId:guid}")]
-    [Authorize(Roles = "admin")]
     public async Task<IActionResult> Delete(Guid documentId, CancellationToken cancellationToken)
     {
         var document = await repository.GetByIdAsync(documentId, cancellationToken);
@@ -135,7 +136,6 @@ public class DocumentsController(
     /// pensado para información con vigencia, como promociones temporales.
     /// </summary>
     [HttpPost("active")]
-    [Authorize(Roles = "admin")]
     public async Task<ActionResult<IReadOnlyList<DocumentResponse>>> SetActive(
         [FromBody] SetActiveRequest request, CancellationToken cancellationToken)
     {
@@ -179,7 +179,6 @@ public class DocumentsController(
     /// Se confirma en una única transacción para no dejar la base de conocimiento a medias.
     /// </summary>
     [HttpPost("delete")]
-    [Authorize(Roles = "admin")]
     public async Task<ActionResult<DeleteDocumentsResponse>> DeleteMany(
         [FromBody] DeleteDocumentsRequest request, CancellationToken cancellationToken)
     {
@@ -228,7 +227,6 @@ public class DocumentsController(
     /// silencio: para esos hay que volver a subir el fichero.
     /// </summary>
     [HttpPost("reindex")]
-    [Authorize(Roles = "admin")]
     public async Task<ActionResult<ReindexResponse>> Reindex(
         [FromBody] ReindexRequest request, CancellationToken cancellationToken)
     {
