@@ -189,8 +189,8 @@ Ollama local descartado por ser 17-27× más lento al primer token, **con los da
 ## 9. Cierre (8:30 – 9:00)
 
 > «Clean Architecture con el dominio sin dependencias, contrato OpenAPI *contract-first*, 20
-> decisiones documentadas en ADR con su porqué y lo que se descartó, y 199 tests
-> automatizados —187 de backend y 12 de frontend— más 4 que solo corren con clave de OpenAI.
+> decisiones documentadas en ADR con su porqué y lo que se descartó, y 201 tests
+> automatizados —189 de backend y 12 de frontend— más 4 que solo corren con clave de OpenAI.
 > Y sobre todo: casi todo lo de la última fase salió de usar la aplicación y preguntarse qué
 > pasa cuando algo va mal.»
 
