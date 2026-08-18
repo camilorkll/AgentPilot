@@ -23,7 +23,7 @@ responde **únicamente** con el corpus de la campaña activa: nunca mezcla clien
 |---|---|
 | 🌐 Despliegue | [agentpilot-crk.up.railway.app](https://agentpilot-crk.up.railway.app) |
 | 📖 Documentación | [docs/DOCUMENTACION.md](docs/DOCUMENTACION.md) |
-| 📊 Slides | [Presentación de la defensa](https://docs.google.com/presentation/d/e/2PACX-1vRqu-7tG6VG4bfg7L4xLH6LQ-LysUtn39hRm1ISSpdNJJH50jB453Nx_O4z1mCb_RpdSEOK-kfL-g8L/pub?start=true&loop=false&delayms=3000&slide=id.g3f7337d7e9f_2_75) |
+| 📊 Slides | [Presentación de la defensa](https://docs.google.com/presentation/d/e/2PACX-1vS6_ib31dll_2aJuvA9elPIUfS9DJKYJH1SRupwi3RCWsCwSG8Nx0BlpactSE_wYfekF0DjqR1iXWXc/pub?start=true&loop=false&delayms=10000) |
 | 🎬 Vídeo | *(pendiente)* |
 
 > **El despliegue está listo para usar**: no hay que poblar nada. Tiene los cuatro usuarios y
