@@ -24,7 +24,7 @@ responde **únicamente** con el corpus de la campaña activa: nunca mezcla clien
 | 🌐 Despliegue | [agentpilot-crk.up.railway.app](https://agentpilot-crk.up.railway.app) |
 | 📖 Documentación | [docs/DOCUMENTACION.md](docs/DOCUMENTACION.md) |
 | 📊 Slides | [Presentación de la defensa](https://docs.google.com/presentation/d/e/2PACX-1vR0iHoslnHhQezSfDVSDH1O7kBrQZCFYlA8KSp2UxQ4OOWAAMDydd9HUkiKM9FlZhACINgGjrOtP2nj/pub?start=true&loop=false&delayms=10000) |
-| 🎬 Vídeo | *(pendiente)* |
+| 🎬 Vídeo | [Demostración del sistema](https://youtu.be/AjGN5-qYSCw) |
 
 > **El despliegue está listo para usar**: no hay que poblar nada. Tiene los cuatro usuarios y
 > dos campañas ya indexadas — **TeleNova** (12 documentos) y **Luz y Gas Premium** (10), lo que

@@ -485,3 +485,8 @@ $RECYCLE.BIN/
 frontend/node_modules/
 frontend/dist/
 frontend/.angular/
+
+# Grabaciones del vídeo de la entrega: pesan más de 70 MB cada una y el vídeo
+# se publica en YouTube (enlazado en el README), no dentro del repositorio.
+docs/*.mp4
+docs/*.mov
