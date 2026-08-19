@@ -22,6 +22,7 @@ responde **únicamente** con el corpus de la campaña activa: nunca mezcla clien
 | Recurso | URL |
 |---|---|
 | 🌐 Despliegue | [agentpilot-crk.up.railway.app](https://agentpilot-crk.up.railway.app) |
+| 💻 Repositorio | [github.com/camilorkll/AgentPilot](https://github.com/camilorkll/AgentPilot) |
 | 📖 Documentación | [docs/DOCUMENTACION.md](docs/DOCUMENTACION.md) |
 | 📊 Slides | [Presentación de la defensa](https://docs.google.com/presentation/d/e/2PACX-1vR0iHoslnHhQezSfDVSDH1O7kBrQZCFYlA8KSp2UxQ4OOWAAMDydd9HUkiKM9FlZhACINgGjrOtP2nj/pub?start=true&loop=false&delayms=10000) |
 | 🎬 Vídeo | [Demostración del sistema](https://youtu.be/AjGN5-qYSCw) |

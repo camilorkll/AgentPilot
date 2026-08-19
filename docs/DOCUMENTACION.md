@@ -5,6 +5,12 @@
 > leerlo. Los datos técnicos que aparecen están tomados del código y verificados contra el
 > sistema desplegado.
 
+| Recurso | URL |
+|---|---|
+| 💻 Repositorio | <https://github.com/camilorkll/AgentPilot> |
+| 🌐 Despliegue | <https://agentpilot-crk.up.railway.app> |
+| 🎬 Vídeo | <https://youtu.be/AjGN5-qYSCw> |
+
 **Índice**
 
 1. [Qué es AgentPilot](#1-qué-es-agentpilot)
