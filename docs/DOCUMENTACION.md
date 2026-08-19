@@ -152,8 +152,12 @@ entero**: rellena un formulario con los campos que son suyos.
 - **Vocabulario a evitar**.
 - **Instrucciones adicionales** en texto libre.
 
-Antes de publicar hay una **vista previa** que muestra el prompt completo tal como quedará,
-incluidas las partes que no se pueden editar. Y cada cambio deja una **entrada en el
+Antes de publicar hay una **vista previa**: se escribe una pregunta de prueba y el sistema
+muestra, lado a lado, la respuesta con las instrucciones **publicadas** y la respuesta con lo
+que hay **en el formulario sin guardar**. Las dos se generan sobre los mismos fragmentos
+recuperados, así que la única diferencia entre ellas son las instrucciones; y no crean
+conversación ni telemetría. Si el texto contiene frases típicas de una inyección («ignora»,
+«sin citar», «responde siempre»…) se marcan en ámbar. Y cada cambio deja una **entrada en el
 historial**, con la posibilidad de comparar cualquier versión con la vigente y restaurarla.
 El historial está acotado —5 entradas por defecto, configurable por campaña— para que no
 crezca sin fin.
@@ -743,6 +747,7 @@ Los límites documentados son parte de la documentación, no una omisión.
 | **El corrector de evals puntúa por palabras clave** | Comprueba que el dato clave aparezca, no evalúa la redacción. | *LLM-as-judge*: mejor, pero añade coste y variabilidad a la propia medición. |
 | **Sin búsqueda híbrida** | La recuperación es vectorial con reordenado léxico, no una búsqueda por palabras completa (`tsvector`). | Línea futura. |
 | **Latencia del modelo local** | Ollama en CPU tarda entre **17×** (primer token) y **31×** (p95) más que `gpt-4o-mini`. | Se mantiene como herramienta de desarrollo y como respuesta al requisito de que los datos no salgan, no como opción por defecto. |
+| **Las instrucciones de campaña *blandas* pueden no notarse** | La reafirmación del núcleo que blinda contra la inyección tiene un coste: el modelo trata las instrucciones de estilo poco concretas («tono cercano», «tutea», «saluda») como opcionales, y en una respuesta de una frase con un dato duro puede no cambiar nada. Verificado con la vista previa el 18/08/2026: «tono cercano + tutea + saludo breve» dejó la respuesta igual; «empieza SIEMPRE con la palabra "Hola"» y un aviso de conducta concreto sí se aplicaron. Tampoco puede evitar una palabra que nombra al producto en el corpus, ni añadir un dato que no esté en los fragmentos recuperados: el *grounding* gana, que es lo deseable. | Suavizar la reafirmación para que el estilo pese más: debilitaría justo la defensa que la prueba de inyección demuestra. Se prefiere documentar que las instrucciones deben ser órdenes concretas de forma o de conducta, y que la vista previa está para comprobarlo antes de publicar. |
 
 ### Líneas futuras
 
